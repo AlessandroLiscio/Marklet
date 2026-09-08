@@ -65,7 +65,15 @@ jobs:
       # `command-arguments`. Passing them in `command` is accepted by the YAML
       # and rejected by cargo-deny.
       # deny.toml is resolved next to the manifest: src-tauri/deny.toml.
+      #
+      # Every scanner below carries `continue-on-error` and an id, and the job's
+      # verdict is decided once at the end. Without that, the first failure
+      # aborts the job and hides every finding after it — which happened twice
+      # while this pipeline was being written, both times masking the scanners
+      # that had not run yet.
       - name: cargo-deny
+        id: deny
+        continue-on-error: true
         uses: EmbarkStudios/cargo-deny-action@v2.1.1
         with:
           manifest-path: src-tauri/Cargo.toml
@@ -76,6 +84,8 @@ jobs:
       # Dependency vulnerabilities across both ecosystems
       # -----------------------------------------------------------------------
       - name: Trivy filesystem scan (SARIF)
+        id: trivy-sarif
+        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
@@ -86,16 +96,20 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: always() && hashFiles('trivy.sarif') != ''
         continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy.sarif
           category: trivy
 
-      # Trivy's own gate. Reported separately from the SARIF upload so the
-      # findings reach the Security tab even when the job is about to fail.
-      - name: Fail on CRITICAL/HIGH
+      # A second pass, because trivy-action emits one format per run and the
+      # findings must reach the Security tab whether or not they also fail the
+      # build. The vulnerability database is cached from the pass above, so this
+      # costs seconds rather than a second download.
+      - name: Trivy gate (CRITICAL/HIGH)
+        id: trivy-gate
+        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
@@ -120,6 +134,8 @@ jobs:
       # diff range from the event — and this workflow is reached through
       # workflow_call, where that derivation is not reliable.
       - name: TruffleHog
+        id: trufflehog
+        continue-on-error: true
         uses: trufflesecurity/trufflehog@v3.97.4
         with:
           base: ''
@@ -134,3 +150,35 @@ jobs:
           path: trivy.sarif
           retention-days: 30
           if-no-files-found: warn
+
+      # -----------------------------------------------------------------------
+      # The verdict
+      # -----------------------------------------------------------------------
+      # One place, after every scanner has had its turn. This is what makes the
+      # `continue-on-error` above safe: nothing is swallowed, it is only
+      # deferred, and a reader sees all three results instead of the first one.
+      - name: Verdict
+        run: |
+          set -euo pipefail
+          deny='${{ steps.deny.outcome }}'
+          trivy='${{ steps.trivy-gate.outcome }}'
+          secrets='${{ steps.trufflehog.outcome }}'
+
+          {
+            echo "| Scanner | Result |"
+            echo "|---|---|"
+            echo "| cargo-deny (advisories, licences, bans) | \`$deny\` |"
+            echo "| Trivy (Cargo.lock + package-lock.json) | \`$trivy\` |"
+            echo "| TruffleHog (verified secrets) | \`$secrets\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          fail=0
+          for r in "$deny" "$trivy" "$secrets"; do
+            [ "$r" = "success" ] || fail=1
+          done
+
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::a security scanner reported findings - see the step logs above"
+            exit 1
+          fi
+          echo "All three scanners clean."

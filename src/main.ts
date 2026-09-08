@@ -16,8 +16,12 @@ import './styles/content.css';
  */
 
 declare global {
-  /** True in the lite build, where Mermaid is aliased to a stub. Set by Vite. */
-  const __MARKLET_LITE__: boolean;
+  /**
+   * Which product this bundle is. A compile-time constant, so a
+   * `if (__MARKLET_EDITION__ === 'full')` block is eliminated from the lite
+   * bundle rather than shipped and skipped. See docs/editions.md.
+   */
+  const __MARKLET_EDITION__: 'lite' | 'full';
 
   interface Window {
     /**

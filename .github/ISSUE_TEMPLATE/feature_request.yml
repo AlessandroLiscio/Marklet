@@ -6,10 +6,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        Marklet's ceiling is a 3.5 MiB installer, enforced in CI. Roughly 2.6 MiB of
-        that is uncommitted. A proposal that costs bytes is not unwelcome — it just
-        has to be worth its weight, and saying what it costs makes that a
-        conversation rather than a surprise.
+        Marklet ships two editions with different rules. **Lite** is held to 2.8 MiB
+        by CI, and roughly 1.45 MiB of that is uncommitted. **Full** is deliberately
+        not size-constrained and is where the expensive good ideas go.
+
+        A proposal that costs bytes is welcome — it just needs to say which edition
+        it is for. See docs/editions.md.
 
   - type: textarea
     id: problem
@@ -23,6 +25,19 @@ body:
     id: proposal
     attributes:
       label: What should Marklet do
+    validations:
+      required: true
+
+  - type: dropdown
+    id: edition
+    attributes:
+      label: Which edition
+      description: 'If it costs real bytes, it probably belongs in full. See docs/editions.md.'
+      options:
+        - Full only — it costs bytes or complexity
+        - Both — it is small, or costs nothing
+        - Lite specifically — it makes the small edition better
+        - Not sure
     validations:
       required: true
 

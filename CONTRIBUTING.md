@@ -5,11 +5,18 @@ exist because breaking one costs the project its reason to exist.
 
 ## The rule that shapes everything else
 
-Marklet is worth writing only because it stays small and starts fast. There are already good
-heavyweight Markdown editors. So:
+Marklet ships **two products from one codebase**, and they have different rules. Read
+[`docs/editions.md`](docs/editions.md) before proposing a feature — it decides which edition
+your change belongs to, and that decides almost everything else.
 
-**Any new dependency arrives with its measured compressed size.** Not an estimate — the
-number from the command:
+**Marklet Lite** is worth writing only because it stays small and starts fast; there are
+already good heavyweight Markdown editors. **Marklet (full)** is deliberately not bound by
+that, and may spend bytes on typography, motion, tabs, regex search and an updater.
+
+Either way:
+
+**Any new dependency arrives with its measured compressed size, and its edition.** Not an
+estimate — the number from the command:
 
 ```bash
 npm pack <pkg> --pack-destination /tmp >/dev/null && tar -xOf /tmp/<pkg>-*.tgz | xz -9 | wc -c
@@ -18,9 +25,14 @@ npm pack <pkg> --pack-destination /tmp >/dev/null && tar -xOf /tmp/<pkg>-*.tgz |
 Put it in the pull request's **Size impact** section. A change that adds a dependency without
 that number is incomplete, however well the code works.
 
-Ceilings, enforced by CI: **3.5 MiB** for the full installer, **2.8 MiB** for lite,
-**1200 ms** median cold start. About 2.6 MiB of the installer budget is still uncommitted.
-Spending some of it is fine. Spending it silently is not.
+| Ceiling, enforced by CI | Marklet Lite | Marklet (full) |
+|---|---:|---:|
+| Installer | **2.8 MiB** — a promise | **12 MiB** — a tripwire for accidents |
+| Cold start, median | 1200 ms | 1800 ms |
+
+Lite has roughly 1.45 MiB uncommitted. Spending some of it is fine; spending it silently is
+not. Full has slack by design — but weight there still has to earn its place, and **nothing
+heavy goes on the boot path in either edition**.
 
 `.claude/skills/size-budget/SKILL.md` has the measurement commands, the current allocation,
 and a table of alternatives already rejected on size — check it before proposing `syntect`,

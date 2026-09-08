@@ -34,14 +34,17 @@ Closes #
 ## Size impact
 
 <!--
-Required if this adds ANY dependency, crate or npm package. The size gate will
-tell you the installer delta, but say here what you measured and why it is
-worth paying. "Nothing added" is a valid answer.
+Required if this adds ANY dependency, crate or npm package. Say which EDITION it
+lands in, what you measured, and why it is worth paying. The size gate reports
+the installer delta, but the edition is your decision, not its.
 
   npm pack <pkg> --pack-destination /tmp >/dev/null && tar -xOf /tmp/<pkg>-*.tgz | xz -9 | wc -c
 
-See .claude/skills/size-budget/SKILL.md.
+Lite's 2.8 MiB is a promise; full's 12 MiB is a tripwire. See docs/editions.md
+and .claude/skills/size-budget/SKILL.md. "Nothing added" is a valid answer.
 -->
+
+Edition: <!-- lite / full / both / n.a. -->
 
 Nothing added.
 
@@ -73,7 +76,8 @@ None
 - [ ] Title follows `<type>(<scope>): <subject>` and reads as the squash-merge subject
 - [ ] Linked to an issue above, or the body explains why there isn't one
 - [ ] Scoped to a single concern — a reviewer can hold the whole change in their head
-- [ ] Any new dependency has its measured compressed size in **Size impact**
+- [ ] Any new dependency has its measured compressed size **and edition** in **Size impact**
+- [ ] If this differs between the two editions, `docs/editions.md` has a row for it
 - [ ] Nothing heavy added to a static import (`npm run check:imports` passes)
 - [ ] Tests added or updated for the changed behaviour, or not applicable
 - [ ] `CHANGELOG.md` updated under `## [Unreleased]` if this is user-visible

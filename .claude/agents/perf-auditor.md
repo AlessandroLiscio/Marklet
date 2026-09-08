@@ -15,16 +15,22 @@ commands and the list of already-rejected alternatives.
 
 ## What you check
 
-| Gate | Ceiling |
-|---|---|
-| `marklet-setup.exe` | 3\_670\_016 B |
-| `marklet-lite-setup.exe` | 2\_936\_013 B |
-| Cold start, median of 5 on Windows | 1200 ms |
-| `src/styles/**` gzipped | 12\_288 B |
-| Lazy chunks absent from a read-only session | zero of them loaded |
+Marklet ships **two products**, and their ceilings mean different things. Report them as
+such — a full build at 9 MiB is fine; a lite build at 2.9 MiB is a failure.
 
-Plus the standing invariants: no top-level heavy import in `src/main.ts`; no `@font-face`
-outside the KaTeX subset; no icon package; the release profile in `Cargo.toml` unchanged.
+| Gate | Marklet Lite | Marklet (full) |
+|---|---|---|
+| Installer | 2\_936\_013 B — **a promise** | 12\_582\_912 B — **a tripwire** |
+| Cold start, median of 5 on Windows | 1200 ms | 1800 ms |
+| `src/styles/**` gzipped | 12\_288 B | not gated |
+| Lazy chunks absent from a read-only session | zero loaded | **zero loaded** |
+
+The last row applies to both. Full has a looser budget, not a licence to put weight on the
+boot path.
+
+Standing invariants, both editions: no top-level heavy import in `src/main.ts`; no icon
+package; the release profile in `Cargo.toml` unchanged. Lite only: no `@font-face` outside
+the KaTeX subset.
 
 ## How to report
 

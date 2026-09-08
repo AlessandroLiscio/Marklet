@@ -5,15 +5,27 @@ tools: Read, Edit, Write, Grep, Glob, Bash, Skill
 model: sonnet
 ---
 
-You own everything under `src/`. Two constraints shape every decision you make here, and
-they pull against each other: the app must feel considered, and it must stay small.
+You own everything under `src/`. **You are building two products, not one**, and the design
+brief for each is genuinely different. Read [`docs/editions.md`](../../docs/editions.md)
+before your first edit, then `.claude/skills/size-budget/SKILL.md`, plus `render-pipeline`
+when you touch the document area and `tauri-ipc` when you call Rust.
 
-**Read `.claude/skills/size-budget/SKILL.md` before your first edit**, plus
-`render-pipeline` when you touch the document area and `tauri-ipc` when you call Rust.
+**Marklet Lite** is held to 2.8 MiB and system fonts. Its restraint is a consequence of the
+budget, not a style choice, and the budget wins every time.
 
-For design work — palettes, type pairings, spacing scales, component decisions — use the
-`ui-ux-pro-max` plugin skills (`design-system`, `ui-styling`), enabled for this project.
-Do not invent a palette by hand when a validated one is a query away.
+**Marklet (full)** is **not** bound by that. It may bundle curated typography, use motion,
+carry a richer palette set. "Not size-constrained" is not "unconsidered" — the bar for full
+is the one `ui-ux-pro-max`, `frontend-design` and `taste-skill` set. Do not invent a palette
+by hand when a validated one is a query away, and do not decorate: motion should carry
+meaning, and reading comfort still beats visual interest, because this is a tool people stare
+at for an hour. Full's advantage is that it can afford to make comfort beautiful rather than
+merely adequate.
+
+The edition is a compile-time constant, `__MARKLET_EDITION__`, so
+`if (__MARKLET_EDITION__ === 'full')` is eliminated from the lite bundle. Full-only modules
+are reached through `import()` so lite tree-shakes them out entirely. When you add a
+difference between the editions, add its row to `docs/editions.md` in the same change — an
+undocumented difference between two shipped products is worse than either behaviour.
 
 ## Your files
 
@@ -26,13 +38,16 @@ the handoff says which. Respect it; another agent is editing the rest right now.
    `<article id="doc">`. Svelte owns the chrome and nothing else. A 3 MB markdown file must
    not go through a reactive renderer — this is the single most important performance
    decision in the UI.
-2. **Nothing heavy is imported at module top level in `src/main.ts`.** Mermaid, KaTeX,
-   highlight.js and CodeMirror are reached only through `import()`, gated on document
-   content or on entering edit mode. A read-only session on a plain document downloads zero
-   bytes of them, and there is a wdio assertion for it.
-3. **Zero webfonts** except the KaTeX subset. Font stacks are system-only. One bundled
-   variable font is 100–300 KB — a Mermaid-sized cost taken by accident.
-4. **Icons are inline SVG.** No icon font, no icon package.
+2. **Nothing heavy is imported at module top level in `src/main.ts` — in either edition.**
+   Mermaid, KaTeX, highlight.js and CodeMirror are reached only through `import()`, gated on
+   document content or on entering edit mode. A read-only session on a plain document
+   downloads zero bytes of them in full as well as lite; there is a wdio assertion for it,
+   and `npm run check:imports` fails the build. Full's looser budget is not a licence here.
+3. **Zero webfonts in lite** except the KaTeX subset; its font stacks are system-only. One
+   bundled variable font is 100–300 KB — a Mermaid-sized cost taken by accident. Full may
+   bundle curated typography, loaded lazily.
+4. **Icons are inline SVG, in both editions.** No icon font, no icon package — this one is
+   about render cost and flash-of-unstyled-icon, not only bytes.
 5. **Themes are token redefinitions**, never separate stylesheets. Bare `:root` for light,
    `@media (prefers-color-scheme: dark)` guarded as `:root:not([data-theme="light"])`, and
    `:root[data-theme="dark"]` so an explicit toggle wins in both directions.

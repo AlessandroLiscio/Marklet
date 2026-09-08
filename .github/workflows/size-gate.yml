@@ -1,12 +1,21 @@
 # The mechanism that makes "lightweight" a constraint instead of a wish.
 #
-# Marklet exists because mdview is 2 MB and starts in under a second. Every
-# feature argues against that, and arguments win unless something is holding a
-# scale. This is the scale.
+# The two ceilings mean different things, and confusing them defeats both:
 #
-# Called by main.yml after build.yml, on pull requests only. Do not raise a
-# ceiling to make a build pass — that is Alessandro's decision, taken on a
-# measurement, in its own commit. See .claude/skills/size-budget/SKILL.md.
+#   LITE  2.8 MiB — a promise. Marklet Lite exists because mdview is 2 MB and
+#     starts in under a second, and that is the only reason a new Markdown
+#     viewer is worth writing. Every feature argues against it, and arguments
+#     win unless something is holding a scale.
+#
+#   FULL  12 MiB — a tripwire, not a promise. The full edition is deliberately
+#     NOT bound by the lightweight rule: it is allowed webfonts, motion, tabs,
+#     regex search, CJK detection, an updater. This ceiling exists only to catch
+#     an accident — a 40 MB dependency pulled in by mistake — and is cheap to
+#     raise, because nobody was promised it.
+#
+# Called by main.yml after build.yml, on pull requests only. Raising the LITE
+# ceiling is Alessandro's decision, taken on a measurement, in its own commit.
+# See .claude/skills/size-budget/SKILL.md and docs/editions.md.
 name: Size gate
 
 on:
@@ -40,8 +49,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          FULL_MAX=3670016   # 3.5 MiB
-          LITE_MAX=2936013   # 2.8 MiB
+          FULL_MAX=12582912  # 12 MiB  - a tripwire for accidents
+          LITE_MAX=2936013   # 2.8 MiB - a promise
 
           full=$(find artifacts/full -name '*.exe' -printf '%s\n' | sort -nr | head -1)
           lite=$(find artifacts/lite -name '*.exe' -printf '%s\n' | sort -nr | head -1)
@@ -67,9 +76,13 @@ jobs:
 
           if [ "$fail" -ne 0 ]; then
             echo
-            echo "Before raising a ceiling, work through the list in"
+            echo "LITE over budget: work through the list in"
             echo ".claude/skills/size-budget/SKILL.md - gate an import, move it behind a"
-            echo "build switch, move it to the full build only, or cut the feature."
+            echo "build switch, move it to the full edition only, or cut the feature."
+            echo "Raising the lite ceiling is not on that list; it is the promise."
+            echo
+            echo "FULL over budget: this ceiling is a tripwire, not a promise. Something"
+            echo "large arrived - find out what before deciding whether to raise it."
             exit 1
           fi
 

@@ -2,10 +2,13 @@
 
 # Marklet
 
-**A lightweight Markdown viewer. Reading first.**
+**An open-source Markdown viewer. Reading first.**
 
 Open a `.md` file and read it like a webpage — outline, live reload, vault search,
 wiki-links, diagrams, math, PDF export. Fully offline. No account, no telemetry, no paywall.
+
+Ships in two editions: **Marklet**, which is allowed to be beautiful, and **Marklet Lite**,
+which is held to 2.8 MiB by CI.
 
 MIT licensed · Windows 11 and Linux · every feature free
 
@@ -20,9 +23,12 @@ editing — you are *reading* a README, a spec, a set of notes. `mdview` proved 
 reading-first viewer can be 2 MB and start in under a second, and then put its best features
 behind a licence key.
 
-Marklet keeps the constraint and drops the paywall. Every feature is free and the source is
-here. The size budget is enforced by CI, not by good intentions: a pull request that pushes
-the installer over 3.5 MiB fails.
+Marklet drops the paywall and splits the difference the honest way, into two products. Lite
+keeps the constraint, enforced by CI rather than by good intentions: a pull request that
+pushes it over 2.8 MiB fails. The full edition is free of that constraint on purpose, and
+spends the room on the things a budget cannot justify.
+
+Every feature is free in both. The source is here.
 
 ## Status
 
@@ -49,34 +55,57 @@ your real editor at the cursor. Pasted images are written to disk and linked.
 **Export** — PDF with proper pagination, standalone single-file HTML that opens anywhere
 with zero network requests, PNG or SVG of any diagram.
 
-## Size and speed
+## Two editions
 
-| | Full | Lite (no Mermaid) |
-|---|---:|---:|
-| Ceiling enforced in CI | 3.5 MiB | 2.8 MiB |
-| Measured today (empty shell, v0.1.0) | 904 KiB | 904 KiB |
+Marklet ships as **two products from one codebase**, not one product with a stripped
+variant. Lite is the constrained one and carries the size promise; the full edition is
+deliberately not bound by it and is allowed to spend bytes on being good.
 
-Cold start is gated at 1200 ms median on Windows 11.
+| | **Marklet Lite** | **Marklet** |
+|---|---|---|
+| Installer ceiling | **2.8 MiB** — a promise | **12 MiB** — a tripwire for accidents |
+| Cold start ceiling | 1200 ms median | 1800 ms median |
+| Reading core, outline, live reload, position memory, reflow | ✅ | ✅ |
+| Tables, footnotes, task lists, frontmatter, local images | ✅ | ✅ |
+| Syntax highlighting, KaTeX math | ✅ | ✅ |
+| Editing — F2 live preview, F3 dual column, F4 external editor | ✅ | ✅ |
+| Vault — tree, `[[wiki-links]]`, backlinks | ✅ | ✅ |
+| **Mermaid diagrams** | ✗ | ✅ with fullscreen zoom and pan |
+| **Vault search** | literal, multi-term | ✅ plus full regex |
+| **Encoding** | BOM, UTF-8, UTF-16, cp1252 | ✅ plus CJK auto-detection |
+| **Typography** | system fonts only | ✅ curated bundled pairings, multiple palettes |
+| **Motion** | CSS state changes only | ✅ considered transitions |
+| **Tabs** | ✗ | ✅ |
+| **Settings** | panel in the main window | ✅ dedicated window |
+| **Export** | PDF, standalone HTML, diagram SVG/PNG | ✅ plus PNG of any block |
+| **Auto-update** | ✗ | ✅ |
 
-Mermaid is roughly 750 KB — the single largest item in the budget, for one feature. That is
-why `marklet-lite-setup.exe` exists as a first-class download rather than a curiosity.
+Where a row is ✅ on both sides, the two editions run the same code. Lite is never a worse
+implementation — it is the absence of a feature, or a narrower one that says so.
 
-The ceilings come from measurement, not from a guess: the first CI build produced a 904 KiB
-installer, so there is about 2.6 MiB of room for everything still to be written. A pull
-request that spends more than that fails.
+**Marklet is the default download.** Choose Lite deliberately: when you want something small
+and fast, or your Markdown never contains a diagram.
 
-We are not claiming to beat `mdview`'s 2 MB — no shipped number exists yet. When the
-features are in, the honest comparison will be against the lite build, and it will be
-published either way.
+[`docs/editions.md`](docs/editions.md) has the full table, the reasoning, and how the split
+is built.
+
+### On the numbers
+
+Lite's 2.8 MiB is measured, not guessed: the first CI build produced a **904 KiB** empty
+shell, leaving about 1.9 MiB for the features. A pull request that spends more than that
+fails.
+
+We are not yet claiming to beat `mdview`'s 2 MB — no shipped number exists. When the features
+are in, the honest comparison is against Lite, and it will be published either way.
 
 ## Install
 
 Download from [Releases](../../releases):
 
-- **Windows 11** — `marklet-setup.exe`, or `marklet-lite-setup.exe` if you do not need
-  diagrams. Per-user install, no administrator rights. `marklet-offline-setup.exe` embeds
-  the WebView2 runtime for air-gapped machines.
-- **Linux** — `.AppImage` or `.deb`.
+- **Windows 11** — `marklet-setup.exe` for the full edition, or `marklet-lite-setup.exe` for
+  the small one. Per-user install, no administrator rights. `marklet-offline-setup.exe`
+  embeds the WebView2 runtime for air-gapped machines.
+- **Linux** — `.AppImage` or `.deb`, full edition.
 
 Marklet adds itself to the "Open with" list for `.md` rather than silently taking over the
 association. Making it the default is your call.

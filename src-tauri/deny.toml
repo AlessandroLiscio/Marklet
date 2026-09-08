@@ -13,6 +13,18 @@ version = 2
 yanked = "deny"
 ignore = []
 
+# Flag unmaintained crates we actually chose, not ones our dependencies drag in.
+#
+# The default ("all") reported six: proc-macro-error via glib and gtk3-macros,
+# and the five unic-* crates via urlpattern inside tauri-utils. All six are
+# transitive through Tauri's own tree, none is a vulnerability - "unmaintained"
+# is a maintenance status - and there is no version of them we can move to.
+#
+# Muting the whole check would have been the wrong fix; a scanner that reports
+# only what its reader cannot act on gets ignored, and then it protects nothing.
+# "workspace" keeps the check sharp on the decisions that are ours.
+unmaintained = "workspace"
+
 [licenses]
 version = 2
 # Marklet is MIT. These are the permissive licences compatible with shipping a

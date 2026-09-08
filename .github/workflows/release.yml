@@ -39,24 +39,24 @@ jobs:
         include:
           - name: windows-full
             os: windows-latest
-            args: ""
-            lite: ""
-          # Mermaid lives in the frontend bundle, so the lite build is an
-          # environment variable Vite reads, not a cargo feature.
+            args: "--features full"
+            edition: full
+          # Lite is its own product, not a stripped full. See docs/editions.md.
           - name: windows-lite
             os: windows-latest
             args: ""
-            lite: "1"
+            edition: lite
           # ~127 MB: it embeds the whole WebView2 runtime. Tag builds only,
           # for air-gapped machines. Never the default download.
           - name: windows-offline
             os: windows-latest
-            args: "--config {\"bundle\":{\"windows\":{\"webviewInstallMode\":{\"type\":\"offlineInstaller\"}}}}"
-            lite: ""
+            args: "--features full"
+            edition: full
+            tauri-args: "--config {\"bundle\":{\"windows\":{\"webviewInstallMode\":{\"type\":\"offlineInstaller\"}}}}"
           - name: linux
             os: ubuntu-22.04
-            args: ""
-            lite: ""
+            args: "--features full"
+            edition: full
 
     steps:
       - uses: actions/checkout@v5
@@ -81,9 +81,9 @@ jobs:
       - run: npm ci
 
       - name: Build
-        run: npx tauri build ${{ matrix.args }}
+        run: npx tauri build ${{ matrix.tauri-args }} -- ${{ matrix.args }}
         env:
-          MARKLET_LITE: ${{ matrix.lite }}
+          MARKLET_EDITION: ${{ matrix.edition }}
 
       - name: Rename artifacts
         shell: bash
@@ -107,20 +107,32 @@ jobs:
           path: out/*
           if-no-files-found: error
 
-  # Cold start is the promise the whole project rests on, so it gates the
-  # release rather than merely reporting.
+  # Cold start is the promise lite rests on, and a quality bar for full. Both
+  # are gated, at different numbers: lite has more to prove and less to load.
   cold-start-gate:
-    name: Cold start gate
+    name: Cold start (${{ matrix.edition }})
     needs: build
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - edition: lite
+            artifact: release-windows-lite
+            ceiling: 1200
+          - edition: full
+            artifact: release-windows-full
+            ceiling: 1800
     steps:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v5
         with:
-          name: release-windows-full
+          name: ${{ matrix.artifact }}
           path: out
       - name: Median of 5 runs
         shell: pwsh
+        env:
+          CEILING: ${{ matrix.ceiling }}
         run: |
           $exe = (Get-ChildItem out -Filter *.exe | Select-Object -First 1).FullName
           Start-Process -FilePath $exe -ArgumentList '/S' -Wait
@@ -130,9 +142,10 @@ jobs:
             if ($out -match 'boot-ms=(\d+)') { [int]$Matches[1] } else { throw "no boot-ms in output" }
           }
           $median = ($times | Sort-Object)[2]
-          "cold start runs: $($times -join ', ') -> median ${median} ms" |
+          $ceiling = [int]$env:CEILING
+          "${{ matrix.edition }} cold start: $($times -join ', ') -> median ${median} ms (ceiling ${ceiling} ms)" |
             Tee-Object -Append $env:GITHUB_STEP_SUMMARY
-          if ($median -gt 1200) { throw "median ${median} ms exceeds the 1200 ms ceiling" }
+          if ($median -gt $ceiling) { throw "median ${median} ms exceeds the ${ceiling} ms ceiling" }
 
   publish:
     name: Publish

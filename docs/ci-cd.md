@@ -65,8 +65,10 @@ The `--no-default-features` leg is not redundant. The render core runs headless 
 `MD_HTML=1` and must not acquire a dependency on a default feature; that regression compiles
 fine in the normal build and shows up only there.
 
-**`size-gate`** — measures both installers against 3.5 MiB and 2.8 MiB, comments the table
-on the pull request, fails over budget. See [size-budget.md](size-budget.md).
+**`size-gate`** — measures both installers, comments the table on the pull request, fails
+over budget. The two ceilings mean different things: lite's **2.8 MiB** is a promise, full's
+**12 MiB** is a tripwire for a dependency added by mistake. See
+[size-budget.md](size-budget.md) and [editions.md](editions.md).
 
 ## Branch protection
 
@@ -110,7 +112,8 @@ hand-editing them is how a lock file stops matching its manifest.
 
 1. verifies the three version files agree with the tag, and fails the whole release if not;
 2. builds `full`, `lite` and `offline` Windows installers plus `.AppImage` and `.deb`;
-3. runs the cold-start gate — five runs on `windows-latest`, median under 1200 ms;
+3. runs the cold-start gate on both editions — five runs each on `windows-latest`, median
+   under 1200 ms for lite and 1800 ms for full;
 4. writes `SHA256SUMS` and a size table into the run summary;
 5. opens a **draft** release.
 
@@ -126,14 +129,16 @@ without changing anything.
 
 GitHub Releases only. No registry, no cluster, no update server.
 
-| Artifact | For |
-|---|---|
-| `marklet-setup-<ver>.exe` | Windows 11, the default download |
-| `marklet-lite-setup-<ver>.exe` | Windows 11 without Mermaid, ~750 KB smaller |
-| `marklet-offline-setup-<ver>.exe` | air-gapped Windows; embeds the WebView2 runtime, ~127 MB |
-| `marklet-<ver>.AppImage` | Linux, self-contained |
-| `marklet-<ver>.deb` | Debian and Ubuntu |
-| `SHA256SUMS` | covers every artifact above |
+| Artifact | Edition | For |
+|---|---|---|
+| `marklet-setup-<ver>.exe` | full | Windows 11, **the default download** |
+| `marklet-lite-setup-<ver>.exe` | lite | Windows 11, the deliberate small choice |
+| `marklet-offline-setup-<ver>.exe` | full | air-gapped Windows; embeds the WebView2 runtime, ~127 MB |
+| `marklet-<ver>.AppImage` | full | Linux, self-contained |
+| `marklet-<ver>.deb` | full | Debian and Ubuntu |
+| `SHA256SUMS` | — | covers every artifact above |
+
+The editions are two products, not a build variant. See [editions.md](editions.md).
 
 **Not done, and each is a real decision rather than an oversight:**
 

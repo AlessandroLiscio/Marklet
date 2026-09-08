@@ -54,14 +54,18 @@ to tagging.
 
 Pushing `v*` runs `release.yml`, which builds on `windows-latest` and `ubuntu-22.04`:
 
-| Artifact | Build | Notes |
+| Artifact | Built with | Notes |
 |---|---|---|
-| `marklet-setup.exe` | default features | full, includes Mermaid |
-| `marklet-lite-setup.exe` | `--no-default-features` | ~750 KB smaller, no Mermaid |
-| `marklet-offline-setup.exe` | `webviewInstallMode: offlineInstaller` | ~127 MB, air-gapped machines only |
-| `marklet-<ver>.AppImage` | default | Linux |
-| `marklet-<ver>.deb` | default | Linux |
+| `marklet-setup.exe` | `MARKLET_EDITION=full` + `--features full` | the default download |
+| `marklet-lite-setup.exe` | defaults (both switches default to lite) | the deliberate small choice |
+| `marklet-offline-setup.exe` | full, plus `webviewInstallMode: offlineInstaller` | ~127 MB, air-gapped machines only |
+| `marklet-<ver>.AppImage` | full | Linux |
+| `marklet-<ver>.deb` | full | Linux |
 | `SHA256SUMS` | — | covers every artifact above |
+
+The editions are two products, not a build variant — see `docs/editions.md`. Both switches
+are needed because the difference lives in two places: `MARKLET_EDITION` decides the bundle,
+`--features full` decides the binary.
 
 The offline installer is built **only** on tags. It is 127 MB because it embeds the whole
 WebView2 runtime; it must never become the default download.
@@ -70,19 +74,20 @@ WebView2 runtime; it must never become the default download.
 
 `size-gate.yml` fails the release if either primary installer is over budget:
 
-| Artifact | Ceiling |
-|---|---|
-| `marklet-setup.exe` | 3\_670\_016 B |
-| `marklet-lite-setup.exe` | 2\_936\_013 B |
+| Artifact | Ceiling | Meaning |
+|---|---|---|
+| `marklet-lite-setup.exe` | 2\_936\_013 B (2.8 MiB) | a promise — never raise it to ship |
+| `marklet-setup.exe` | 12\_582\_912 B (12 MiB) | a tripwire — investigate before raising |
 
 A release is not cut over a failing size gate. Cut the feature or ship the previous version.
 See `.claude/skills/size-budget/SKILL.md`.
 
 ## Cold-start gate
 
-Five runs of `marklet --benchmark tests/fixtures/large.md` on `windows-latest`; the median
-`boot-ms` must be under 1200 ms. This is the promise the whole project rests on, so it gates
-the release rather than merely reporting.
+Five runs of `marklet --benchmark tests/fixtures/large.md` on `windows-latest`, for each
+edition. The median `boot-ms` must be under **1200 ms for lite** and **1800 ms for full**.
+Lite's number is the promise the project rests on; full's is a quality bar. Both gate the
+release rather than merely reporting.
 
 ## Changelog
 

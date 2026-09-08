@@ -1,8 +1,9 @@
 /**
  * Stands in for Mermaid in the lite build.
  *
- * Mermaid is roughly 750 KB compressed — about 37% of the full installer for a
- * single feature. `MARKLET_LITE=1` aliases the real package to this file in
+ * Mermaid is roughly 750 KB compressed — 27% of Marklet Lite's entire 2.8 MiB
+ * ceiling for a single feature, which is why diagrams are a full-edition
+ * feature. `MARKLET_EDITION=lite` aliases the real package to this file in
  * `vite.config.ts`, so the chunk is never emitted at all.
  *
  * The API surface mirrors only what `src/lib/rich/mermaid.ts` calls. Keep the
@@ -34,7 +35,7 @@ export async function render(_id: string, source: string): Promise<RenderResult>
 
   return {
     svg: `<div class="mermaid-unavailable" role="note">
-  <p>Diagrams are not included in the lite build. Install the full build to render this one.</p>
+  <p>Diagrams are a feature of the full edition. Marklet Lite shows the source instead.</p>
   <pre><code>${escaped}</code></pre>
 </div>`,
   };
