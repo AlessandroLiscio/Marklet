@@ -1,0 +1,85 @@
+/*
+ * PLACEHOLDER — phase P1b (ui-engineer) replaces this file.
+ *
+ * This is the markdown typography itself: measure, rhythm, headings, aligned
+ * tables, blockquotes, code blocks, footnote backlinks, task lists, and the
+ * .wikilink / .wikilink.unresolved pair. It is the stylesheet a user stares at
+ * for an hour, so reading comfort beats visual interest here.
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-read);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+#doc {
+  display: block;
+  max-inline-size: var(--measure);
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-4);
+}
+
+#doc :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--font-ui);
+  line-height: 1.25;
+  margin-block: var(--space-6) var(--space-3);
+  text-wrap: balance;
+}
+
+#doc :is(pre, code) {
+  font-family: var(--font-code);
+  font-size: 0.9em;
+}
+
+#doc pre {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: var(--space-3);
+  overflow-x: auto;
+}
+
+#doc table {
+  border-collapse: collapse;
+  inline-size: 100%;
+  display: block;
+  overflow-x: auto;
+}
+
+#doc :is(th, td) {
+  border: 1px solid var(--border);
+  padding: 0.35em 0.6em;
+}
+
+#doc blockquote {
+  margin-inline: 0;
+  padding-inline-start: var(--space-4);
+  border-inline-start: 3px solid var(--border);
+  color: var(--fg-muted);
+}
+
+#doc a {
+  color: var(--accent);
+}
+
+/* A wiki-link to a note that does not exist yet is a normal state in a vault,
+   not an error. It is styled, not hidden. */
+#doc .wikilink.unresolved {
+  color: var(--fg-muted);
+  text-decoration-style: dashed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

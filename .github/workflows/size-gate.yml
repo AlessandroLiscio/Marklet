@@ -1,0 +1,96 @@
+# The mechanism that makes "lightweight" a constraint instead of a wish.
+#
+# Marklet exists because mdview is 2 MB and starts in under a second. Every
+# feature argues against that, and arguments win unless something is holding a
+# scale. This is the scale.
+#
+# Do not raise a ceiling to make a build pass. Raising a ceiling is Alessandro's
+# decision, taken on a measurement, in its own commit.
+name: Size gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  gate:
+    name: Enforce budget
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: marklet-setup
+          path: artifacts/full
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: marklet-lite-setup
+          path: artifacts/lite
+
+      - name: Measure and enforce
+        id: measure
+        run: |
+          set -euo pipefail
+
+          FULL_MAX=5033165   # 4.8 MiB
+          LITE_MAX=3984589   # 3.8 MiB
+
+          full=$(find artifacts/full -name '*.exe' -printf '%s\n' | sort -nr | head -1)
+          lite=$(find artifacts/lite -name '*.exe' -printf '%s\n' | sort -nr | head -1)
+
+          human() { numfmt --to=iec-i --suffix=B --format='%.2f' "$1"; }
+
+          {
+            echo "| Artifact | Size | Ceiling | Headroom |"
+            echo "|---|---:|---:|---:|"
+            echo "| \`marklet-setup.exe\` | $(human "$full") | $(human $FULL_MAX) | $(human $((FULL_MAX - full))) |"
+            echo "| \`marklet-lite-setup.exe\` | $(human "$lite") | $(human $LITE_MAX) | $(human $((LITE_MAX - lite))) |"
+          } | tee -a "$GITHUB_STEP_SUMMARY" > gate-table.md
+
+          fail=0
+          if [ "$full" -gt "$FULL_MAX" ]; then
+            echo "::error::full installer is $((full - FULL_MAX)) bytes over budget"
+            fail=1
+          fi
+          if [ "$lite" -gt "$LITE_MAX" ]; then
+            echo "::error::lite installer is $((lite - LITE_MAX)) bytes over budget"
+            fail=1
+          fi
+
+          if [ "$fail" -ne 0 ]; then
+            echo
+            echo "Before raising a ceiling, work through the list in"
+            echo ".claude/skills/size-budget/SKILL.md - gate an import, move it behind a"
+            echo "cargo feature, move it to the full build only, or cut the feature."
+            exit 1
+          fi
+
+      - name: Comment the table on the pull request
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            let table;
+            try {
+              table = fs.readFileSync('gate-table.md', 'utf8');
+            } catch {
+              table = '_Build failed before the installers could be measured._';
+            }
+            const body = `### Size gate\n\n${table}`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const marker = '### Size gate';
+            const existing = (await github.rest.issues.listComments({ owner, repo, issue_number }))
+              .data.find(c => c.user.type === 'Bot' && c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

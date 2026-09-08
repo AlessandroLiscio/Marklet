@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Marklet</title>
+  </head>
+  <body>
+    <!--
+      The rendered document lives here and is set with innerHTML. It is
+      deliberately outside the Svelte tree: a 3 MB markdown file must not go
+      through a reactive renderer. Svelte owns the chrome around it.
+    -->
+    <article id="doc"></article>
+    <div id="chrome"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

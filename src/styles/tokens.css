@@ -1,0 +1,66 @@
+/*
+ * PLACEHOLDER — phase P1b (ui-engineer) replaces this file.
+ *
+ * The real token layer is generated with the ui-ux-pro-max `design-system`
+ * skill and is three-layered: primitive -> semantic -> component. What is here
+ * now is the minimum that lets the shell render while the design system is
+ * being built in parallel.
+ *
+ * Rules that survive the replacement:
+ *   - System font stacks only. Zero @font-face except the KaTeX subset (P4).
+ *   - Themes redefine semantic tokens; they are never separate stylesheets.
+ *   - Every semantic fg/bg pair clears 4.5:1 — `npm run contrast` proves it.
+ *   - All of src/styles/** must gzip under 12 KiB.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* primitive */
+  --ink-900: #16181d;
+  --ink-600: #4a4f5a;
+  --paper-000: #fdfdfc;
+  --paper-100: #f3f2ef;
+  --line-200: #dedbd4;
+  --accent-600: #2f5d8c;
+
+  /* semantic */
+  --bg: var(--paper-000);
+  --bg-subtle: var(--paper-100);
+  --fg: var(--ink-900);
+  --fg-muted: var(--ink-600);
+  --border: var(--line-200);
+  --accent: var(--accent-600);
+
+  /* component */
+  --measure: 68ch;
+  --density: 1;
+  --motion: 1;
+  --space-3: calc(0.75rem * var(--density));
+  --space-4: calc(1rem * var(--density));
+  --space-6: calc(1.5rem * var(--density));
+
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, sans-serif;
+  --font-read: "Segoe UI Variable Text", Cambria, "Noto Serif", Georgia, serif;
+  --font-code: "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
+}
+
+:root:not([data-theme="light"]) {
+  @media (prefers-color-scheme: dark) {
+    --bg: #14161a;
+    --bg-subtle: #1c1f25;
+    --fg: #e8e6e1;
+    --fg-muted: #a4a8b0;
+    --border: #2e333b;
+    --accent: #8ab4e0;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #14161a;
+  --bg-subtle: #1c1f25;
+  --fg: #e8e6e1;
+  --fg-muted: #a4a8b0;
+  --border: #2e333b;
+  --accent: #8ab4e0;
+}

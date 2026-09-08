@@ -1,0 +1,97 @@
+[package]
+name = "marklet"
+version = "0.1.0"
+description = "Lightweight, open-source Markdown viewer. Reading first."
+authors = ["Alessandro Liscio"]
+license = "MIT"
+repository = "https://github.com/AlessandroLiscio/Marklet"
+edition = "2021"
+rust-version = "1.79"
+
+[lib]
+name = "marklet"
+path = "src/lib.rs"
+
+[[bin]]
+name = "marklet"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2.11", features = ["protocol-asset"] }
+tauri-plugin-single-instance = "2.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Render core. Kept free of any tauri dependency so `MD_HTML=1` runs headless.
+pulldown-cmark = { version = "0.13", default-features = false, features = ["simd", "html"] }
+
+# Vault: streaming scan + literal multi-term search. No index, by design.
+walkdir = "2"
+memchr = "2"
+aho-corasick = "1.1"
+
+# Live reload.
+notify = "8"
+
+[target.'cfg(windows)'.dependencies]
+windows-registry = "0.5"
+webview2-com = "0.38"
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_System_Console",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
+
+[features]
+default = ["mermaid"]
+
+# Bundles the Mermaid chunk into the frontend build. Turning this OFF produces
+# the `marklet-lite` artifact, roughly 750 KB smaller. See docs/size-budget.md.
+mermaid = []
+
+# encoding_rs + chardetng for universal (CJK) encoding detection. ~+500 KB.
+# v1 ships BOM sniff -> UTF-8 -> Windows-1252 only.
+full-encodings = ["dep:encoding_rs", "dep:chardetng"]
+
+# Full regex vault search via the ripgrep stack. ~+1.2-1.8 MB.
+regex-search = ["dep:grep-regex", "dep:grep-searcher", "dep:ignore"]
+
+[dependencies.encoding_rs]
+version = "0.8"
+optional = true
+
+[dependencies.chardetng]
+version = "0.1"
+optional = true
+
+[dependencies.grep-regex]
+version = "0.1"
+optional = true
+
+[dependencies.grep-searcher]
+version = "0.1"
+optional = true
+
+[dependencies.ignore]
+version = "0.4"
+optional = true
+
+# Every flag here is a size decision. `opt-level = "z"` plus fat LTO plus a
+# single codegen unit is worth roughly 30-40% of the stripped binary versus the
+# defaults, and `panic = "abort"` removes the unwinding tables. Do not relax
+# these to speed up release builds - CI gates the installer size.
+[profile.release]
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+incremental = false
+
+# Dev builds keep unwinding so test failures are readable.
+[profile.dev]
+opt-level = 0
