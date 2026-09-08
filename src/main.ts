@@ -16,6 +16,9 @@ import './styles/content.css';
  */
 
 declare global {
+  /** True in the lite build, where Mermaid is aliased to a stub. Set by Vite. */
+  const __MARKLET_LITE__: boolean;
+
   interface Window {
     /**
      * HTML for the document the app was launched with, injected by Rust via

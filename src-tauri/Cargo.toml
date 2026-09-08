@@ -20,7 +20,11 @@ path = "src/main.rs"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2.11", features = ["protocol-asset"] }
+# No `protocol-asset`: local images are served by our own `marklet://` scheme,
+# which is smaller and lets us reject path traversal in one place. Enabling the
+# feature here while `assetProtocol.enable` is false in tauri.conf.json is a
+# hard build error, and rightly so.
+tauri = { version = "2.11", default-features = false, features = ["wry", "common-controls-v6"] }
 tauri-plugin-single-instance = "2.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -47,11 +51,12 @@ windows = { version = "0.62", features = [
 ] }
 
 [features]
-default = ["mermaid"]
+default = []
 
-# Bundles the Mermaid chunk into the frontend build. Turning this OFF produces
-# the `marklet-lite` artifact, roughly 750 KB smaller. See docs/size-budget.md.
-mermaid = []
+# Mermaid is NOT a cargo feature. Its 750 KB live in the frontend bundle, so the
+# lite build is driven by the `MARKLET_LITE=1` environment variable, which makes
+# Vite stub the import out. Gating it here would have gated nothing.
+# See docs/size-budget.md.
 
 # encoding_rs + chardetng for universal (CJK) encoding detection. ~+500 KB.
 # v1 ships BOM sniff -> UTF-8 -> Windows-1252 only.

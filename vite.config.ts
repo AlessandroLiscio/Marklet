@@ -1,5 +1,16 @@
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+
+/**
+ * `MARKLET_LITE=1` produces the lite artifact by aliasing Mermaid to a stub, so
+ * the chunk is never emitted — roughly 750 KB off the installer.
+ *
+ * This lives here rather than behind a cargo feature because the 750 KB are in
+ * the frontend bundle. A cargo feature would have gated nothing at all.
+ */
+const LITE = process.env.MARKLET_LITE === '1';
 
 /**
  * Chunk boundaries are a size-budget decision, not a bundling detail.
@@ -18,6 +29,16 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
  */
 export default defineConfig({
   plugins: [svelte()],
+
+  define: {
+    __MARKLET_LITE__: JSON.stringify(LITE),
+  },
+
+  resolve: {
+    alias: LITE
+      ? { mermaid: fileURLToPath(new URL('./src/lib/rich/mermaid-stub.ts', import.meta.url)) }
+      : {},
+  },
 
   // Tauri expects a fixed port and fails if it is taken.
   clearScreen: false,

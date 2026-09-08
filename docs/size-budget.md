@@ -39,14 +39,20 @@ lite build.
 Saying so in the README is deliberate. A "lightweight" tool that quietly redefines
 lightweight is not one.
 
-## Cargo features
+## Build switches
 
-| Feature | Default | Cost | What it buys |
-|---|---|---:|---|
-| `mermaid` | on | +750 KB | diagram rendering; off produces the lite artifact |
-| `full-encodings` | off | ~+500 KB | `encoding_rs` + `chardetng` for CJK detection |
-| `regex-search` | off | +1.2–1.8 MB | full regex vault search via the ripgrep stack |
+Weight is gated where it actually lives, which is not always Rust.
 
-Deferring a feature behind a cargo feature is the third option when the gate fails. The
-first two are gating an import and moving weight to the full build only. Raising a ceiling
-is not on the list.
+| Switch | Where | Default | Cost | What it buys |
+|---|---|---|---:|---|
+| `MARKLET_LITE=1` | environment, read by Vite | off | +750 KB | Mermaid. Set it and Vite aliases the package to `src/lib/rich/mermaid-stub.ts`, so the chunk is never emitted — this is what produces the lite artifact |
+| `full-encodings` | cargo feature | off | ~+500 KB | `encoding_rs` + `chardetng` for CJK detection |
+| `regex-search` | cargo feature | off | +1.2–1.8 MB | full regex vault search via the ripgrep stack |
+
+Mermaid is **not** a cargo feature, and the distinction matters. Its 750 KB are in the
+frontend bundle; a cargo feature would have gated nothing while looking like it gated
+something. Gate weight where it lives.
+
+Deferring behind a build switch is the third option when the gate fails. The first two are
+gating an import and moving weight to the full build only. Raising a ceiling is not on the
+list.

@@ -101,8 +101,10 @@ cargo build --release && du -b /tmp/before src-tauri/target/release/marklet
 In order, stop at the first that works:
 
 1. Is the new weight reachable without an `import()` gate? Gate it.
-2. Can it move behind a cargo feature that is off by default, like `regex-search` and
-   `full-encodings`? Move it.
+2. Can it move behind a build switch that is off by default? Move it — but put the switch
+   where the weight lives. `full-encodings` and `regex-search` are cargo features because
+   they are Rust. Mermaid is `MARKLET_LITE=1`, read by Vite, because its 750 KB are in the
+   frontend bundle; a cargo feature there would have gated nothing while appearing to.
 3. Can it move to the `full` build only, the way Mermaid did? Move it.
 4. Cut the feature and say so in the pull request.
 

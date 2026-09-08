@@ -40,17 +40,23 @@ jobs:
           - name: windows-full
             os: windows-latest
             args: ""
+            lite: ""
+          # Mermaid lives in the frontend bundle, so the lite build is an
+          # environment variable Vite reads, not a cargo feature.
           - name: windows-lite
             os: windows-latest
-            args: "--no-default-features"
+            args: ""
+            lite: "1"
           # ~127 MB: it embeds the whole WebView2 runtime. Tag builds only,
           # for air-gapped machines. Never the default download.
           - name: windows-offline
             os: windows-latest
             args: "--config {\"bundle\":{\"windows\":{\"webviewInstallMode\":{\"type\":\"offlineInstaller\"}}}}"
+            lite: ""
           - name: linux
             os: ubuntu-22.04
             args: ""
+            lite: ""
 
     steps:
       - uses: actions/checkout@v5
@@ -76,6 +82,8 @@ jobs:
 
       - name: Build
         run: npx tauri build ${{ matrix.args }}
+        env:
+          MARKLET_LITE: ${{ matrix.lite }}
 
       - name: Rename artifacts
         shell: bash

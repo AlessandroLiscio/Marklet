@@ -20,18 +20,18 @@ jobs:
         include:
           - name: windows-full
             os: windows-latest
-            args: ""
+            lite: ""
             artifact: marklet-setup
           # The lite build drops Mermaid, which is roughly 750 KB of the
           # installer for one feature. It is a first-class artifact, not a
           # curiosity - see .claude/skills/size-budget/SKILL.md.
           - name: windows-lite
             os: windows-latest
-            args: "--no-default-features"
+            lite: "1"
             artifact: marklet-lite-setup
           - name: linux-full
             os: ubuntu-22.04
-            args: ""
+            lite: ""
             artifact: marklet-linux
 
     steps:
@@ -58,8 +58,12 @@ jobs:
 
       - run: npm ci
 
+      # MARKLET_LITE reaches Vite through tauri's beforeBuildCommand, which is
+      # where Mermaid actually lives. There is no cargo feature for it.
       - name: Build
-        run: npx tauri build ${{ matrix.args }}
+        run: npx tauri build
+        env:
+          MARKLET_LITE: ${{ matrix.lite }}
 
       - uses: actions/upload-artifact@v4
         with:
