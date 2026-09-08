@@ -33,6 +33,7 @@ its bytes there.
 | **Cold start ceiling** | 1200 ms median | 1800 ms median |
 | **Reading core** — outline with scroll sync, live reload, reading position per file, font/density/column controls with real reflow | ✅ | ✅ |
 | **Markdown** — aligned tables, footnotes with backlinks, task lists, YAML frontmatter, local images | ✅ | ✅ |
+| **GFM alerts** — `> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`, each with its own colour and generated label | ✅ | ✅ |
 | **Syntax highlighting** | ✅ highlight.js, ~22 languages | ✅ same |
 | **KaTeX math** | ✅ | ✅ |
 | **Mermaid diagrams** | ✗ — 750 KB, 27% of the lite ceiling for one feature | ✅ with fullscreen zoom and pan |
@@ -40,7 +41,9 @@ its bytes there.
 | **Vault search** | literal, multi-term AND | ✅ **plus full regex** (`regex-search`, +1.2–1.8 MB) |
 | **Encoding** | BOM, UTF-8, UTF-16, Windows-1252 | ✅ **plus CJK auto-detection** (`full-encodings`, +500 KB) |
 | **Editing** — F2 live preview, F3 dual column, F4 external editor, paste-image | ✅ CodeMirror 6 | ✅ same |
-| **Themes** | 2 modes plus a WCAG-AA accent generator; **system fonts only** | ✅ **plus curated bundled typography** and multiple palettes from `ui-ux-pro-max` |
+| **Themes** | 2 modes plus a WCAG-AA accent generator; **system fonts only** | ✅ same generator, plus the two rows below |
+| **Typography** | one system stack per role | **three selectable pairings** — `editorial` (Newsreader + Inter, the default), `literary` (Cormorant Garamond + Libre Baskerville), `technical` (JetBrains Mono + IBM Plex Sans), via `[data-typeface]` |
+| **Palettes** | the default accent hue | **four extra accent hues** — teal, amber, forest, violet, via `[data-palette]`. They recolour **only the accent**; background, foreground and border are identical across all of them, deliberately — reading comfort over decoration |
 | **Motion** | CSS state changes only | ✅ **considered transitions**, honouring `prefers-reduced-motion` |
 | **Tabs** | ✗ — one document per window | ✅ |
 | **Settings** | panel inside the main window | ✅ **dedicated window** (~40 MB RSS for a second webview) |

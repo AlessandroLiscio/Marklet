@@ -1,0 +1,4 @@
+- [x] A completed task
+- [ ] An incomplete one
+- [X] Capital X counts too
+  - [ ] Nested and unchecked

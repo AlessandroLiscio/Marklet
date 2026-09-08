@@ -63,12 +63,8 @@ in either edition.
 
 ## Working agreements
 
-- **No agent runs git.** No commit, stage, push, or branch. Changes stay in the working
-  tree; the main thread handles git with Alessandro's explicit approval.
-- **One file, one agent, one wave.** If a handoff names a file, that file belongs to that
-  agent until the wave ends.
-- **Every change returns a diff receipt** with file paths and line ranges.
-- **Read the named skills first.** Do not work from memory on repository conventions.
+See *Engagement rules — always on* in `~/.claude/CLAUDE.md`, loaded automatically alongside this
+file. They apply here unchanged and are **not restated** — one source of truth.
 
 ## Branch workflow
 

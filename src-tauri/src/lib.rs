@@ -5,9 +5,19 @@
 //!
 //! - [`render`] turns bytes into HTML plus the offset map. Headless; used by
 //!   `MD_HTML=1` as well as by the app.
+//! - [`export`] turns a rendered document into a standalone file (HTML for
+//!   now). Headless, built on top of `render`.
+//! - [`cli`] parses argv/env into a [`cli::Mode`] and runs every headless
+//!   path to completion. Does not import `tauri` — see its own doc comment
+//!   and `docs/architecture.md#the-cli-console-trap`.
+//! - [`platform`] is OS integration (Windows file association, context
+//!   menu). Stubs until phase P6; see the module doc comment.
 //! - Everything else is added by its owning phase. See the plan and
 //!   `CLAUDE.md`.
 
+pub mod cli;
+pub mod export;
+pub mod platform;
 pub mod render;
 
 /// Boots the windowed application.

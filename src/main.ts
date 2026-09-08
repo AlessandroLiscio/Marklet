@@ -4,6 +4,19 @@ import App from './app.svelte';
 import './styles/tokens.css';
 import './styles/content.css';
 
+// The full edition's curated typography and extra accent palettes. The
+// condition is a compile-time constant, so this whole block — and the two
+// stylesheets it reaches — is eliminated from the lite bundle rather than
+// shipped and skipped. Lite never fetches, parses, or counts them against its
+// 12 KiB stylesheet gate.
+//
+// These only ever REDEFINE tokens that tokens.css already declares, so nothing
+// else in the cascade has to know an edition exists.
+if (__MARKLET_EDITION__ === 'full') {
+  void import('./styles/full/palettes.css');
+  void import('./styles/full/typography.css');
+}
+
 /**
  * Nothing heavy is imported at module top level in this file. Ever.
  *

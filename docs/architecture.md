@@ -98,6 +98,15 @@ process that can reach the filesystem. Four layers, each assuming the others mig
 1. **Raw HTML is filtered by an allowlist** in `render/sanitize.rs` — eight tags, six
    attributes, everything else dropped, including all `on*` handlers and every `javascript:`
    URL. Tested against a fixture corpus of real payloads.
+
+   Two details the tag count does not convey, both of which were live bugs until the corpus
+   caught them. The **contents** of a dropped `<script>` or `<style>` are swallowed, not just
+   its tags: `pulldown-cmark` splits inline HTML into `InlineHtml`/`Text`/`InlineHtml`, so
+   `<svg><script>alert(1)</script></svg>` rendered `alert(1)` as visible prose. The skip is
+   bounded to the enclosing block, so an unclosed `<script>` cannot blank the rest of the
+   document. Separately, **markdown's own link and image destinations** are URL-checked
+   outside `sanitize.rs`, because `[text](javascript:…)` never passes through raw HTML at
+   all; such a link keeps its text, loses its `href`, and is marked `class="blocked"`.
 2. **CSP is strict**: `script-src 'self'`, no `unsafe-eval`. If Mermaid ever needs `eval`,
    it goes in a sandboxed iframe rather than weakening the app.
 3. **The `marklet://` protocol canonicalizes** and rejects any path outside the document's
