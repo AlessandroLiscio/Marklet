@@ -55,22 +55,27 @@ jobs:
       # Rust advisories and licence policy
       # -----------------------------------------------------------------------
       - name: cargo-audit
-        uses: rustsec/audit-check@v2
+        uses: rustsec/audit-check@v2.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           working-directory: src-tauri
 
+      # `command` is the cargo-deny subcommand; the check types belong in
+      # `command-arguments`. Passing them in `command` is accepted by the YAML
+      # and rejected by cargo-deny.
+      # deny.toml is resolved next to the manifest: src-tauri/deny.toml.
       - name: cargo-deny
-        uses: EmbarkStudios/cargo-deny-action@v2
+        uses: EmbarkStudios/cargo-deny-action@v2.1.1
         with:
           manifest-path: src-tauri/Cargo.toml
-          command: check advisories bans licenses sources
+          command: check
+          command-arguments: advisories bans licenses sources
 
       # -----------------------------------------------------------------------
       # Dependency vulnerabilities across both ecosystems
       # -----------------------------------------------------------------------
       - name: Trivy filesystem scan (SARIF)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -90,7 +95,7 @@ jobs:
       # Trivy's own gate. Reported separately from the SARIF upload so the
       # findings reach the Security tab even when the job is about to fail.
       - name: Fail on CRITICAL/HIGH
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -102,12 +107,22 @@ jobs:
       # -----------------------------------------------------------------------
       # Secrets
       # -----------------------------------------------------------------------
-      # `--only-verified` on purpose: unverified matches on a repository full of
-      # hex-looking test fixtures are noise, and a scanner people learn to
-      # ignore protects nothing.
+      # Verified results only, on purpose: unverified matches on a repository
+      # full of hex-looking test fixtures are noise, and a scanner people learn
+      # to ignore protects nothing.
+      #
+      # Pinned to a tag rather than @main. An unpinned third-party action is a
+      # supply-chain risk anywhere, and particularly absurd inside the workflow
+      # whose job is to catch supply-chain risk.
+      #
+      # `base: ""` forces a full-history scan. Left unset, the action derives a
+      # diff range from the event — and this workflow is reached through
+      # workflow_call, where that derivation is not reliable.
       - name: TruffleHog
-        uses: trufflesecurity/trufflehog@main
+        uses: trufflesecurity/trufflehog@v3.97.4
         with:
+          base: ''
+          head: ${{ github.sha }}
           extra_args: --results=verified --fail
 
       - name: Upload security artifacts
