@@ -1,0 +1,76 @@
+<h1 id="kitchen-sink" data-l="6">Kitchen sink</h1>
+<p data-l="8">The smoke test opens this file and asserts against it. Every feature Marklet claims to
+render appears below exactly once, so a regression in any one of them fails a single,
+fast test.</p>
+<h2 id="emphasis-and-inline" data-l="12">Emphasis and inline</h2>
+<p data-l="14">Plain, <em>emphasised</em>, <strong>strong</strong>, <em><strong>both</strong></em>, <del>struck</del>, <code>inline code</code>, and a
+<a href="https://example.com" title="with a title">link</a>.</p>
+<p data-l="17">A footnote reference lives here<sup class="footnote-ref" id="fnref-why"><a href="#fn-why">1</a></sup>, and a second one here<sup class="footnote-ref" id="fnref-cost"><a href="#fn-cost">2</a></sup>.</p>
+<div class="footnote-definition" id="fn-why" data-l="19"><sup class="footnote-label">1</sup>
+<p data-l="19">Footnotes need a backlink to be useful, and the backlink is what usually breaks.</p>
+<a class="footnote-backref" href="#fnref-why">↩</a></div>
+<div class="footnote-definition" id="fn-cost" data-l="20"><sup class="footnote-label">2</sup>
+<p data-l="20">A second footnote proves the numbering and the backlink targets are distinct.</p>
+<a class="footnote-backref" href="#fnref-cost">↩</a></div>
+<h2 id="an-aligned-table" data-l="22">An aligned table</h2>
+<p data-l="24">Alignment is hand-written and must survive a round trip through the editor untouched.</p>
+<table data-l="26">
+<thead><tr data-l="26"><th style="text-align: left">Component</th><th style="text-align: right">Installer</th><th style="text-align: center">Loaded when</th></tr></thead><tbody>
+<tr data-l="28"><td style="text-align: left">Rust exe</td><td style="text-align: right">3.0 MB</td><td style="text-align: center">always</td></tr>
+<tr data-l="29"><td style="text-align: left">Mermaid</td><td style="text-align: right">750 KB</td><td style="text-align: center">```mermaid fence</td></tr>
+<tr data-l="30"><td style="text-align: left">KaTeX</td><td style="text-align: right">200 KB</td><td style="text-align: center">math delimiters</td></tr>
+<tr data-l="31"><td style="text-align: left">CodeMirror</td><td style="text-align: right">180 KB</td><td style="text-align: center">F2 / F3 / Ctrl+E</td></tr>
+</tbody></table>
+<h2 id="lists" data-l="33">Lists</h2>
+<ol data-l="35">
+<li data-l="35">Ordered</li>
+<li data-l="36">Items
+<ul data-l="37">
+<li data-l="37">Nested unordered</li>
+<li data-l="38">With a second entry</li>
+</ul>
+</li>
+</ol>
+<ul data-l="40">
+<li data-l="40"><input class="task" type="checkbox" disabled="" checked="" />A completed task</li>
+<li data-l="41"><input class="task" type="checkbox" disabled="" />An incomplete one</li>
+</ul>
+<h2 id="code" data-l="43">Code</h2>
+<pre data-l="45"><code class="language-rust">pub fn render(bytes: &amp;[u8], opts: RenderOpts&lt;'_&gt;) -&gt; RenderedDoc {
+    let text = String::from_utf8_lossy(bytes);
+    let parser = Parser::new_ext(&amp;text, options());
+    // The offset iterator is the primitive four features depend on.
+    todo!()
+}
+</code></pre>
+<pre data-l="54"><code>A fence with no language must not be highlighted, and must not crash the highlighter.
+</code></pre>
+<h2 id="math" data-l="58">Math</h2>
+<p data-l="60">Inline: <span class="math-inline" data-tex="E = mc^2"></span>. Block:</p>
+<div class="math-block" data-l="62" data-tex="
+\int_{0}^{1} x^2 \,dx = \frac{1}{3}
+"></div>
+<h2 id="a-diagram" data-l="66">A diagram</h2>
+<div class="mermaid" data-l="68" data-src="graph TD
+    A[Markdown bytes] --&gt; B[pulldown-cmark]
+    B --&gt; C[HTML + data-l map]
+    C --&gt; D[Webview]
+    C --&gt; E[MD_HTML=1 headless]
+"></div>
+<h2 id="wiki-links" data-l="76">Wiki-links</h2>
+<p data-l="78">A resolved link to <a class="wikilink" href="marklet://vault/kitchen-sink.md" data-target="kitchen-sink">kitchen-sink</a> and an unresolved one to <a class="wikilink unresolved" data-target="note-that-does-not-exist">note-that-does-not-exist</a>.
+The unresolved state is styled, not hidden — pointing at a note you have not written yet is
+normal in a vault.</p>
+<h2 id="quote-and-rule" data-l="82">Quote and rule</h2>
+<blockquote data-l="84">
+<p data-l="84">Reading comfort beats visual interest. This is a tool people stare at for an hour.</p>
+</blockquote>
+<hr data-l="86" />
+<h2 id="local-image" data-l="88">Local image</h2>
+<p data-l="90"><img src="./img/example.png" alt="A local asset" /></p>
+<h2 id="allowed-raw-html" data-l="92">Allowed raw HTML</h2>
+<details>
+<summary>The sanitizer allowlist is eight tags wide</summary>
+<p data-l="97">Inside a <code>details</code> block: <kbd>Ctrl</kbd>+<kbd>E</kbd>, H<sub>2</sub>O, x<sup>2</sup>, and
+<mark>a highlight</mark>.</p>
+</details>

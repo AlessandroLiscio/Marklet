@@ -1,0 +1,125 @@
+/*
+ * FULL EDITION ONLY. Same dynamic-import gap as palettes.css — see that
+ * file's header; the wiring into main.ts is not this task's to make.
+ *
+ * Redefines exactly the four component tokens tokens.css declares for the
+ * lite system stack (--font-ui, --font-read, --font-code, --font-heading),
+ * so content.css and every future component pick up curated type in full
+ * with no changes of their own.
+ *
+ * Three pairings, each a validated ui-ux-pro-max typography.csv row (query,
+ * result name and exact fields in the P1b diff receipt). "editorial" is the
+ * default, applied at bare :root; the others are opt-in via
+ * `[data-typeface="…"]`, for a settings control a later phase adds (no
+ * .svelte this wave). --font-ui stays a sans in every pairing on purpose —
+ * chrome text runs small, and a reading-mode choice should not put a
+ * display serif under an 12px sidebar label.
+ *
+ * ---- Faces are DEFINED, not backed by files yet ----
+ * `src/assets/fonts/full/` does not contain the woff2 files below. P4 adds
+ * them. Each is a single self-hosted variable-axis file (latin + latin-ext
+ * subset; ranges are Google Fonts' published axes) — do not ship per-weight
+ * static files, that is the 100-300 KB "one bundled variable font" budget
+ * line multiplied needlessly. Sizes below are NOT measured (no binary
+ * exists to measure) — they are the size-budget skill's own "100-300 KB per
+ * variable font" figure applied per family from general knowledge of each
+ * family's typical self-hosted woff2 weight. P4 must replace every one with
+ * `xz -9c <file> | wc -c` per .claude/skills/size-budget/SKILL.md and put
+ * the real number in its own diff receipt before this ships:
+ *
+ *   src/assets/fonts/full/newsreader-variable.woff2         ~90-150 KB (est.) — opsz+wght axes
+ *   src/assets/fonts/full/inter-variable.woff2               ~110-180 KB (est.) — wght+slnt axes
+ *   src/assets/fonts/full/jetbrains-mono-variable.woff2      ~90-140 KB (est.) — wght axis, incl. italics
+ *   src/assets/fonts/full/cormorant-garamond-variable.woff2  ~50-90 KB (est.) — wght axis only
+ *   src/assets/fonts/full/libre-baskerville-regular.woff2    ~25-40 KB (est.) — static, no variable axis published
+ *   src/assets/fonts/full/libre-baskerville-bold.woff2       ~25-40 KB (est.) — static, no variable axis published
+ *   src/assets/fonts/full/ibm-plex-sans-variable.woff2       ~110-180 KB (est.) — wght axis
+ *
+ * Total estimate: ~500-800 KB across all three pairings, well inside full's
+ * 12 MiB tripwire even loaded eagerly, but load per-pairing lazily anyway —
+ * a reader who never opens the typeface switcher should not fetch six
+ * families for one they used.
+ */
+
+@font-face {
+  font-family: 'Newsreader';
+  src: url('../../assets/fonts/full/newsreader-variable.woff2') format('woff2');
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('../../assets/fonts/full/inter-variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../../assets/fonts/full/jetbrains-mono-variable.woff2') format('woff2');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Cormorant Garamond';
+  src: url('../../assets/fonts/full/cormorant-garamond-variable.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Libre Baskerville';
+  src: url('../../assets/fonts/full/libre-baskerville-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Libre Baskerville';
+  src: url('../../assets/fonts/full/libre-baskerville-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('../../assets/fonts/full/ibm-plex-sans-variable.woff2') format('woff2');
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* "editorial" (default) — typography.csv "News Editorial": Newsreader is
+   "designed for long-form reading" per that row's own notes; Roboto's slot
+   is filled by Inter, already the project's UI sans elsewhere. */
+:root,
+[data-typeface="editorial"] {
+  --font-ui: 'Inter', var(--font-ui-system);
+  --font-read: 'Newsreader', var(--font-read-system);
+  --font-code: 'JetBrains Mono', var(--font-code-system);
+  --font-heading: var(--font-ui);
+}
+
+/* "literary" — typography.csv "Editorial Classic": Cormorant Garamond
+   (heading) + Libre Baskerville (body), "bookish" / traditional. Only the
+   reading fonts change; --font-ui inherits the sans from :root above. */
+[data-typeface="literary"] {
+  --font-heading: 'Cormorant Garamond', var(--font-read-system);
+  --font-read: 'Libre Baskerville', var(--font-read-system);
+}
+
+/* "technical" — typography.csv "Developer Mono": JetBrains Mono heading +
+   IBM Plex Sans body, "developer tools, documentation" — literally this
+   product's own category. */
+[data-typeface="technical"] {
+  --font-heading: 'JetBrains Mono', var(--font-code-system);
+  --font-read: 'IBM Plex Sans', var(--font-ui-system);
+}

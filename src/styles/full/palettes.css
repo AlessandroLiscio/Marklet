@@ -1,0 +1,44 @@
+/*
+ * FULL EDITION ONLY. Not imported by src/main.ts today — main.ts is outside
+ * this task's file ownership (OWN ONLY: src/styles/**, this wave). Whoever
+ * next touches main.ts should reach this file the way the size-budget skill
+ * requires everything full-only to be reached:
+ *
+ *   if (__MARKLET_EDITION__ === 'full') {
+ *     void import('./styles/full/palettes.css');
+ *     void import('./styles/full/typography.css');
+ *   }
+ *
+ * That `if` is eliminated from the lite bundle at compile time, so lite
+ * tree-shakes this file out entirely — it is never fetched, parsed or
+ * counted against the 12 KiB lite stylesheet gate. Flag this as open in the
+ * P1b diff receipt: it is a real gap until main.ts's owner wires it in.
+ *
+ * A "palette" here is a curated --accent-hue preset — nothing else. The
+ * neutral reading surface (--bg/--fg/--border) from tokens.css stays
+ * identical across every palette on purpose: reading comfort beats visual
+ * interest, so only the accent (links, focus rings, active states) moves.
+ * tokens.css's oklch()-based accent generator already clears 4.5:1 for any
+ * hue 0-360 in both themes (proven by sweep, see tokens.css's own header and
+ * the P1b diff receipt) — this file only has to pick good hues, not
+ * re-derive contrast-safe lightness per palette.
+ *
+ * Each hue is a real ui-ux-pro-max colors.csv row's accent colour, converted
+ * to its OKLCH hue. Source rows are in the P1b diff receipt.
+ */
+
+[data-palette="teal"] {
+  --accent-hue: 192; /* colors.csv: Healthcare App, accent #0891B2 */
+}
+
+[data-palette="amber"] {
+  --accent-hue: 32; /* colors.csv: Book & Reading Tracker, accent #D97706 */
+}
+
+[data-palette="forest"] {
+  --accent-hue: 142; /* colors.csv: Plant Care Tracker, primary #15803D */
+}
+
+[data-palette="violet"] {
+  --accent-hue: 262; /* colors.csv: Meditation & Mindfulness, primary #7C3AED */
+}

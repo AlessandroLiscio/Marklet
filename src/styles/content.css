@@ -1,10 +1,20 @@
 /*
- * PLACEHOLDER — phase P1b (ui-engineer) replaces this file.
+ * The markdown typography itself — the stylesheet a user stares at for an
+ * hour. Reading comfort beats visual interest: measure, rhythm and contrast
+ * win every argument a flourish makes.
  *
- * This is the markdown typography itself: measure, rhythm, headings, aligned
- * tables, blockquotes, code blocks, footnote backlinks, task lists, and the
- * .wikilink / .wikilink.unresolved pair. It is the stylesheet a user stares at
- * for an hour, so reading comfort beats visual interest here.
+ * Selectors below are the actual contract src-tauri/src/render/html.rs emits
+ * (verified against that file, not assumed from pulldown-cmark defaults —
+ * table alignment, for instance, comes through as an inline
+ * `style="text-align:…"`, not a class, so it needs nothing here beyond a
+ * plain <table>):
+ *   .wikilink / .wikilink.unresolved     — <a>, resolved / not-yet-created note
+ *   .blocked                             — <a> whose href a rejected URL took away
+ *   .alert.alert-{note,tip,important,warning,caution} — GFM `> [!NOTE]` blockquotes
+ *   .footnote-ref / .footnote-definition / .footnote-label / .footnote-backref
+ *   .task                                — <input type=checkbox disabled>, task list item
+ *   code.language-xxx inside <pre>       — fenced code block; hljs (P4) themes it
+ *   .math-inline / .math-block, .mermaid — placeholders; P4's KaTeX/Mermaid own them, not styled here
  */
 
 * {
@@ -18,34 +28,118 @@ body {
   font-family: var(--font-read);
   font-size: 1rem;
   line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 #doc {
   display: block;
   max-inline-size: var(--measure);
   margin-inline: auto;
-  padding: var(--space-6) var(--space-4);
+  padding: var(--space-8) var(--space-4);
 }
+
+/* ---------------------------- vertical rhythm ---------------------------- */
+
+#doc > :first-child {
+  margin-block-start: 0;
+}
+
+#doc :is(p, ul, ol, dl, table, blockquote, pre, .mermaid, .math-block) {
+  margin-block: 0 var(--space-4);
+}
+
+/* ------------------------------- headings -------------------------------- */
 
 #doc :is(h1, h2, h3, h4, h5, h6) {
-  font-family: var(--font-ui);
+  font-family: var(--font-heading);
+  font-weight: 600;
   line-height: 1.25;
-  margin-block: var(--space-6) var(--space-3);
+  margin-block: var(--space-8) var(--space-3);
   text-wrap: balance;
+  scroll-margin-block-start: var(--space-4);
 }
 
-#doc :is(pre, code) {
+#doc :is(h2, h3, h4, h5, h6):not(:first-child) {
+  margin-block-start: var(--space-8);
+}
+
+#doc h1 {
+  font-size: var(--text-h1);
+}
+#doc h2 {
+  font-size: var(--text-h2);
+}
+#doc h3 {
+  font-size: var(--text-h3);
+}
+#doc :is(h4, h5, h6) {
+  font-size: var(--text-h4);
+}
+
+/* --------------------------------- links --------------------------------- */
+
+#doc a {
+  color: var(--accent);
+  text-decoration-color: color-mix(in oklab, var(--accent) 40%, transparent);
+  text-underline-offset: 0.15em;
+  transition: color var(--duration-fast) ease, text-decoration-color var(--duration-fast) ease;
+}
+
+#doc a:hover {
+  color: var(--accent-hover);
+  text-decoration-color: currentcolor;
+}
+
+/* A wiki-link to a note that does not exist yet is a normal state in a
+   vault, not an error. It is styled, not hidden. */
+#doc .wikilink.unresolved {
+  color: var(--fg-muted);
+  text-decoration-style: dashed;
+}
+
+/* A link whose destination the sanitizer rejected (e.g. javascript:). The
+   words still read; the href is simply gone — this says so without making
+   the document look broken. */
+#doc .blocked {
+  color: var(--fg-muted);
+  text-decoration: none;
+  cursor: not-allowed;
+}
+
+/* ------------------------------ code, inline ------------------------------ */
+
+#doc code {
   font-family: var(--font-code);
   font-size: 0.9em;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.15em 0.4em;
 }
 
+/* ------------------------------ code, block ------------------------------- */
+
 #doc pre {
+  font-family: var(--font-code);
+  font-size: 0.9em;
+  line-height: 1.55;
   background: var(--bg-subtle);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
   overflow-x: auto;
 }
+
+#doc pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: 1em;
+}
+
+/* -------------------------------- tables ---------------------------------- */
+/* Alignment (left/center/right) arrives as an inline `text-align` style from
+   the renderer, so the cascade needs nothing extra for it. */
 
 #doc table {
   border-collapse: collapse;
@@ -56,25 +150,159 @@ body {
 
 #doc :is(th, td) {
   border: 1px solid var(--border);
-  padding: 0.35em 0.6em;
+  padding: 0.4em 0.7em;
 }
+
+#doc thead th {
+  border-block-end-width: 2px;
+  font-weight: 600;
+}
+
+#doc tbody tr:nth-child(even) {
+  background: color-mix(in oklab, var(--bg-subtle) 60%, transparent);
+}
+
+/* ------------------------------ blockquotes -------------------------------- */
 
 #doc blockquote {
   margin-inline: 0;
   padding-inline-start: var(--space-4);
   border-inline-start: 3px solid var(--border);
   color: var(--fg-muted);
+  font-style: italic;
 }
 
-#doc a {
+#doc blockquote > :last-child {
+  margin-block-end: 0;
+}
+
+/* GFM alerts: `> [!NOTE]` etc. Each kind gets its own border colour and a
+   generated label; the source markers pulldown-cmark consumes to produce
+   `kind` never reach the DOM, so the label text has to come from CSS. */
+#doc blockquote.alert {
+  border-inline-start-width: 4px;
+  font-style: normal;
+  color: var(--fg);
+}
+
+#doc .alert::before {
+  display: block;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-style: normal;
+  font-size: var(--text-small);
+  margin-block-end: var(--space-2);
+}
+
+#doc .alert-note {
+  border-inline-start-color: var(--alert-note);
+}
+#doc .alert-note::before {
+  content: 'Note';
+  color: var(--alert-note);
+}
+
+#doc .alert-tip {
+  border-inline-start-color: var(--alert-tip);
+}
+#doc .alert-tip::before {
+  content: 'Tip';
+  color: var(--alert-tip);
+}
+
+#doc .alert-important {
+  border-inline-start-color: var(--alert-important);
+}
+#doc .alert-important::before {
+  content: 'Important';
+  color: var(--alert-important);
+}
+
+#doc .alert-warning {
+  border-inline-start-color: var(--alert-warning);
+}
+#doc .alert-warning::before {
+  content: 'Warning';
+  color: var(--alert-warning);
+}
+
+#doc .alert-caution {
+  border-inline-start-color: var(--alert-caution);
+}
+#doc .alert-caution::before {
+  content: 'Caution';
+  color: var(--alert-caution);
+}
+
+/* -------------------------------- footnotes -------------------------------- */
+
+#doc .footnote-ref {
+  font-size: var(--text-small);
   color: var(--accent);
 }
 
-/* A wiki-link to a note that does not exist yet is a normal state in a vault,
-   not an error. It is styled, not hidden. */
-#doc .wikilink.unresolved {
+#doc .footnote-definition {
+  font-size: var(--text-small);
   color: var(--fg-muted);
-  text-decoration-style: dashed;
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--border);
+}
+
+#doc .footnote-definition:first-of-type {
+  margin-block-start: var(--space-6);
+}
+
+#doc .footnote-label {
+  margin-inline-end: var(--space-1);
+  color: var(--fg);
+}
+
+#doc .footnote-backref {
+  margin-inline-start: var(--space-1);
+  text-decoration: none;
+}
+
+/* --------------------------------- images ---------------------------------- */
+
+#doc img {
+  max-inline-size: 100%;
+  block-size: auto;
+  border-radius: var(--radius-sm);
+}
+
+/* ------------------------------- task lists -------------------------------- */
+
+#doc li:has(> input.task) {
+  list-style: none;
+}
+
+#doc li:has(> input.task):first-child {
+  margin-inline-start: calc(-1 * var(--space-4));
+}
+
+#doc input.task {
+  inline-size: 1em;
+  block-size: 1em;
+  margin-inline-end: var(--space-2);
+  accent-color: var(--accent);
+  vertical-align: middle;
+}
+
+/* ---------------------------------- misc ------------------------------------ */
+
+#doc hr {
+  border: none;
+  border-block-start: 1px solid var(--border);
+  margin-block: var(--space-8);
+}
+
+#doc ::selection {
+  background: var(--accent-muted);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {

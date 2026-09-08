@@ -1,66 +1,189 @@
 /*
- * PLACEHOLDER — phase P1b (ui-engineer) replaces this file.
+ * Marklet design tokens — three layers: primitive -> semantic -> component.
+ * Plain CSS custom properties. No Tailwind, no PostCSS plugin chain.
  *
- * The real token layer is generated with the ui-ux-pro-max `design-system`
- * skill and is three-layered: primitive -> semantic -> component. What is here
- * now is the minimum that lets the shell render while the design system is
- * being built in parallel.
+ * This file ships to BOTH editions (src/main.ts imports it unconditionally),
+ * so it stays lite-safe: system font stacks only, zero @font-face. Full's
+ * curated typography and extra accent palettes live in src/styles/full/**
+ * and only ever REDEFINE the component/semantic tokens declared here — see
+ * that directory's file headers for how.
  *
- * Rules that survive the replacement:
- *   - System font stacks only. Zero @font-face except the KaTeX subset (P4).
- *   - Themes redefine semantic tokens; they are never separate stylesheets.
- *   - Every semantic fg/bg pair clears 4.5:1 — `npm run contrast` proves it.
- *   - All of src/styles/** must gzip under 12 KiB.
+ * Three-state theme rule (never break this):
+ *   bare :root                                             -> light
+ *   @media (prefers-color-scheme: dark), guarded as
+ *     :root:not([data-theme="light"])                      -> system dark
+ *   :root[data-theme="dark"]                                -> explicit toggle wins
+ * Every semantic colour has its default value at bare :root; the two dark
+ * scopes only override it. A colour defined only inside one of them is a bug.
+ *
+ * Accent generator (rule: item 3 of the P1b brief): --accent-hue is the one
+ * input a user or a palette turns. accent / accent-hover / accent-muted /
+ * on-accent are derived from it with oklch(), whose L (lightness) axis tracks
+ * perceived contrast far more evenly across hues than hsl()'s does — that is
+ * why the fixed L/C pairs below (0.48/0.14 light, 0.66/0.14 dark) were swept
+ * across the full 0-360 degree hue circle before being fixed as constants:
+ * every 2 degrees was checked against both --bg and on-accent's background,
+ * worst case 5.49:1 (light) / 5.40:1 (dark) — see the P1b diff receipt for
+ * the sweep. Any hue clears 4.5:1; `npm run contrast` re-proves the ones
+ * actually shipped, in both editions' palettes.
  */
 
 :root {
   color-scheme: light dark;
 
-  /* primitive */
+  /* ============================== primitive ============================= */
+  /* Warm-neutral scale for light surfaces / dark-mode text. */
+  --ink-950: #0d0f13;
   --ink-900: #16181d;
   --ink-600: #4a4f5a;
   --paper-000: #fdfdfc;
   --paper-100: #f3f2ef;
   --line-200: #dedbd4;
-  --accent-600: #2f5d8c;
 
-  /* semantic */
+  /* Cool-neutral scale for dark surfaces / light-mode-equivalent text. */
+  --night-950: #14161a;
+  --night-900: #1c1f25;
+  --night-800: #2e333b;
+  --cloud-100: #e8e6e1;
+  --cloud-400: #a4a8b0;
+
+  /* Accent generator input. A single hue (0-360); everything accent-shaped
+     derives from it below. Default is validated ui-ux-pro-max colors.csv
+     row "Knowledge Base/Documentation" (#2563EB, hue ~221) — see receipt. */
+  --accent-hue: 221;
+  --accent-chroma: 0.14;
+
+  /* System font stacks ONLY. Zero @font-face here — that is full/typography.css's
+     job, gated behind a dynamic import so lite never pays for it. Windows
+     names lead, Linux names follow, a generic keyword closes every stack. */
+  --font-ui-system: 'Segoe UI Variable Text', 'Segoe UI', Inter, 'Noto Sans', system-ui, sans-serif;
+  --font-read-system: Cambria, 'Noto Serif', Georgia, 'Times New Roman', serif;
+  --font-code-system: 'Cascadia Code', 'Cascadia Mono', 'JetBrains Mono', Consolas, 'DejaVu Sans Mono', ui-monospace, monospace;
+
+  /* ============================== semantic =============================== */
+  /* Light (default). */
   --bg: var(--paper-000);
   --bg-subtle: var(--paper-100);
   --fg: var(--ink-900);
   --fg-muted: var(--ink-600);
   --border: var(--line-200);
-  --accent: var(--accent-600);
 
-  /* component */
-  --measure: 68ch;
-  --density: 1;
-  --motion: 1;
+  --accent: oklch(0.48 var(--accent-chroma) var(--accent-hue));
+  --accent-hover: oklch(0.43 var(--accent-chroma) var(--accent-hue));
+  --accent-muted: oklch(0.94 0.03 var(--accent-hue));
+  --on-accent: #ffffff;
+
+  /* GFM alert blockquotes (`> [!NOTE]` etc.). `note` intentionally rides the
+     user's own accent hue — informational callouts sharing the link colour
+     is a common, legible choice. The other four are fixed hues: their
+     meaning (warning, danger...) must not shift when someone picks a
+     personal accent. Same proven-safe oklch formula, fixed hue per kind. */
+  --alert-note: var(--accent);
+  --alert-tip: oklch(0.48 var(--accent-chroma) 142);
+  --alert-important: oklch(0.48 var(--accent-chroma) 292);
+  --alert-warning: oklch(0.48 var(--accent-chroma) 70);
+  --alert-caution: oklch(0.48 var(--accent-chroma) 25);
+
+  /* ============================== component =============================== */
+  --measure: 68ch; /* user-adjustable 48-100ch */
+  --density: 1; /* 0.85 | 1 | 1.15 — rescales --space-* only */
+  --motion: 1; /* 0 | 1 — gates every transition/animation duration */
+
+  --space-1: calc(0.25rem * var(--density));
+  --space-2: calc(0.5rem * var(--density));
   --space-3: calc(0.75rem * var(--density));
   --space-4: calc(1rem * var(--density));
   --space-6: calc(1.5rem * var(--density));
+  --space-8: calc(2rem * var(--density));
 
-  --font-ui: "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, sans-serif;
-  --font-read: "Segoe UI Variable Text", Cambria, "Noto Serif", Georgia, serif;
-  --font-code: "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  --text-h1: 2rem;
+  --text-h2: 1.5rem;
+  --text-h3: 1.25rem;
+  --text-h4: 1.125rem;
+  --text-small: 0.875rem;
+
+  --duration-fast: calc(var(--motion) * 120ms);
+  --duration-base: calc(var(--motion) * 200ms);
+
+  /* Aliases content.css and every future component read. Full's
+     full/typography.css redefines exactly these three plus --font-heading —
+     nothing else in the cascade needs to know an edition exists. */
+  --font-ui: var(--font-ui-system);
+  --font-read: var(--font-read-system);
+  --font-code: var(--font-code-system);
+  --font-heading: var(--font-ui);
 }
 
+/* System dark. */
 :root:not([data-theme="light"]) {
   @media (prefers-color-scheme: dark) {
-    --bg: #14161a;
-    --bg-subtle: #1c1f25;
-    --fg: #e8e6e1;
-    --fg-muted: #a4a8b0;
-    --border: #2e333b;
-    --accent: #8ab4e0;
+    --bg: var(--night-950);
+    --bg-subtle: var(--night-900);
+    --fg: var(--cloud-100);
+    --fg-muted: var(--cloud-400);
+    --border: var(--night-800);
+
+    --accent: oklch(0.66 var(--accent-chroma) var(--accent-hue));
+    --accent-hover: oklch(0.71 var(--accent-chroma) var(--accent-hue));
+    --accent-muted: oklch(0.24 0.05 var(--accent-hue));
+    --on-accent: var(--ink-950);
+
+    --alert-note: var(--accent);
+    --alert-tip: oklch(0.66 var(--accent-chroma) 142);
+    --alert-important: oklch(0.66 var(--accent-chroma) 292);
+    --alert-warning: oklch(0.66 var(--accent-chroma) 70);
+    --alert-caution: oklch(0.66 var(--accent-chroma) 25);
+
+    color-scheme: dark;
   }
 }
 
+/* Explicit toggle wins in both directions — duplicated, not derived from the
+   media query above, because an explicit choice must not depend on the OS. */
 :root[data-theme="dark"] {
-  --bg: #14161a;
-  --bg-subtle: #1c1f25;
-  --fg: #e8e6e1;
-  --fg-muted: #a4a8b0;
-  --border: #2e333b;
-  --accent: #8ab4e0;
+  --bg: var(--night-950);
+  --bg-subtle: var(--night-900);
+  --fg: var(--cloud-100);
+  --fg-muted: var(--cloud-400);
+  --border: var(--night-800);
+
+  --accent: oklch(0.66 var(--accent-chroma) var(--accent-hue));
+  --accent-hover: oklch(0.71 var(--accent-chroma) var(--accent-hue));
+  --accent-muted: oklch(0.24 0.05 var(--accent-hue));
+  --on-accent: var(--ink-950);
+
+  --alert-note: var(--accent);
+  --alert-tip: oklch(0.66 var(--accent-chroma) 142);
+  --alert-important: oklch(0.66 var(--accent-chroma) 292);
+  --alert-warning: oklch(0.66 var(--accent-chroma) 70);
+  --alert-caution: oklch(0.66 var(--accent-chroma) 25);
+
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* Density presets. A settings control (not this phase — no .svelte this
+   wave) sets `data-density` on :root; components never touch --density
+   directly. */
+:root[data-density="compact"] {
+  --density: 0.85;
+}
+:root[data-density="spacious"] {
+  --density: 1.15;
+}
+
+:root[data-motion="off"] {
+  --motion: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion: 0;
+  }
 }

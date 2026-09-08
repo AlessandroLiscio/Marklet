@@ -1,0 +1,11 @@
+Inline allowlist: <kbd>Ctrl</kbd>+<kbd>E</kbd>, H<sub>2</sub>O, x<sup>2</sup>,
+<mark>a highlight</mark>, and a break<br>here.
+
+<details>
+<summary>The sanitizer allowlist is eight tags wide</summary>
+
+Inside a details block.
+
+</details>
+
+<img src="./img/example.png" alt="Allowed" width="32" height="32">
