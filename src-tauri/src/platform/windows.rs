@@ -204,7 +204,13 @@ fn open_command(exe: &str) -> String {
     format!("\"{exe}\" \"%1\"")
 }
 
-fn reg_err(e: windows_registry::Error) -> io::Error {
+/// Turns any registry failure into an `io::Error`.
+///
+/// Generic over `Display` rather than naming `windows_registry::Error`, which
+/// is not nameable: the crate glob-re-exports it from `windows_result` and does
+/// not re-export the path, so `windows_registry::Error` is private and only
+/// fails to compile on Windows — where nobody developing on Linux would see it.
+fn reg_err(e: impl std::fmt::Display) -> io::Error {
     io::Error::other(e.to_string())
 }
 

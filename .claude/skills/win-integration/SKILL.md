@@ -148,3 +148,14 @@ is the entire reason a GUI binary has a CLI at all.
 Registry, file association and `PrintToPdf` are tested **only** on `windows-latest`, behind
 `#[cfg(windows)]`. Do not attempt to test them from WSL2 — there is no registry there, and a
 mock would only test the mock.
+
+**Do type-check them locally, though.** `./scripts/check-windows.sh` compiles the platform
+module against `x86_64-pc-windows-gnu` in about twelve seconds, copying the dependency block
+straight out of `src-tauri/Cargo.toml` so it cannot drift from the real build. It exists
+because two CI round trips were spent on compile errors that only appear on Windows — one of
+them `windows_registry::Error`, which the crate glob-re-exports without re-exporting the
+path, so the type is unnameable there and perfectly fine to write on Linux.
+
+`cargo check --target x86_64-pc-windows-gnu` on the whole crate does *not* work here:
+`tauri-build` runs `tauri-winres`, which needs mingw binutils and therefore a package
+install. The platform module has no crate-internal dependencies, so it is checked alone.
