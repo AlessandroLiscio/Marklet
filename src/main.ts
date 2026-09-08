@@ -45,6 +45,12 @@ declare global {
     __MARKLET_BOOT__?: OpenedDocument;
     /** Set instead when the launch file could not be opened. */
     __MARKLET_BOOT_ERROR__?: IpcError;
+    /**
+     * Set when the launch argument was a directory. The `Open folder as Vault`
+     * context-menu verb passes exactly that, so the sidebar can populate
+     * without a round trip asking which vault is open.
+     */
+    __MARKLET_VAULT__?: string;
   }
 }
 

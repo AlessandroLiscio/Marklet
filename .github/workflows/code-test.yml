@@ -12,6 +12,15 @@
 # The --no-default-features leg is not redundant. The render core is used
 # headless by MD_HTML=1 and must not acquire a dependency on a default feature;
 # that regression compiles fine in the normal build and only shows up here.
+#
+# The registry round-trip step (windows-latest only) is one test, not two
+# assertions: install, prove the association landed, unbind, prove
+# `reg query HKCU\Software\Classes /f marklet /s` returns nothing. It reuses
+# the `target/debug/marklet.exe` that `cargo test` above already built — see
+# .claude/skills/win-integration/SKILL.md. This step is additive only: it
+# must never rename the job below, which forms the required-check context
+# `code-test / Tests (windows-latest)` pinned by
+# .github/rulesets/protect-main.json.
 # =============================================================================
 
 name: Tests
@@ -58,6 +67,31 @@ jobs:
 
       - name: cargo test (no default features)
         run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features
+
+      - name: Registry round trip (install/unbind leaves zero residual keys)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $exe = "src-tauri\target\debug\marklet.exe"
+          if (-not (Test-Path $exe)) { throw "$exe was not built by the cargo test step above" }
+
+          & $exe --install --silent
+          if ($LASTEXITCODE -ne 0) { throw "marklet --install exited $LASTEXITCODE" }
+
+          $progid = Get-ItemProperty -Path 'HKCU:\Software\Classes\.md\OpenWithProgids' -Name 'Marklet.Document' -ErrorAction SilentlyContinue
+          if (-not $progid) {
+            throw "HKCU:\Software\Classes\.md\OpenWithProgids\Marklet.Document was not written by --install"
+          }
+
+          & $exe --unbind --silent
+          if ($LASTEXITCODE -ne 0) { throw "marklet --unbind exited $LASTEXITCODE" }
+
+          $leftover = (reg query 'HKCU\Software\Classes' /f marklet /s 2>$null)
+          if ($leftover) {
+            throw "residual 'marklet' registry entries survived --unbind:`n$leftover"
+          }
+
+          Write-Host "Registry round trip OK: --install wrote the association, --unbind left zero residual keys."
 
       - uses: actions/setup-node@v5
         if: matrix.os == 'ubuntu-22.04'

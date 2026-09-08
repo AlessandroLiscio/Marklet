@@ -12,6 +12,21 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Added
 
+- **Vault.** Open a folder and get a virtualized folder tree, full-text search across it,
+  `[[wiki-links]]` that resolve, and a backlinks panel. Measured on 5,000 notes: tree paints
+  immediately, first search result in 1 ms, search completes in 31 ms, 622 bytes of index per
+  note, 10 MB of RSS for the whole vault. No search index on disk — nothing to go stale.
+- **Live reload, outline and reading position.** The outline panel jumps and scroll-spies;
+  the position survives a font, density or column-width change because it is anchored to the
+  nearest source line rather than to a pixel offset.
+- **Settings panel** for theme, accent, density, motion and column width, persisted to disk.
+  The full edition adds three typefaces and four accent palettes.
+- **Rich rendering, all lazily loaded**: syntax highlighting after first paint, KaTeX when a
+  document contains math, and — full edition only — Mermaid with a fullscreen zoom-and-pan
+  viewer. A document with none of those downloads none of them.
+- **Windows file association.** `--install` adds Marklet to the "Open with" list for `.md`
+  without stealing the default handler, and `--unbind` leaves zero registry keys behind.
+  "Open folder as Vault" appears on directories.
 - **App shell.** Double-clicking a `.md` opens it. The document is rendered in Rust
   *before the window exists* and injected as `window.__MARKLET_BOOT__`, so the first paint
   already has content — no IPC round trip, no spinner. The window is created hidden and

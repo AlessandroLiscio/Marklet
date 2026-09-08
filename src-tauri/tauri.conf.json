@@ -33,14 +33,6 @@
     "longDescription": "Marklet opens .md files like webpages. Reading first: outline, live reload, vault search, wiki-links, Mermaid, KaTeX, PDF export. Fully offline, no account, no paywall.",
     "copyright": "Copyright (c) 2026 Alessandro Liscio. MIT licensed.",
     "licenseFile": "../LICENSE",
-    "fileAssociations": [
-      {
-        "ext": ["md", "markdown", "mdown", "mkd"],
-        "name": "Markdown Document",
-        "description": "Markdown Document",
-        "role": "Viewer"
-      }
-    ],
     "windows": {
       "webviewInstallMode": {
         "type": "downloadBootstrapper",

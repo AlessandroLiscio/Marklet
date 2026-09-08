@@ -1,0 +1,81 @@
+/*
+ * Syntax token colours for `.hljs` blocks. Box model (background, border,
+ * padding, radius) is already `#doc pre` / `#doc pre code` in
+ * src/styles/content.css — not this file's job, and not this file's owner
+ * (P3 / the design system own src/styles/**).
+ *
+ * Every colour below is one of the existing semantic tokens from
+ * src/styles/tokens.css (--fg, --fg-muted, --accent*, --alert-*) — no new
+ * custom properties, no hardcoded hex. That is what makes this theme
+ * correct in both light and dark for free: those tokens already flip at
+ * `:root:not([data-theme="light"])` / `:root[data-theme="dark"]`, so this
+ * file needs no dark-mode block of its own, and clears the 4.5:1 floor
+ * because its source tokens already do (`npm run contrast`).
+ */
+
+#doc .hljs {
+  color: var(--fg);
+}
+
+#doc .hljs-comment,
+#doc .hljs-quote {
+  color: var(--fg-muted);
+  font-style: italic;
+}
+
+#doc .hljs-keyword,
+#doc .hljs-selector-tag,
+#doc .hljs-literal,
+#doc .hljs-type,
+#doc .hljs-meta .hljs-keyword,
+#doc .hljs-doctag {
+  color: var(--accent);
+}
+
+#doc .hljs-string,
+#doc .hljs-regexp,
+#doc .hljs-attr,
+#doc .hljs-template-tag,
+#doc .hljs-addition {
+  color: var(--alert-tip);
+}
+
+#doc .hljs-number,
+#doc .hljs-symbol,
+#doc .hljs-bullet,
+#doc .hljs-meta {
+  color: var(--alert-warning);
+}
+
+#doc .hljs-title,
+#doc .hljs-title.class_,
+#doc .hljs-title.function_,
+#doc .hljs-section {
+  color: var(--alert-important);
+  font-weight: 600;
+}
+
+#doc .hljs-built_in,
+#doc .hljs-builtin-name,
+#doc .hljs-class .hljs-title {
+  color: var(--alert-note);
+}
+
+#doc .hljs-deletion {
+  color: var(--alert-caution);
+}
+
+#doc .hljs-variable,
+#doc .hljs-attribute,
+#doc .hljs-params,
+#doc .hljs-name {
+  color: var(--fg);
+}
+
+#doc .hljs-emphasis {
+  font-style: italic;
+}
+
+#doc .hljs-strong {
+  font-weight: 700;
+}

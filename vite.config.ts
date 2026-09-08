@@ -30,13 +30,32 @@ const LITE = EDITION === 'lite';
  * `import()` that is gated on document content. A read-only session that opens a
  * plain markdown file must download ZERO of these chunks.
  *
- * Budget (xz-compressed, as charged by the NSIS/LZMA installer):
- *   mermaid     ~750 KB   loaded only when /```mermaid/ matches
- *   codemirror  ~180 KB   loaded only on F2 / F3 / Ctrl+E
- *   katex       ~200 KB   loaded only when math delimiters match
- *   hljs         ~28 KB   loaded post-paint via IntersectionObserver
+ * Budget (xz -9, as charged by the NSIS/LZMA installer) vs. P4's measured
+ * reality — see the P4 diff receipt for the full table:
+ *   mermaid     ~750 KB budgeted, ~649 KB measured (pinned 11.17.2; full only)
+ *   codemirror  ~180 KB   loaded only on F2 / F3 / Ctrl+E (P7, not yet added)
+ *   katex        ~200 KB budgeted,  ~63 KB JS measured (fonts are separate,
+ *                unbudgeted assets — see src/lib/rich/katex.css's own header)
+ *   hljs          ~28 KB budgeted,  ~32 KB measured (22-language custom subset)
  *
  * See .claude/skills/size-budget/SKILL.md before touching manualChunks.
+ *
+ * Mermaid stays grouped as ONE chunk deliberately, not split by diagram type,
+ * even though mermaid ships its own internal per-diagram-type code splitting
+ * (flowchart, sequence, gantt, c4, cytoscape's layout engine, ...). P4 tried
+ * un-grouping it and measured what broke: mermaid also statically depends on
+ * katex, for math-in-diagram-label support, in a code path reachable
+ * regardless of diagram type — un-grouping let that dependency bleed into
+ * the SHARED katex chunk instead of staying contained inside mermaid's own
+ * chunk (259 KB xz grouped vs. 519 KB xz ungrouped for the katex chunk
+ * alone, in that experiment), which would have made every math-only document
+ * in the full edition pay extra for mermaid's math-label support it never
+ * uses. One predictable ~649 KB chunk, already under the 750 KB budget,
+ * loaded only when a `.mermaid` node exists and never in lite (aliased to
+ * the stub below), beats a smaller-looking but leakier split. Re-splitting
+ * it is a legitimate follow-up if a later phase wants to chase the
+ * per-diagram-type saving, but it needs its own measurement pass to solve
+ * the katex bleed-through first, not a guess.
  */
 export default defineConfig({
   plugins: [svelte()],

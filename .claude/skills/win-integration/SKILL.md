@@ -43,6 +43,29 @@ HKCU\Software\Classes\Directory\Background\shell\marklet_vault\command
 default is the user's decision, taken in the Windows settings dialog or in our own settings
 panel — never a side effect of installing.
 
+### Why `bundle.fileAssociations` is absent from `tauri.conf.json`
+
+**Do not add it back.** It looks like the obvious place to declare `.md`, and it quietly does
+the opposite of what this file says.
+
+Whenever that block is present, Tauri's NSIS bundler inserts its own `APP_ASSOCIATE` macro
+into the generated installer, *in addition to* `installerHooks` rather than instead of it —
+`installer.nsi` calls it at line 666, our `NSIS_HOOK_POSTINSTALL` runs at line 733. The macro
+body is unambiguous (`FileAssociation.nsh:73`):
+
+```nsis
+WriteRegStr SHELL_CONTEXT "Software\Classes\.${EXT}" "" "${FILECLASS}"
+```
+
+An empty value name is the key's **default** value, so that line sets the extension's default
+handler outright. Every Windows install would have made Marklet the default `.md` opener
+without asking — the exact behaviour the paragraph above forbids, arriving through a config
+field rather than through any code in this repository.
+
+`hooks.nsh` shelling out to `marklet.exe --install --silent` is therefore the *only* Windows
+association mechanism, which is what that file already claimed to be. Verified against
+`tauri-apps/tauri@dev`, not inferred.
+
 After every write and every removal:
 
 ```rust
