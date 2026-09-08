@@ -12,6 +12,14 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Added
 
+- **App shell.** Double-clicking a `.md` opens it. The document is rendered in Rust
+  *before the window exists* and injected as `window.__MARKLET_BOOT__`, so the first paint
+  already has content — no IPC round trip, no spinner. The window is created hidden and
+  shown on the first frame that has that HTML in it, which removes the white flash. Boot
+  measured at 236 ms in a debug build.
+- **`marklet://` asset scheme** for local images: canonicalize, then check containment. It
+  refuses traversal, percent-encoded traversal, absolute paths and directories, and answers
+  404 for a merely missing image so an unfinished document does not look like an attack.
 - **Render core.** Markdown becomes HTML in Rust in a single pass over
   `pulldown-cmark`'s offset iterator: aligned tables, footnotes with backlinks, task lists,
   YAML frontmatter, GFM alerts, wiki-links, and `data-l` on every block — the line map that

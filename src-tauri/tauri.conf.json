@@ -10,21 +10,9 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [
-      {
-        "title": "Marklet",
-        "width": 1000,
-        "height": 760,
-        "minWidth": 420,
-        "minHeight": 320,
-        "resizable": true,
-        "visible": false,
-        "decorations": true,
-        "dragDropEnabled": true
-      }
-    ],
+    "windows": [],
     "security": {
-      "csp": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' marklet: data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost",
+      "csp": "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' marklet: http://marklet.localhost data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost",
       "assetProtocol": {
         "enable": false
       }

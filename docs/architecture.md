@@ -85,7 +85,25 @@ WebView2 initialization dominates and is not ours to optimize. Two things that a
 
 Everything heavy is behind `import()` gated on document content, so a plain document pays
 for none of it. Targets: 350–600 ms warm, 0.9–1.4 s truly cold, gated in CI at 1200 ms
-median.
+median for lite and 1800 ms for full.
+
+### Two things in `tauri.conf.json` that cannot explain themselves
+
+Tauri validates that file against a schema and **rejects unknown fields**, so it holds no
+comments — not even a `_comment` key. The two decisions a reader would otherwise trip over:
+
+**`app.windows` is deliberately empty.** The window is built in `src/lib.rs` so the
+boot-HTML initialization script can be attached *before* creation. A window declared in the
+config is already open by the time `setup()` runs, and its first paint would have nothing
+in it — which is the entire thing this design exists to avoid.
+
+**The CSP lists both `marklet:` and `http://marklet.localhost`.** They are the same scheme
+spelled two ways: WebView2 refuses a genuinely custom scheme, so Tauri serves it over
+`http://<scheme>.localhost` on Windows and `<scheme>://localhost` elsewhere. Both must be
+present or local images fail with a CSP violation **on one platform only** — the kind of bug
+that survives review because it works on the reviewer's machine.
+`protocol::AssetRoot::url_prefix()` picks the matching spelling, and a test asserts the two
+stay in step.
 
 RSS is 120–180 MB. That is the Chromium floor and is identical for any WebView2 application;
 the Rust process itself is 15–25 MB.

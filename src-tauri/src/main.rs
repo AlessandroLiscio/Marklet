@@ -7,10 +7,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::process::ExitCode;
+use std::time::Instant;
 
 fn main() -> ExitCode {
-    // First thing, always: on Windows this finds the parent terminal (if
-    // any) so subsequent output is not silently dropped. A no-op elsewhere.
+    // First statement of the program. `boot-ms` is only honest if the clock
+    // starts before anything else does, and it is what the release workflow's
+    // cold-start gate reads.
+    let started = Instant::now();
+
+    // On Windows this finds the parent terminal (if any) so subsequent output
+    // is not silently dropped. A no-op elsewhere.
     let console_ok = marklet::cli::attach_console();
 
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -21,11 +27,7 @@ fn main() -> ExitCode {
             ExitCode::from(code as u8)
         }
         Ok(marklet::cli::Mode::Window(job)) => {
-            // Consumed by `marklet::run()` in a later phase; parsed and
-            // validated here so a bad `--settings`/file/PORT/MD_EDITOR
-            // combination fails fast instead of surfacing inside a window.
-            let _ = job;
-            marklet::run();
+            marklet::run(job, started);
             ExitCode::SUCCESS
         }
         Err(err) => {
