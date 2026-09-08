@@ -52,8 +52,8 @@ Four layers, each written assuming the others might fail:
 
 ## Supply chain
 
-Every pull request runs `cargo-audit`, `cargo-deny` (advisories, licences, banned crates),
-Trivy across both lock files, and TruffleHog over the full history. `code-security.yml` also
+Every pull request runs `cargo-deny` (RustSec advisories, licences, banned crates), Trivy
+across both lock files, and TruffleHog over the full history. `code-security.yml` also
 runs weekly on a schedule, because an advisory published on Tuesday affects a dependency
 that has not changed since March.
 

@@ -34,19 +34,25 @@ easily broken invariant and the one a human reviewer will not catch: the symptom
 error, it is a cold start that got slower and an installer that grew, noticed weeks later by
 the size gate if at all.
 
-**`code-security`** — four scanners, each answering a different question:
+**`code-security`** — three scanners, each answering a different question:
 
 | Scanner | Question |
 |---|---|
-| `cargo-audit` | known RustSec advisories against `Cargo.lock` |
-| `cargo-deny` | advisories, licence policy, banned and duplicate crates |
+| `cargo-deny` | RustSec advisories, licence policy, banned and duplicate crates |
 | Trivy (filesystem) | vulnerabilities across `Cargo.lock` **and** `package-lock.json` |
 | TruffleHog | verified secrets anywhere in the git history |
 
-`npm audit` is absent on purpose: Trivy reads `package-lock.json` and reports the same
-advisories with SARIF output that lands in the Security tab. TruffleHog runs with
-`--results=verified` — unverified matches on a repository full of hex-looking test fixtures
-are noise, and a scanner people learn to ignore protects nothing.
+Two tools are absent on purpose, both because something above already covers them.
+`cargo-audit` reads the same RustSec database `cargo-deny`'s `advisories` check does — it was
+in the first draft of this pipeline, scanning the same lock file against the same data twice,
+and it additionally needed `checks: write` to post its own check-run, which a fork pull
+request never receives. `npm audit` is covered by Trivy, which reads `package-lock.json` and
+reports the same advisories with SARIF output that reaches the Security tab.
+
+TruffleHog runs with `--results=verified`. Unverified matches on a repository full of
+hex-looking test fixtures are noise, and a scanner people learn to ignore protects nothing.
+It is pinned to a tag rather than `@main`: an unpinned third-party action is a supply-chain
+risk anywhere, and particularly so inside the workflow whose job is to catch one.
 
 `src-tauri/deny.toml` also encodes the size decisions as policy. `ammonia`, `syntect`,
 `tantivy`, `clap` and `rusqlite` are in its `deny` list with the reason attached, so a
@@ -113,7 +119,7 @@ install-double-click-uninstall on real Windows, ending with
 `reg query HKCU\Software\Classes /f marklet /s` returning nothing. CI cannot test the
 Explorer double-click path, and that path is the product.
 
-Use the `release-cut` skill to cut one and `version-sync-check` to audit the bookkeeping
+Use the `release` skill to cut one and `version-sync-check` to audit the bookkeeping
 without changing anything.
 
 ## Distribution

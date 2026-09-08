@@ -1,15 +1,22 @@
 # =============================================================================
 # SECURITY SCANNING
 # =============================================================================
-# Four scanners, each answering a different question:
+# Three scanners, each answering a different question:
 #
-#   cargo-audit  — known RustSec advisories against Cargo.lock
-#   cargo-deny   — advisories plus licence policy and duplicate/banned crates
+#   cargo-deny   — RustSec advisories, licence policy, banned/duplicate crates
 #   Trivy (fs)   — vulnerabilities across Cargo.lock AND package-lock.json
 #   TruffleHog   — verified secrets anywhere in the git history
 #
-# npm audit is deliberately absent: Trivy reads package-lock.json and reports
-# the same advisories with a SARIF output that lands in the Security tab.
+# Two tools are deliberately absent, both because something here already covers
+# them:
+#
+#   cargo-audit — cargo-deny's `advisories` check reads the same RustSec
+#     database. Running both scanned the same lock file against the same data
+#     twice. It also needed `checks: write` to post its own check-run, which a
+#     fork pull request never gets, so it would have failed there permanently.
+#
+#   npm audit — Trivy reads package-lock.json and reports the same advisories,
+#     with SARIF output that lands in the Security tab.
 #
 # The weekly schedule matters more here than elsewhere. An advisory published
 # on Tuesday affects a dependency that has not changed since March, and nothing
@@ -52,14 +59,8 @@ jobs:
           key: security
 
       # -----------------------------------------------------------------------
-      # Rust advisories and licence policy
+      # Rust advisories, licence policy, banned crates
       # -----------------------------------------------------------------------
-      - name: cargo-audit
-        uses: rustsec/audit-check@v2.0.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          working-directory: src-tauri
-
       # `command` is the cargo-deny subcommand; the check types belong in
       # `command-arguments`. Passing them in `command` is accepted by the YAML
       # and rejected by cargo-deny.

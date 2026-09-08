@@ -74,7 +74,7 @@ The pull request title becomes the squash-merge subject, so it follows the same 
 | Check | What it runs |
 |---|---|
 | `code-quality` | `cargo fmt`, `clippy -D warnings`, `svelte-check`, `check:imports`, `contrast` |
-| `code-security` | `cargo-audit`, `cargo-deny`, Trivy, TruffleHog |
+| `code-security` | `cargo-deny`, Trivy, TruffleHog |
 | `code-test` | `cargo test` and `--no-default-features`, on Linux and Windows; `vitest` |
 | `size-gate` | both installers against their ceilings, with the delta commented on the PR |
 

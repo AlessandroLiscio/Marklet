@@ -23,9 +23,9 @@ lightweight care about that number, and publishing it keeps us honest.
 - CI split into four independently required checks — quality, security, tests, size gate —
   behind an orchestrator that runs the fast three on every branch push and the expensive two
   only where a merge depends on them.
-- Security scanning: `cargo-audit`, `cargo-deny` (advisories, licences, banned crates),
-  Trivy across both lock files, TruffleHog over full history, plus a weekly schedule so
-  advisories against unchanged dependencies are still caught.
+- Security scanning: `cargo-deny` (RustSec advisories, licences, banned crates), Trivy
+  across both lock files, TruffleHog over full history, plus a weekly schedule so advisories
+  against unchanged dependencies are still caught.
 - `npm run check:imports` fails the build if Mermaid, KaTeX, highlight.js or CodeMirror ever
   reach a static import — the budget invariant a reviewer cannot see.
 - Branch protection as code in `.github/rulesets/protect-main.json`, release write-targets
