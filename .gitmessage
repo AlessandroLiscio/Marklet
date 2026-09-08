@@ -1,0 +1,27 @@
+# <type>(<scope>): <subject>
+# |<---- imperative, lowercase, no trailing period, 72 chars max ---->|
+#
+# Types:
+#   feat      a new user-facing capability
+#   fix       a bug fix
+#   perf      performance improvement
+#   refactor  restructuring; neither fixes a bug nor adds a feature
+#   docs      documentation only
+#   test      adding or correcting tests
+#   build     build system, dependencies, packaging
+#   ci        workflows or pipeline scripts
+#   chore     maintenance touching no source or test code
+#   revert    reverting a previous commit
+#
+# Scope is optional: render, vault, cli, platform, edit, export, ui, ci, deps
+#
+# Body — why, not what. The diff already says what. Wrap at 72.
+# If the change costs bytes, say how many and why they are worth it.
+#
+#
+# Footers:
+#   Closes #123
+#   BREAKING CHANGE: <what breaks, who it affects, the migration step>
+#     (a breaking change also needs `!` after the type or scope, above)
+#
+# Enable with:  git config commit.template .gitmessage

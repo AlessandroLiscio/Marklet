@@ -54,6 +54,24 @@ Adding a dependency without that measurement is an incomplete change.
 - **Every change returns a diff receipt** with file paths and line ranges.
 - **Read the named skills first.** Do not work from memory on repository conventions.
 
+## Branch workflow
+
+`main` is protected by `.github/rulesets/protect-main.json`: no direct pushes, no
+force-pushes, pull request required, squash merge only, branch must be up to date, and five
+required checks. There are no bypass actors — an emergency fix goes through a branch like
+everything else.
+
+So: branch, push, open a PR, let CI run, squash-merge. Branch names are
+`<type>/<short-description>`. Commit and PR-title conventions are in
+[`CONTRIBUTING.md`](CONTRIBUTING.md); the trigger model and what each check does are in
+[`docs/ci-cd.md`](docs/ci-cd.md).
+
+**The required-check contexts are load-bearing strings.** Each is
+`<job id in main.yml> / <name: of the job inside the reusable workflow>`. Renaming either
+side blocks every merge until the ruleset is updated and re-applied.
+
+Never add an AI attribution trailer to a tag message.
+
 ## Development
 
 ```bash
@@ -87,6 +105,7 @@ first. Every CLI path must also exit before `tauri::Builder::build()`.
 | `tauri-ipc` | adding or changing a `#[tauri::command]` |
 | `win-integration` | touching the registry, file association, or the NSIS hooks |
 | `release` | cutting a version or changing the CI matrix |
+| `version-sync-check` | auditing release bookkeeping — read-only, safe any time |
 
 Design work additionally uses the `ui-ux-pro-max` plugin, enabled for this project in
 `.claude/settings.json`.

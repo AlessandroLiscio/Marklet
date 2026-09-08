@@ -1,0 +1,120 @@
+# =============================================================================
+# SECURITY SCANNING
+# =============================================================================
+# Four scanners, each answering a different question:
+#
+#   cargo-audit  — known RustSec advisories against Cargo.lock
+#   cargo-deny   — advisories plus licence policy and duplicate/banned crates
+#   Trivy (fs)   — vulnerabilities across Cargo.lock AND package-lock.json
+#   TruffleHog   — verified secrets anywhere in the git history
+#
+# npm audit is deliberately absent: Trivy reads package-lock.json and reports
+# the same advisories with a SARIF output that lands in the Security tab.
+#
+# The weekly schedule matters more here than elsewhere. An advisory published
+# on Tuesday affects a dependency that has not changed since March, and nothing
+# would otherwise re-scan it.
+# =============================================================================
+
+name: Code Security
+
+on:
+  schedule:
+    - cron: '0 18 * * 5' # 18:00 every Friday
+  workflow_call:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  security:
+    # Load-bearing: forms the required-check context
+    # "code-security / Security Analysis". See main.yml.
+    name: Security Analysis
+    runs-on: ubuntu-22.04
+
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # TruffleHog scans history, not just the tip
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: security
+
+      # -----------------------------------------------------------------------
+      # Rust advisories and licence policy
+      # -----------------------------------------------------------------------
+      - name: cargo-audit
+        uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: src-tauri
+
+      - name: cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          manifest-path: src-tauri/Cargo.toml
+          command: check advisories bans licenses sources
+
+      # -----------------------------------------------------------------------
+      # Dependency vulnerabilities across both ecosystems
+      # -----------------------------------------------------------------------
+      - name: Trivy filesystem scan (SARIF)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        continue-on-error: true
+        with:
+          sarif_file: trivy.sarif
+          category: trivy
+
+      # Trivy's own gate. Reported separately from the SARIF upload so the
+      # findings reach the Security tab even when the job is about to fail.
+      - name: Fail on CRITICAL/HIGH
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+
+      # -----------------------------------------------------------------------
+      # Secrets
+      # -----------------------------------------------------------------------
+      # `--only-verified` on purpose: unverified matches on a repository full of
+      # hex-looking test fixtures are noise, and a scanner people learn to
+      # ignore protects nothing.
+      - name: TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --results=verified --fail
+
+      - name: Upload security artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: trivy.sarif
+          retention-days: 30
+          if-no-files-found: warn

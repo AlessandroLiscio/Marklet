@@ -1,11 +1,11 @@
 name: Build
 
+# Called by main.yml on pull requests and on merges to main. It has no
+# triggers of its own: a `push` trigger here would duplicate every build the
+# orchestrator already schedules.
 on:
-  push:
-    branches: [main]
-  pull_request:
-  workflow_dispatch:
   workflow_call:
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always

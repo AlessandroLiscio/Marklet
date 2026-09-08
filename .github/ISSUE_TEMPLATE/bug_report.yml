@@ -1,0 +1,86 @@
+name: Bug report
+description: Something behaves differently from what it should
+title: 'fix: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: if the problem is that Marklet renders a `.md` file wrongly,
+        attaching the smallest file that reproduces it is worth more than any
+        description. It usually becomes a test fixture directly.
+
+  - type: textarea
+    id: what-happens
+    attributes:
+      label: What happens
+      description: The actual behaviour, not the explanation for it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sample markdown
+      description: The smallest file that reproduces it. Paste it or attach it.
+      render: markdown
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11
+        - Windows 10
+        - Linux (native)
+        - Linux (WSL2)
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Marklet version
+      description: 'From the settings panel, or `marklet --version`.'
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: build
+    attributes:
+      label: Which build
+      options:
+        - full (marklet-setup.exe)
+        - lite (marklet-lite-setup.exe)
+        - offline (marklet-offline-setup.exe)
+        - AppImage
+        - deb
+        - built from source
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, console output, or what you were doing when it happened.

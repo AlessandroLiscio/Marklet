@@ -1,0 +1,60 @@
+# cargo-deny policy. Run in CI by .github/workflows/code-security.yml:
+#   cargo deny check advisories bans licenses sources
+
+[graph]
+targets = [
+  "x86_64-pc-windows-msvc",
+  "x86_64-unknown-linux-gnu",
+]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+ignore = []
+
+[licenses]
+version = 2
+# Marklet is MIT. These are the permissive licences compatible with shipping a
+# binary under it. Anything copyleft is a deliberate decision, not a default —
+# a new licence appearing here means a dependency was added without reading it.
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "Unicode-3.0",
+  "MPL-2.0",  # file-level copyleft; fine for a dependency we do not modify
+  "CC0-1.0",
+  "Unlicense",
+  "BSL-1.0",
+  "OpenSSL",
+]
+confidence-threshold = 0.9
+
+[bans]
+# Duplicate versions of the same crate are a size problem before they are a
+# correctness one: the binary carries both. `warn` rather than `deny` because
+# the Tauri and windows-rs trees legitimately carry a few, and a hard failure
+# there would only teach people to add exceptions.
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+
+# Crates that must never enter the tree. Each one is a decision recorded in
+# .claude/skills/size-budget/SKILL.md; this is that decision made mechanical.
+deny = [
+  { name = "ammonia", reason = "+1.2 MB via html5ever. sanitize.rs is an in-house allowlist." },
+  { name = "syntect", reason = "+2-3 MB exe. Highlighting is highlight.js, lazily, in the webview." },
+  { name = "tantivy", reason = "+4-6 MB exe. Vault search is walkdir + aho-corasick, no index." },
+  { name = "clap", reason = "+350-450 KB. The CLI is a hand-rolled ~120-line parser." },
+  { name = "rusqlite", reason = "+1.5 MB. State is two JSON files in appdata." },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

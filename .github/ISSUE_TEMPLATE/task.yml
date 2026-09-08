@@ -1,0 +1,48 @@
+name: Task
+description: Development work that is neither a bug nor a user-facing feature
+title: 'chore: '
+labels: [task]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What needs doing
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why now
+      description: What is blocked, or what gets worse if this waits.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Which phase does this belong to
+      description: From the implementation plan. "Not in the plan" is a valid answer.
+      options:
+        - P1 render core
+        - P1b design system
+        - P1c CLI and headless export
+        - P2 app shell and first paint
+        - P3 reading experience
+        - P4 rich rendering
+        - P5 vault
+        - P6 Windows platform integration
+        - P7 editing
+        - P8 export
+        - P9 hardening and release
+        - Not in the plan
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: How we will know it is done
+      description: Verifiable — a command that passes, or an observable behaviour.
+    validations:
+      required: true

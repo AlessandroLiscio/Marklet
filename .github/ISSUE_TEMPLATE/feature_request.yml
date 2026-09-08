@@ -1,0 +1,48 @@
+name: Feature request
+description: Propose something Marklet should be able to do
+title: 'feat: '
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Marklet's ceiling is a 3.5 MiB installer, enforced in CI. Roughly 2.6 MiB of
+        that is uncommitted. A proposal that costs bytes is not unwelcome — it just
+        has to be worth its weight, and saying what it costs makes that a
+        conversation rather than a surprise.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The situation, not the solution. What are you reading or writing when this comes up?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What should Marklet do
+    validations:
+      required: true
+
+  - type: input
+    id: cost
+    attributes:
+      label: Rough size cost, if you know it
+      description: 'A library this would need, and its size. "No idea" is fine.'
+      placeholder: 'e.g. needs a diff library, ~40 KB compressed'
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do today instead
+      description: Another tool, a workaround, or nothing.
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: I have read the non-goals in README.md and this is not one of them
+        - label: This is reading- or note-taking-shaped, not an attempt to make Marklet a full editor

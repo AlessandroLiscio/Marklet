@@ -15,6 +15,7 @@
     "test:e2e": "wdio run tests/e2e/wdio.conf.ts",
     "tauri": "tauri",
     "contrast": "node scripts/check-contrast.mjs",
+    "check:imports": "node scripts/check-imports.mjs",
     "size": "node scripts/size-report.mjs"
   },
   "devDependencies": {

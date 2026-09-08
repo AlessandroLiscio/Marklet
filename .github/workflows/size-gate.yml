@@ -4,22 +4,25 @@
 # feature argues against that, and arguments win unless something is holding a
 # scale. This is the scale.
 #
-# Do not raise a ceiling to make a build pass. Raising a ceiling is Alessandro's
-# decision, taken on a measurement, in its own commit.
+# Called by main.yml after build.yml, on pull requests only. Do not raise a
+# ceiling to make a build pass — that is Alessandro's decision, taken on a
+# measurement, in its own commit. See .claude/skills/size-budget/SKILL.md.
 name: Size gate
 
 on:
-  pull_request:
+  workflow_call:
   workflow_dispatch:
 
 jobs:
-  build:
-    uses: ./.github/workflows/build.yml
-
   gate:
+    # Load-bearing: forms the required-check context "size-gate / Enforce budget".
+    # See main.yml.
     name: Enforce budget
-    needs: build
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      pull-requests: write
+
     steps:
       - uses: actions/checkout@v5
 
@@ -34,7 +37,6 @@ jobs:
           path: artifacts/lite
 
       - name: Measure and enforce
-        id: measure
         run: |
           set -euo pipefail
 
@@ -67,7 +69,7 @@ jobs:
             echo
             echo "Before raising a ceiling, work through the list in"
             echo ".claude/skills/size-budget/SKILL.md - gate an import, move it behind a"
-            echo "cargo feature, move it to the full build only, or cut the feature."
+            echo "build switch, move it to the full build only, or cut the feature."
             exit 1
           fi
 
@@ -83,10 +85,10 @@ jobs:
             } catch {
               table = '_Build failed before the installers could be measured._';
             }
-            const body = `### Size gate\n\n${table}`;
+            const marker = '### Size gate';
+            const body = `${marker}\n\n${table}`;
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
-            const marker = '### Size gate';
             const existing = (await github.rest.issues.listComments({ owner, repo, issue_number }))
               .data.find(c => c.user.type === 'Bot' && c.body.startsWith(marker));
             if (existing) {

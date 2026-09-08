@@ -1,0 +1,100 @@
+# =============================================================================
+# ORCHESTRATOR
+# =============================================================================
+#
+# Trigger model — one run per unit of new code, no duplicated work:
+#
+#   push to a non-main branch  -> quality + security + test (QST). This is the
+#     authoritative check run. A same-repo pull request's required checks are
+#     satisfied by these check-runs on the head commit, so opening or updating
+#     the PR schedules nothing extra.
+#
+#   pull_request               -> build + size gate always (they need both
+#     installers, which branch pushes do not produce), plus QST when the head
+#     repo is a FORK — fork pushes never reach this repository, so the PR event
+#     is their only chance to produce the required checks.
+#
+#   push to main (a merge)     -> build only, so main always has a downloadable
+#     artifact. QST is not re-run: the ruleset's strict up-to-date requirement
+#     guarantees the merged tree is byte-identical to the tested branch tip.
+#
+# LOAD-BEARING NAMES. The job ids below, combined with the `name:` of the job
+# inside each reusable workflow, form the required-check contexts pinned by the
+# "protect-main" ruleset:
+#
+#   code-quality / Code Quality
+#   code-security / Security Analysis
+#   code-test / Tests
+#   size-gate / Enforce budget
+#
+# Renaming either side blocks every merge until
+# .github/rulesets/protect-main.json is updated to match. See
+# .claude/skills/release/SKILL.md.
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: ['**'] # quoted so '**' matches branches containing slashes; tags never fire
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# One active run per ref. Superseded branch runs are cancelled; runs on main
+# always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Checks: branch pushes, and pull requests from forks
+  # ---------------------------------------------------------------------------
+  code-quality:
+    if: >-
+      (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name != github.repository)
+    uses: ./.github/workflows/code-quality.yml
+
+  code-security:
+    if: >-
+      (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name != github.repository)
+    uses: ./.github/workflows/code-security.yml
+
+  code-test:
+    if: >-
+      (github.event_name == 'push' && github.ref != 'refs/heads/main') ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name != github.repository)
+    uses: ./.github/workflows/code-test.yml
+
+  # ---------------------------------------------------------------------------
+  # Build: pull requests and merges to main
+  #
+  # Deliberately NOT run on every branch push. A full Tauri build is ~6 minutes
+  # across three matrix legs, and paying that on every intermediate commit would
+  # make the fast QST loop useless. The budget is enforced where it matters:
+  # before a merge.
+  # ---------------------------------------------------------------------------
+  build:
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    uses: ./.github/workflows/build.yml
+
+  size-gate:
+    if: github.event_name == 'pull_request'
+    needs: build
+    uses: ./.github/workflows/size-gate.yml
+    permissions:
+      contents: read
+      pull-requests: write
