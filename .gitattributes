@@ -1,0 +1,29 @@
+# Line endings are LF everywhere, in the working tree as well as in the repo.
+#
+# This is not a style preference. `tests/fixtures/*.expected.html` are golden
+# files compared **byte for byte** against what the renderer produces, and the
+# renderer produces LF on every platform. Git's default on Windows is to check
+# out CRLF, which made all 51 fixtures fail on `windows-latest` with output that
+# looked character-for-character identical in the diff — the only difference
+# being invisible.
+#
+# Without this file, the same failure hits every contributor on Windows, and the
+# error message actively misleads them.
+* text=auto eol=lf
+
+# Binary: never touched, never diffed as text.
+*.png   binary
+*.ico   binary
+*.icns  binary
+*.woff2 binary
+*.woff  binary
+*.ttf   binary
+*.otf   binary
+
+# Golden fixtures: stated explicitly rather than left to `text=auto`, because
+# the correctness of every render test depends on it.
+tests/fixtures/*.md            text eol=lf
+tests/fixtures/*.expected.html text eol=lf
+
+# Shell scripts must keep LF or they will not run at all.
+*.sh text eol=lf

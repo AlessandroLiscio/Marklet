@@ -79,8 +79,20 @@ fn golden_corpus_matches() {
             continue;
         }
 
+        // Read the expected side with line endings normalised.
+        //
+        // `.gitattributes` pins `eol=lf` and is the real fix; this is the second
+        // line of defence, because a contributor's git config is not something
+        // this repository controls. Git's Windows default checks these files out
+        // as CRLF, which made all 51 fixtures fail on `windows-latest` with a
+        // diff whose two halves looked character-for-character identical — the
+        // only difference being invisible.
+        //
+        // Normalising only the *expected* side costs the test nothing: the
+        // renderer's output is still compared byte for byte, and a fixture's
+        // line endings are an artifact of checkout rather than of content.
         let expected = match fs::read_to_string(&expected_path) {
-            Ok(s) => s,
+            Ok(s) => s.replace("\r\n", "\n"),
             Err(_) => {
                 failures.push(format!("{name}: missing {}", expected_path.display()));
                 continue;
