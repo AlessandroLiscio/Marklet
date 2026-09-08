@@ -22,7 +22,7 @@ behind a licence key.
 
 Marklet keeps the constraint and drops the paywall. Every feature is free and the source is
 here. The size budget is enforced by CI, not by good intentions: a pull request that pushes
-the installer over 4.8 MiB fails.
+the installer over 3.5 MiB fails.
 
 ## Status
 
@@ -53,16 +53,21 @@ with zero network requests, PNG or SVG of any diagram.
 
 | | Full | Lite (no Mermaid) |
 |---|---:|---:|
-| Installer | ~4.3 MB | ~3.5 MB |
-| Ceiling enforced in CI | 4.8 MiB | 3.8 MiB |
+| Ceiling enforced in CI | 3.5 MiB | 2.8 MiB |
+| Measured today (empty shell, v0.1.0) | 904 KiB | 904 KiB |
 
-Cold start is gated at 1200 ms median on Windows 11; warm start is 350–600 ms.
+Cold start is gated at 1200 ms median on Windows 11.
 
-Mermaid is roughly 750 KB — about 37% of the full installer for one feature. That is why
-`marklet-lite-setup.exe` exists as a first-class download rather than a curiosity.
+Mermaid is roughly 750 KB — the single largest item in the budget, for one feature. That is
+why `marklet-lite-setup.exe` exists as a first-class download rather than a curiosity.
 
-We do not claim `mdview`'s 2 MB. A Tauri 2 hello-world is already 2.5–3 MB, and the
-comparable number is our lite build.
+The ceilings come from measurement, not from a guess: the first CI build produced a 904 KiB
+installer, so there is about 2.6 MiB of room for everything still to be written. A pull
+request that spends more than that fails.
+
+We are not claiming to beat `mdview`'s 2 MB — no shipped number exists yet. When the
+features are in, the honest comparison will be against the lite build, and it will be
+published either way.
 
 ## Install
 

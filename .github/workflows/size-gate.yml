@@ -38,8 +38,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          FULL_MAX=5033165   # 4.8 MiB
-          LITE_MAX=3984589   # 3.8 MiB
+          FULL_MAX=3670016   # 3.5 MiB
+          LITE_MAX=2936013   # 2.8 MiB
 
           full=$(find artifacts/full -name '*.exe' -printf '%s\n' | sort -nr | head -1)
           lite=$(find artifacts/lite -name '*.exe' -printf '%s\n' | sort -nr | head -1)

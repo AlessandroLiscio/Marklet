@@ -16,8 +16,8 @@ not by good intentions:
 
 | Artifact | Installer ceiling |
 |---|---|
-| `marklet-setup.exe` (full) | 5\_033\_165 B (4.8 MiB) |
-| `marklet-lite-setup.exe` (no Mermaid) | 3\_984\_589 B (3.8 MiB) |
+| `marklet-setup.exe` (full) | 3\_670\_016 B (3.5 MiB) |
+| `marklet-lite-setup.exe` (no Mermaid) | 2\_936\_013 B (2.8 MiB) |
 
 Cold start ceiling: 1200 ms median of 5 runs on `windows-latest`.
 

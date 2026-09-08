@@ -17,8 +17,8 @@ commands and the list of already-rejected alternatives.
 
 | Gate | Ceiling |
 |---|---|
-| `marklet-setup.exe` | 5\_033\_165 B |
-| `marklet-lite-setup.exe` | 3\_984\_589 B |
+| `marklet-setup.exe` | 3\_670\_016 B |
+| `marklet-lite-setup.exe` | 2\_936\_013 B |
 | Cold start, median of 5 on Windows | 1200 ms |
 | `src/styles/**` gzipped | 12\_288 B |
 | Lazy chunks absent from a read-only session | zero of them loaded |

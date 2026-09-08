@@ -13,8 +13,8 @@ This skill is how the constraint stays real instead of aspirational.
 
 | Artifact | Ceiling | Bytes |
 |---|---|---|
-| `marklet-setup.exe` (full, with Mermaid) | 4.8 MiB | 5\_033\_165 |
-| `marklet-lite-setup.exe` (no Mermaid) | 3.8 MiB | 3\_984\_589 |
+| `marklet-setup.exe` (full, with Mermaid) | 3.5 MiB | 3\_670\_016 |
+| `marklet-lite-setup.exe` (no Mermaid) | 2.8 MiB | 2\_936\_013 |
 | Cold start, median of 5 on `windows-latest` | 1200 ms | — |
 | `src/styles/**` combined, gzipped | 12 KiB | 12\_288 |
 
@@ -26,15 +26,20 @@ a ceiling is a decision for Alessandro, taken on a measurement, in its own chang
 
 | Component | Installer | Loaded when |
 |---|---|---|
-| Rust exe | 2.6 – 3.2 MB | always |
+| Rust exe + Tauri shell | **904 KiB measured** at v0.1.0, before features | always |
 | Svelte chrome + CSS + tokens | ~60 KB | always |
 | highlight.js subset | ~28 KB | document has a fenced code block, after first paint |
 | KaTeX + subset fonts | ~200 KB | document has math delimiters |
 | CodeMirror 6 | ~180 KB | F2 / F3 / Ctrl+E pressed |
 | Mermaid | ~750 KB | document matches /```mermaid/ — full build only |
 
-Mermaid is 37% of the full installer for one feature. That is why `lite` exists as a
+Mermaid is the single largest item for one feature. That is why `lite` exists as a
 first-class artifact from the same CI run, and why the Mermaid chunk has its own gate.
+
+The 904 KiB figure is measured from the first CI build, not estimated — the original plan
+guessed 2.6–3.2 MB for the binary and was wrong by roughly 3×, which is why the ceilings
+were tightened. When you quote a number here, quote a measured one; `docs/size-budget.md`
+records where each came from.
 
 ## Measuring
 

@@ -39,8 +39,8 @@ WebView2 runtime; it must never become the default download.
 
 | Artifact | Ceiling |
 |---|---|
-| `marklet-setup.exe` | 5\_033\_165 B |
-| `marklet-lite-setup.exe` | 3\_984\_589 B |
+| `marklet-setup.exe` | 3\_670\_016 B |
+| `marklet-lite-setup.exe` | 2\_936\_013 B |
 
 A release is not cut over a failing size gate. Cut the feature or ship the previous version.
 See `.claude/skills/size-budget/SKILL.md`.

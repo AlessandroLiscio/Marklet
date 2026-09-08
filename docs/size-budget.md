@@ -7,10 +7,39 @@ commands and the decision procedure; this file is the reference table.
 
 | Artifact | Ceiling | Bytes | Enforced by |
 |---|---:|---:|---|
-| `marklet-setup.exe` (full) | 4.8 MiB | 5\_033\_165 | `size-gate.yml` |
-| `marklet-lite-setup.exe` | 3.8 MiB | 3\_984\_589 | `size-gate.yml` |
+| `marklet-setup.exe` (full) | 3.5 MiB | 3\_670\_016 | `size-gate.yml` |
+| `marklet-lite-setup.exe` | 2.8 MiB | 2\_936\_013 | `size-gate.yml` |
 | Cold start, median of 5 on Windows | 1200 ms | — | `release.yml` |
 | `src/styles/**`, gzipped | 12 KiB | 12\_288 | `ci.yml` via `npm run size` |
+
+### Where these came from
+
+The original plan set 4.8 / 3.8 MiB from an estimate of 2.6–3.2 MB for the Rust binary
+alone. The first CI build measured the actual empty shell:
+
+| Artifact, v0.1.0 foundation | Measured |
+|---|---:|
+| `Marklet_0.1.0_x64-setup.exe` | **903.75 KiB** |
+| `Marklet_0.1.0_amd64.deb` | 1.42 MiB |
+| `Marklet_0.1.0_amd64.AppImage` | 75.62 MiB |
+
+The estimate was wrong by roughly 3×, in our favour: `default-features = false` on `tauri`,
+`opt-level = "z"` with fat LTO and `strip`, and NSIS/LZMA compressing better than assumed.
+
+The ceilings were tightened to match. A gate with 4× headroom cannot fail, and a gate that
+cannot fail is decoration. 3.5 MiB leaves about 2.6 MiB for every remaining feature — ample
+against the ~1.2 MiB the lazy chunks are expected to cost — while still biting if something
+unplanned lands.
+
+**The lite build now has a real chance of coming in under `mdview`'s 2 MB.** That is not
+promised anywhere yet, and it will not be until it is measured with the features in.
+
+### On the AppImage
+
+75.62 MiB, because AppImage bundles the entire GTK and WebKit stack. It is not gated and
+should not be compared to the Windows number; `.deb` at 1.42 MiB is the honest Linux figure
+for a system that already has those libraries. If AppImage stays this expensive it is worth
+reconsidering as a shipped target.
 
 ## Where the budget goes
 
