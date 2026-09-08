@@ -74,10 +74,22 @@ pub fn resolve(root: &Path, request_path: &str) -> Result<PathBuf, StatusCode> {
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    // Absolute paths and Windows drive letters never come from a relative
-    // markdown reference, so they are refused before they touch the disk.
+    // Absolute and root-relative paths never come from a relative markdown
+    // reference, so they are refused before they touch the disk.
+    //
+    // `has_root()` rather than `is_absolute()` alone, and the difference is not
+    // cosmetic: on Windows `Path::new("/etc/passwd").is_absolute()` is **false**
+    // — a leading slash with no drive letter is root-relative, not absolute. Such
+    // a path still escapes this directory, because `join` on Windows keeps the
+    // prefix and replaces everything after it: `C:\…\vault` joined with
+    // `/Windows/System32/config/SAM` is `C:\Windows\System32\config\SAM`.
+    //
+    // The containment check below would still refuse it, so this is defence in
+    // depth rather than the only gate — but a request should be refused by the
+    // check that describes it, and the two branches diverging by platform is
+    // exactly how a reviewer ends up reasoning about the wrong one.
     let candidate = Path::new(&decoded);
-    if candidate.is_absolute() || decoded.contains(':') {
+    if candidate.has_root() || candidate.is_absolute() || decoded.contains(':') {
         return Err(StatusCode::FORBIDDEN);
     }
 
@@ -135,29 +147,47 @@ mod tests {
     use super::*;
     use std::fs;
 
-    fn sandbox() -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("marklet-protocol-{}", std::process::id()));
-        let _ = fs::create_dir_all(dir.join("img"));
-        fs::write(dir.join("img/ok.png"), b"png").unwrap();
-        fs::write(dir.join("note.md"), b"# hi").unwrap();
-        dir.canonicalize().unwrap()
+    /// A served root with a sibling directory that must stay unreachable.
+    ///
+    /// The sibling exists so the traversal test can escape to a file that
+    /// really is there **on every platform**. Reaching for `/etc/passwd`
+    /// instead made the test pass on Linux for the right reason and on Windows
+    /// for the wrong one: the file is absent there, so canonicalization failed
+    /// and the request 404'd without the containment check ever running. A test
+    /// that stops exercising its own branch on half the target platforms is
+    /// worse than no test, because it still reports green.
+    fn sandbox() -> (PathBuf, PathBuf) {
+        let base = std::env::temp_dir().join(format!("marklet-protocol-{}", std::process::id()));
+        let root = base.join("vault");
+        let outside = base.join("outside");
+
+        let _ = fs::create_dir_all(root.join("img"));
+        let _ = fs::create_dir_all(&outside);
+        fs::write(root.join("img/ok.png"), b"png").unwrap();
+        fs::write(root.join("note.md"), b"# hi").unwrap();
+        fs::write(outside.join("secret.txt"), b"not yours").unwrap();
+
+        (
+            root.canonicalize().unwrap(),
+            outside.canonicalize().unwrap(),
+        )
     }
 
     #[test]
     fn serves_a_file_inside_the_root() {
-        let root = sandbox();
+        let (root, _) = sandbox();
         assert!(resolve(&root, "/img/ok.png").is_ok());
     }
 
     #[test]
-    fn rejects_traversal() {
-        // 403, not 404: `/etc/passwd` exists, so canonicalization *succeeds*
-        // and the request is refused by the `starts_with(root)` check — which
-        // is the check that actually matters. A 404 here would mean the path
-        // simply did not resolve, and would not prove containment at all.
-        let root = sandbox();
+    fn rejects_traversal_to_a_file_that_really_exists() {
+        // 403, not 404, and that distinction is the whole test: the target
+        // exists, so canonicalization SUCCEEDS and the request is refused by
+        // the `starts_with(root)` containment check. A 404 here would mean the
+        // path simply did not resolve, and would prove nothing about containment.
+        let (root, _) = sandbox();
         assert_eq!(
-            resolve(&root, "/../../etc/passwd").unwrap_err(),
+            resolve(&root, "/../outside/secret.txt").unwrap_err(),
             StatusCode::FORBIDDEN
         );
     }
@@ -166,40 +196,45 @@ mod tests {
     fn rejects_percent_encoded_traversal() {
         // The whole reason decoding happens before the check. Screening the raw
         // string for ".." would have let this through.
-        let root = sandbox();
-        assert!(resolve(&root, "/%2e%2e%2f%2e%2e%2fetc%2fpasswd").is_err());
-    }
-
-    #[test]
-    fn collapses_repeated_leading_slashes_rather_than_treating_them_as_absolute() {
-        // `//etc/passwd` is not an absolute-path attack once the leading
-        // separators are stripped: it becomes `etc/passwd`, resolved *inside*
-        // the root, and 404s there because the sandbox has no such file. Worth
-        // asserting explicitly — the first version of this test expected 403
-        // and was wrong about which branch it was exercising.
-        let root = sandbox();
+        let (root, _) = sandbox();
         assert_eq!(
-            resolve(&root, "//etc/passwd").unwrap_err(),
-            StatusCode::NOT_FOUND
+            resolve(&root, "/%2e%2e%2foutside%2fsecret.txt").unwrap_err(),
+            StatusCode::FORBIDDEN
         );
     }
 
     #[test]
-    fn rejects_a_percent_encoded_absolute_path() {
-        // This is what actually reaches the `is_absolute` branch. `%2F` survives
-        // the leading-slash strip and only becomes `/` during decoding, so the
-        // decoded path is genuinely absolute — proof that the order is
-        // strip, decode, *then* judge, and that judging earlier would miss it.
-        let root = sandbox();
+    fn collapses_repeated_leading_slashes_rather_than_treating_them_as_absolute() {
+        // `//img/ok.png` is not an absolute-path attack once the leading
+        // separators are stripped: it becomes `img/ok.png`, resolved *inside*
+        // the root, and is served. Worth asserting explicitly — the first
+        // version of this test expected a rejection and was wrong about which
+        // branch it exercised.
+        let (root, _) = sandbox();
+        assert!(resolve(&root, "//img/ok.png").is_ok());
+    }
+
+    #[test]
+    fn rejects_a_percent_encoded_root_relative_path() {
+        // This is what reaches the `has_root` branch. `%2F` survives the
+        // leading-slash strip and only becomes `/` during decoding, so the
+        // decoded path is root-relative — proof that the order is strip,
+        // decode, *then* judge, and that judging earlier would miss it.
+        //
+        // `has_root()` rather than `is_absolute()`, because on Windows a bare
+        // leading slash is root-relative and NOT absolute, and `join` there
+        // keeps the drive prefix while replacing the rest — so this escapes the
+        // served directory on both platforms and must be refused on both.
+        let (root, _) = sandbox();
         assert_eq!(
-            resolve(&root, "/%2Fetc%2Fpasswd").unwrap_err(),
+            resolve(&root, "/%2Foutside%2Fsecret.txt").unwrap_err(),
             StatusCode::FORBIDDEN
         );
     }
 
     #[test]
     fn rejects_a_windows_drive_letter() {
-        let root = sandbox();
+        let (root, _) = sandbox();
         assert_eq!(
             resolve(&root, "/C:/Windows/System32/drivers/etc/hosts").unwrap_err(),
             StatusCode::FORBIDDEN
@@ -210,7 +245,7 @@ mod tests {
     fn a_missing_file_is_not_found_rather_than_forbidden() {
         // A document that references an image the author has not added yet is
         // ordinary. Answering 403 would make it look like a security event.
-        let root = sandbox();
+        let (root, _) = sandbox();
         assert_eq!(
             resolve(&root, "/img/absent.png").unwrap_err(),
             StatusCode::NOT_FOUND
@@ -219,13 +254,13 @@ mod tests {
 
     #[test]
     fn rejects_a_directory() {
-        let root = sandbox();
+        let (root, _) = sandbox();
         assert_eq!(resolve(&root, "/img").unwrap_err(), StatusCode::FORBIDDEN);
     }
 
     #[test]
     fn an_empty_path_is_a_bad_request() {
-        let root = sandbox();
+        let (root, _) = sandbox();
         assert_eq!(resolve(&root, "/").unwrap_err(), StatusCode::BAD_REQUEST);
     }
 
