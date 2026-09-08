@@ -133,14 +133,17 @@ jobs:
       # `base: ""` forces a full-history scan. Left unset, the action derives a
       # diff range from the event — and this workflow is reached through
       # workflow_call, where that derivation is not reliable.
+      #
+      # Do NOT add `--fail` to extra_args: the action passes it already, and
+      # trufflehog rejects a repeated flag outright ("flag 'fail' cannot be
+      # repeated"), which reads like a scanner failure rather than a typo.
       - name: TruffleHog
         id: trufflehog
         continue-on-error: true
         uses: trufflesecurity/trufflehog@v3.97.4
         with:
           base: ''
-          head: ${{ github.sha }}
-          extra_args: --results=verified --fail
+          extra_args: --results=verified
 
       - name: Upload security artifacts
         uses: actions/upload-artifact@v4
