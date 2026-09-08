@@ -51,18 +51,26 @@ windows = { version = "0.62", features = [
 ] }
 
 [features]
+# Marklet ships as TWO products from one codebase. `default` is the lite
+# edition, because a feature that forgets to declare its edition should land in
+# the constrained one and fail the gate loudly, rather than land in the generous
+# one and never be noticed.
 default = []
 
+# The full edition. Everything the lite budget cannot afford.
+full = ["full-encodings", "regex-search"]
+
 # Mermaid is NOT a cargo feature. Its 750 KB live in the frontend bundle, so the
-# lite build is driven by the `MARKLET_LITE=1` environment variable, which makes
-# Vite stub the import out. Gating it here would have gated nothing.
-# See docs/size-budget.md.
+# edition is also carried by `MARKLET_EDITION`, which Vite reads. Gating Mermaid
+# here would have gated nothing. See docs/editions.md.
 
 # encoding_rs + chardetng for universal (CJK) encoding detection. ~+500 KB.
-# v1 ships BOM sniff -> UTF-8 -> Windows-1252 only.
+# Lite ships BOM sniff -> UTF-8 -> Windows-1252 only, which covers the vast
+# majority of real-world .md on a Western machine.
 full-encodings = ["dep:encoding_rs", "dep:chardetng"]
 
 # Full regex vault search via the ripgrep stack. ~+1.2-1.8 MB.
+# Lite ships literal multi-term AND, which covers the common case at no cost.
 regex-search = ["dep:grep-regex", "dep:grep-searcher", "dep:ignore"]
 
 [dependencies.encoding_rs]

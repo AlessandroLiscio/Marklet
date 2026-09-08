@@ -1,0 +1,72 @@
+# =============================================================================
+# TESTS
+# =============================================================================
+# Where each kind of test runs, and why:
+#
+#   Render correctness (golden fixtures)  ubuntu — OS-independent, so pay the
+#                                         cheap runner for it
+#   Pure TypeScript logic (vitest)        ubuntu — same reason
+#   Registry, file association, PrintToPdf  windows — #[cfg(windows)], and a
+#                                         mock would only test the mock
+#
+# The --no-default-features leg is not redundant. The render core is used
+# headless by MD_HTML=1 and must not acquire a dependency on a default feature;
+# that regression compiles fine in the normal build and only shows up here.
+# =============================================================================
+
+name: Tests
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    # Load-bearing: forms the required-check context "code-test / Tests".
+    # See main.yml.
+    name: Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Linux system dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev build-essential \
+            curl wget file pkg-config libgtk-3-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: test-${{ matrix.os }}
+
+      - name: cargo test
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: cargo test (no default features)
+        run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features
+
+      - uses: actions/setup-node@v5
+        if: matrix.os == 'ubuntu-22.04'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: vitest
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          npm ci
+          npm test

@@ -5,8 +5,24 @@ integration, and a web frontend that owns presentation. This document records **
 piece is what it is, including what was rejected — that is the part that stops a decision
 from being relitigated every six months.
 
-The governing constraint is stated once and applies everywhere: **lightweight wins**. When a
-feature and the size budget disagree, the feature is cut or deferred.
+## Two editions, one codebase
+
+The governing constraint is not global. **Marklet Lite** is held to 2.8 MiB and 1200 ms, and
+there lightweight wins over every feature. **Marklet (full)** is deliberately outside that
+rule and may spend bytes on typography, motion, tabs, regex search, CJK detection and an
+updater. [`editions.md`](editions.md) is the canonical comparison.
+
+Two switches, because the difference lives in two places and neither can gate the other's
+weight: `MARKLET_EDITION` is read by Vite and decides the bundle; `--features full` is read
+by Cargo and decides the binary. Both default to lite, so a feature that forgets to declare
+its edition fails the tight gate loudly instead of slipping into the loose one.
+
+One rule spans both editions and is not negotiable in either: **nothing heavy on the boot
+path**. A document with no diagram must not pay for the diagram engine in either product,
+which is why every heavy dependency is reached through `import()` and why
+`npm run check:imports` fails the build regardless of edition.
+
+Everything below describes the shared architecture unless a row says otherwise.
 
 ## The stack, and its price
 

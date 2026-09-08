@@ -1,0 +1,63 @@
+# Formatting, linting and type checking. No tests, no builds — this job exists
+# to be fast, so a mistake in it is reported in a couple of minutes rather than
+# after a full Tauri build.
+name: Code Quality
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  quality:
+    # Load-bearing: with the `code-quality` job id in main.yml this forms the
+    # required-check context "code-quality / Code Quality".
+    name: Code Quality
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libssl-dev \
+            libayatana-appindicator3-dev librsvg2-dev build-essential \
+            curl wget file pkg-config libgtk-3-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: quality
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: rustfmt
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+
+      - name: clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: svelte-check
+        run: npm run check
+
+      # The size budget's most easily broken invariant, and the one a human
+      # reviewer will not catch: a heavy top-level import in src/main.ts turns a
+      # lazy chunk into a cold-start cost on every launch. Cheaper to assert
+      # than to discover from a size-gate failure six commits later.
+      - name: No heavy top-level imports on the boot path
+        run: npm run check:imports
+
+      - name: Contrast (WCAG AA)
+        run: npm run contrast

@@ -1,11 +1,11 @@
 name: Build
 
+# Called by main.yml on pull requests and on merges to main. It has no
+# triggers of its own: a `push` trigger here would duplicate every build the
+# orchestrator already schedules.
 on:
-  push:
-    branches: [main]
-  pull_request:
-  workflow_dispatch:
   workflow_call:
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -20,18 +20,21 @@ jobs:
         include:
           - name: windows-full
             os: windows-latest
-            lite: ""
+            edition: full
+            cargo-args: "--features full"
             artifact: marklet-setup
-          # The lite build drops Mermaid, which is roughly 750 KB of the
-          # installer for one feature. It is a first-class artifact, not a
-          # curiosity - see .claude/skills/size-budget/SKILL.md.
+          # Lite is not a stripped-down full. It is the product the size
+          # budget belongs to, and the only one that promises to stay small.
+          # See docs/editions.md.
           - name: windows-lite
             os: windows-latest
-            lite: "1"
+            edition: lite
+            cargo-args: ""
             artifact: marklet-lite-setup
           - name: linux-full
             os: ubuntu-22.04
-            lite: ""
+            edition: full
+            cargo-args: "--features full"
             artifact: marklet-linux
 
     steps:
@@ -58,12 +61,14 @@ jobs:
 
       - run: npm ci
 
-      # MARKLET_LITE reaches Vite through tauri's beforeBuildCommand, which is
-      # where Mermaid actually lives. There is no cargo feature for it.
+      # The edition is carried two ways because the difference lives in two
+      # places: MARKLET_EDITION reaches Vite through tauri's beforeBuildCommand
+      # and decides the bundle; --features full decides the binary. Neither
+      # switch can gate the other's weight.
       - name: Build
-        run: npx tauri build
+        run: npx tauri build -- ${{ matrix.cargo-args }}
         env:
-          MARKLET_LITE: ${{ matrix.lite }}
+          MARKLET_EDITION: ${{ matrix.edition }}
 
       - uses: actions/upload-artifact@v4
         with:

@@ -8,22 +8,38 @@ Do not create `.github/skills/`, `.github/agents/`, `.github/instructions/`, or 
 `*.agent.md` / `*.prompt.md` / `*.instructions.md` file. `.github/` holds workflows and
 nothing else.
 
-## The one rule that outranks the others
+## Two editions — read this before deciding anything
 
-**Lightweight wins.** When a feature and the size budget disagree, the budget wins and the
-feature gets cut or deferred. The budget is enforced by `.github/workflows/size-gate.yml`,
-not by good intentions:
+Marklet ships **two products from one codebase**. They have different rules, and applying
+one product's rule to the other is the most expensive mistake available here.
+[`docs/editions.md`](docs/editions.md) is the canonical table.
 
-| Artifact | Installer ceiling |
-|---|---|
-| `marklet-setup.exe` (full) | 3\_670\_016 B (3.5 MiB) |
-| `marklet-lite-setup.exe` (no Mermaid) | 2\_936\_013 B (2.8 MiB) |
+| | **Marklet Lite** | **Marklet** (full) |
+|---|---|---|
+| Installer ceiling | 2\_936\_013 B (2.8 MiB) — **a promise** | 12\_582\_912 B (12 MiB) — **a tripwire** |
+| Cold start ceiling | 1200 ms median | 1800 ms median |
+| Governing rule | lightweight wins over every feature | make it good; the ceiling only catches accidents |
 
-Cold start ceiling: 1200 ms median of 5 runs on `windows-latest`.
+**In lite, lightweight wins.** When a feature and the budget disagree, the budget wins and
+the feature is cut or moved to full. That constraint is the reason the project exists.
+
+**Full is deliberately not bound by it.** It may spend bytes on webfonts, motion, tabs,
+regex search, CJK detection, an updater — and on being genuinely well designed. Its ceiling
+is there to catch a 40 MB dependency added by mistake, not to shape decisions, and it is
+cheap to raise because nobody was promised it.
+
+What full is *not* allowed to do is put weight on the boot path. Everything heavy stays
+behind `import()` in **both** editions: a document with no diagram must not pay for the
+diagram engine in either product.
+
+Both switches default to lite — `MARKLET_EDITION` for the bundle, `--features full` for the
+binary. A feature that forgets to declare its edition lands in the constrained build and
+fails the gate loudly, rather than landing in the generous one unnoticed.
 
 Before adding **any** dependency — crate or npm package — read
-`.claude/skills/size-budget/SKILL.md` and report the measured xz size in your diff receipt.
-Adding a dependency without that measurement is an incomplete change.
+`.claude/skills/size-budget/SKILL.md`, say which edition it is for, and report the measured
+xz size in your diff receipt. A dependency without that measurement is an incomplete change
+in either edition.
 
 ## Architecture invariants
 
@@ -53,6 +69,24 @@ Adding a dependency without that measurement is an incomplete change.
   agent until the wave ends.
 - **Every change returns a diff receipt** with file paths and line ranges.
 - **Read the named skills first.** Do not work from memory on repository conventions.
+
+## Branch workflow
+
+`main` is protected by `.github/rulesets/protect-main.json`: no direct pushes, no
+force-pushes, pull request required, squash merge only, branch must be up to date, and five
+required checks. There are no bypass actors — an emergency fix goes through a branch like
+everything else.
+
+So: branch, push, open a PR, let CI run, squash-merge. Branch names are
+`<type>/<short-description>`. Commit and PR-title conventions are in
+[`CONTRIBUTING.md`](CONTRIBUTING.md); the trigger model and what each check does are in
+[`docs/ci-cd.md`](docs/ci-cd.md).
+
+**The required-check contexts are load-bearing strings.** Each is
+`<job id in main.yml> / <name: of the job inside the reusable workflow>`. Renaming either
+side blocks every merge until the ruleset is updated and re-applied.
+
+Never add an AI attribution trailer to a tag message.
 
 ## Development
 
@@ -87,6 +121,7 @@ first. Every CLI path must also exit before `tauri::Builder::build()`.
 | `tauri-ipc` | adding or changing a `#[tauri::command]` |
 | `win-integration` | touching the registry, file association, or the NSIS hooks |
 | `release` | cutting a version or changing the CI matrix |
+| `version-sync-check` | auditing release bookkeeping — read-only, safe any time |
 
 Design work additionally uses the `ui-ux-pro-max` plugin, enabled for this project in
 `.claude/settings.json`.
