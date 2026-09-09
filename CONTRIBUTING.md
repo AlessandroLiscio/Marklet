@@ -98,7 +98,16 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 npm run check && npm run check:imports && npm run contrast
 cargo test --manifest-path src-tauri/Cargo.toml
 npm test
+./scripts/check-windows.sh    # if you touched anything under #[cfg(windows)]
 ```
+
+`check-windows.sh` type-checks the Windows-only code from Linux in about twelve
+seconds. Without it the only way to learn whether that code compiles is to push and
+wait for `code-test / Tests (windows-latest)`; two round trips were spent that way
+before it existed, one of them on an error that is *only* wrong on Windows.
+
+It type-checks and nothing more — it does not link, does not run, and cannot tell you
+whether a registry write lands. Only `windows-latest` answers that.
 
 [`docs/ci-cd.md`](docs/ci-cd.md) explains the trigger model and why each check lives where
 it does.

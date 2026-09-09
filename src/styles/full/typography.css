@@ -27,13 +27,23 @@
  * `xz -9c <file> | wc -c` per .claude/skills/size-budget/SKILL.md and put
  * the real number in its own diff receipt before this ships:
  *
- *   src/assets/fonts/full/newsreader-variable.woff2         ~90-150 KB (est.) — opsz+wght axes
- *   src/assets/fonts/full/inter-variable.woff2               ~110-180 KB (est.) — wght+slnt axes
- *   src/assets/fonts/full/jetbrains-mono-variable.woff2      ~90-140 KB (est.) — wght axis, incl. italics
- *   src/assets/fonts/full/cormorant-garamond-variable.woff2  ~50-90 KB (est.) — wght axis only
- *   src/assets/fonts/full/libre-baskerville-regular.woff2    ~25-40 KB (est.) — static, no variable axis published
- *   src/assets/fonts/full/libre-baskerville-bold.woff2       ~25-40 KB (est.) — static, no variable axis published
- *   src/assets/fonts/full/ibm-plex-sans-variable.woff2       ~110-180 KB (est.) — wght axis
+ * MEASURED, not estimated (`xz -9c <file> | wc -c`, subset to latin+latin-ext
+ * with unused axes dropped). woff2 is already Brotli-compressed, so xz barely
+ * moves it — the raw size IS what the installer pays:
+ *
+ *   newsreader-variable.woff2          179 492 B — opsz+wght axes
+ *   inter-variable.woff2               171 140 B — wght+slnt axes
+ *   ibm-plex-sans-variable.woff2        57 232 B — wght axis
+ *   cormorant-garamond-variable.woff2   51 128 B — wght axis only
+ *   jetbrains-mono-variable.woff2       44 412 B — wght axis, incl. italics
+ *   libre-baskerville-bold.woff2        32 972 B — static, no variable axis published
+ *   libre-baskerville-regular.woff2     31 888 B — static, no variable axis published
+ *                                      ---------
+ *                                      567 864 B total
+ *
+ * That is 19% of Marklet Lite's ENTIRE 2.8 MiB ceiling, for typography, which
+ * is exactly why these are full-edition only and reached through a dynamic
+ * import lite never fires. Against full's 12 MiB tripwire it is comfortable.
  *
  * Total estimate: ~500-800 KB across all three pairings, well inside full's
  * 12 MiB tripwire even loaded eagerly, but load per-pairing lazily anyway —

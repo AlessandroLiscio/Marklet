@@ -1,68 +1,71 @@
-//! OS integration — Windows file association, context menu, and (later)
-//! whatever Linux needs.
+//! OS integration entry points. `cli.rs` calls these three functions
+//! directly for `--install` / `--uninstall` / `--unbind`; this module is
+//! just the per-platform dispatcher.
 //!
-//! **Stubs only.** Phase P6 implements the real HKCU registry work described
-//! in `.claude/skills/win-integration/SKILL.md`: the exact key list, the
-//! `--install`/`--unbind` round trip, `SHChangeNotify` after every change.
-//! Do not write registry code here yet, and do not add `windows.rs` /
-//! `linux.rs` before that phase — the key list belongs in exactly one file
-//! once it exists, per the skill's rule 6, and an early split with nothing
-//! real in it just invites the two copies it warns about.
-//!
-//! Every function here currently just logs what it would do and returns
-//! `Ok(())`, so `cli.rs` and the NSIS hooks (`--install --silent` /
-//! `--uninstall --silent`) already have a stable contract to build against.
+//! - Windows: `windows.rs` is the single source of truth for every HKCU
+//!   registry key Marklet writes. See the exact list in
+//!   `.claude/skills/win-integration/SKILL.md`. `installer/hooks.nsh` shells
+//!   out to `marklet.exe --install/--uninstall --silent` rather than
+//!   duplicating that list — two copies of a registry key list drift, and
+//!   the symptom is orphaned keys nobody notices for months.
+//! - Linux: `linux.rs` writes a `.desktop` entry plus a small shared-mime-info
+//!   package (for the `.mdown`/`.mkd` globs that `text/markdown` doesn't
+//!   already carry) via `xdg-mime`, and best-effort refreshes
+//!   `update-desktop-database`. Best-effort because Linux is the dev target
+//!   here (see root `CLAUDE.md`), not every dev box has `desktop-file-utils`
+//!   installed, and a missing refresh tool must not fail the CLI.
+//! - Everything else: a documented no-op, so the contract stays stable on
+//!   hosts this project doesn't ship to.
 
+#[cfg(not(any(windows, target_os = "linux")))]
 use std::io;
 
-/// Would write the `Marklet.Document` ProgID and the `OpenWithProgids` keys
-/// for `.md`/`.markdown`/`.mdown`/`.mkd`, all under HKCU, then call
-/// `SHChangeNotify(SHCNE_ASSOCCHANGED, ...)`. See the key list in
-/// `.claude/skills/win-integration/SKILL.md`.
+#[cfg(target_os = "linux")]
+mod linux;
+#[cfg(windows)]
+mod windows;
+
+#[cfg(windows)]
+pub use windows::{install, unbind, uninstall};
+
+#[cfg(target_os = "linux")]
+pub use linux::{install, unbind, uninstall};
+
+/// Registers the file association / desktop integration. No-op outside
+/// Windows and Linux.
+#[cfg(not(any(windows, target_os = "linux")))]
 pub fn install(silent: bool) -> io::Result<()> {
-    log(
-        silent,
-        "--install is not implemented yet (phase P6) — would write the HKCU \
-         file-association keys and notify Explorer",
-    );
+    log(silent, "--install has no effect on this platform");
     Ok(())
 }
 
-/// Would do everything `unbind` does, plus remove the
-/// `SystemFileAssociations\\.md\\shell\\marklet` context-menu verb.
+/// `unbind` plus context-menu verbs. No-op outside Windows and Linux.
+#[cfg(not(any(windows, target_os = "linux")))]
 pub fn uninstall(silent: bool) -> io::Result<()> {
-    log(
-        silent,
-        "--uninstall is not implemented yet (phase P6) — would remove the \
-         context-menu verb and every key --install wrote",
-    );
+    log(silent, "--uninstall has no effect on this platform");
     Ok(())
 }
 
-/// Would remove every key `install` wrote, and every parent key left empty —
-/// `reg query HKCU\\Software\\Classes /f marklet /s` must return nothing
-/// afterwards, per the skill's round-trip contract.
+/// Removes everything `install` wrote. No-op outside Windows and Linux.
+#[cfg(not(any(windows, target_os = "linux")))]
 pub fn unbind(silent: bool) -> io::Result<()> {
-    log(
-        silent,
-        "--unbind is not implemented yet (phase P6) — would remove the HKCU \
-         file-association keys and notify Explorer",
-    );
+    log(silent, "--unbind has no effect on this platform");
     Ok(())
 }
 
+#[cfg(not(any(windows, target_os = "linux")))]
 fn log(silent: bool, message: &str) {
     if !silent {
         eprintln!("marklet: {message}");
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(any(windows, target_os = "linux"))))]
 mod tests {
     use super::*;
 
     #[test]
-    fn stubs_currently_succeed() {
+    fn fallback_stubs_currently_succeed() {
         assert!(install(true).is_ok());
         assert!(uninstall(true).is_ok());
         assert!(unbind(true).is_ok());

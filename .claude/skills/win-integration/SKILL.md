@@ -43,6 +43,29 @@ HKCU\Software\Classes\Directory\Background\shell\marklet_vault\command
 default is the user's decision, taken in the Windows settings dialog or in our own settings
 panel — never a side effect of installing.
 
+### Why `bundle.fileAssociations` is absent from `tauri.conf.json`
+
+**Do not add it back.** It looks like the obvious place to declare `.md`, and it quietly does
+the opposite of what this file says.
+
+Whenever that block is present, Tauri's NSIS bundler inserts its own `APP_ASSOCIATE` macro
+into the generated installer, *in addition to* `installerHooks` rather than instead of it —
+`installer.nsi` calls it at line 666, our `NSIS_HOOK_POSTINSTALL` runs at line 733. The macro
+body is unambiguous (`FileAssociation.nsh:73`):
+
+```nsis
+WriteRegStr SHELL_CONTEXT "Software\Classes\.${EXT}" "" "${FILECLASS}"
+```
+
+An empty value name is the key's **default** value, so that line sets the extension's default
+handler outright. Every Windows install would have made Marklet the default `.md` opener
+without asking — the exact behaviour the paragraph above forbids, arriving through a config
+field rather than through any code in this repository.
+
+`hooks.nsh` shelling out to `marklet.exe --install --silent` is therefore the *only* Windows
+association mechanism, which is what that file already claimed to be. Verified against
+`tauri-apps/tauri@dev`, not inferred.
+
 After every write and every removal:
 
 ```rust
@@ -125,3 +148,14 @@ is the entire reason a GUI binary has a CLI at all.
 Registry, file association and `PrintToPdf` are tested **only** on `windows-latest`, behind
 `#[cfg(windows)]`. Do not attempt to test them from WSL2 — there is no registry there, and a
 mock would only test the mock.
+
+**Do type-check them locally, though.** `./scripts/check-windows.sh` compiles the platform
+module against `x86_64-pc-windows-gnu` in about twelve seconds, copying the dependency block
+straight out of `src-tauri/Cargo.toml` so it cannot drift from the real build. It exists
+because two CI round trips were spent on compile errors that only appear on Windows — one of
+them `windows_registry::Error`, which the crate glob-re-exports without re-exporting the
+path, so the type is unnameable there and perfectly fine to write on Linux.
+
+`cargo check --target x86_64-pc-windows-gnu` on the whole crate does *not* work here:
+`tauri-build` runs `tauri-winres`, which needs mingw binutils and therefore a package
+install. The platform module has no crate-internal dependencies, so it is checked alone.

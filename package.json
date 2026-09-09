@@ -21,6 +21,7 @@
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@tauri-apps/cli": "^2.11.4",
+    "happy-dom": "^20.14.0",
     "svelte": "^5.57.0",
     "svelte-check": "^4.7.6",
     "typescript": "^5.9.3",
@@ -28,7 +29,10 @@
     "vitest": "^5.0.0"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.11.1"
+    "@tauri-apps/api": "^2.11.1",
+    "highlight.js": "^11.12.0",
+    "katex": "^0.18.7",
+    "mermaid": "^11.17.2"
   },
-  "//": "Lazy-loaded rendering deps (mermaid, katex, highlight.js) and editor deps (@codemirror/*) are added in phases P4 and P7 respectively. They must never be imported at module top level in src/main.ts. See .claude/skills/size-budget/SKILL.md."
+  "//": "mermaid/katex/highlight.js (P4) are reached only via import() from src/lib/rich/index.ts's enrich() — never from src/main.ts or any static import; npm run check:imports enforces it. Editor deps (@codemirror/*) land in P7 the same way. See .claude/skills/size-budget/SKILL.md. happy-dom is test-only (tests/unit/rich-enrich.test.ts's @vitest-environment override) and never ships."
 }
