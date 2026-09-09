@@ -28,6 +28,8 @@
 //! assume a warm cache — which is the state a user's own vault is in.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::OnceLock;
 use std::time::Instant;
 
 use marklet::vault::{index::Index, scan, search, Query};
@@ -187,7 +189,31 @@ fn rss_bytes() -> Option<u64> {
 /// Every note links to two others by stem, so the backlink graph is real rather
 /// than empty, and one note in fifty carries both search terms so the AND has a
 /// known answer to be checked against.
+///
+/// **Generated at most once per process.** Every test in this file shares one
+/// fixture and `cargo test` runs them on separate threads, so without this
+/// barrier each of them checked the marker, found nothing, and raced to
+/// `remove_dir_all` the vault and rewrite all 5 000 notes underneath the
+/// others. That is not merely a slow fixture, it is a *wrong* one: a
+/// regeneration landing between the cold index build and the warm one gives
+/// every note a new mtime, the cache correctly refuses keys that no longer
+/// describe the file on disk, and `warm.cached == NOTES` fails for a vault that
+/// genuinely did change. The same race also failed the two `expect`s below
+/// outright, when one thread deleted the tree another was writing into.
+///
+/// It never reproduced on a developer's machine because the marker from the
+/// previous run short-circuits every thread before it can generate anything;
+/// only a fresh runner has all of them arrive cold at once.
 fn generated_vault() -> PathBuf {
+    static VAULT: OnceLock<PathBuf> = OnceLock::new();
+    VAULT.get_or_init(generate_vault).clone()
+}
+
+/// Counts the generations that actually wrote files, for the regression test.
+/// The marker path writes nothing, so a reused vault leaves this at 0.
+static GENERATIONS: AtomicUsize = AtomicUsize::new(0);
+
+fn generate_vault() -> PathBuf {
     let base = std::env::temp_dir().join(format!("marklet-vault-perf-{NOTES}"));
     let root = base.join("vault");
     let marker = base.join(".generated");
@@ -196,6 +222,7 @@ fn generated_vault() -> PathBuf {
         return root.canonicalize().expect("canonical vault root");
     }
 
+    GENERATIONS.fetch_add(1, Ordering::Relaxed);
     let _ = std::fs::remove_dir_all(&base);
     for f in 0..FOLDERS {
         std::fs::create_dir_all(root.join(format!("folder-{f:02}"))).expect("folder");
@@ -294,6 +321,55 @@ fn a_runtime_chosen_search_mode_keeps_both_paths_linked() {
     // `regex_unavailable`, so the UI can say "regex needs the full edition"
     // instead of letting the user conclude the vault is empty.
     assert_eq!(hits > 0, !unavailable, "{hits} hits, regex={regex}");
+}
+
+/// The fixture is built once, however many tests ask for it at the same moment.
+///
+/// This is the regression test for a green local suite and a red CI one. The
+/// tests in this file share a generated vault; each of them used to check the
+/// marker and then regenerate, so on a fresh runner several threads rewrote the
+/// same 5 000 files at once. Whichever test was between its cold and warm index
+/// build when a neighbour rewrote the notes saw every mtime move, and
+/// `warm.cached == NOTES` reported a fraction — 1 086 of 5 000 on the run that
+/// found this.
+///
+/// It hammers `generated_vault` from more threads than the harness itself uses.
+/// Reverting the barrier fails it 4 times out of 4 on an empty temp directory
+/// and passes it every time on a populated one — which is the honest shape of
+/// this test and the whole reason the bug lived: a CI runner is always the
+/// first case and a developer's machine, after one run, is always the second.
+/// It fires where the defect is, not where it is convenient to observe.
+#[test]
+fn the_generated_vault_is_built_at_most_once_per_process() {
+    let roots: Vec<PathBuf> = std::thread::scope(|scope| {
+        let threads: Vec<_> = (0..8).map(|_| scope.spawn(generated_vault)).collect();
+        threads
+            .into_iter()
+            .map(|t| {
+                t.join()
+                    .expect("no thread was left generating a half-deleted vault")
+            })
+            .collect()
+    });
+
+    assert!(
+        roots.windows(2).all(|w| w[0] == w[1]),
+        "every caller got the same vault: {roots:?}"
+    );
+    let generations = GENERATIONS.load(Ordering::Relaxed);
+    assert!(
+        generations <= 1,
+        "the vault was written {generations} times; concurrent callers must wait, not regenerate"
+    );
+    // Whatever the count, the vault the callers were handed is whole — a
+    // barrier that let a caller through mid-generation would pass the count
+    // and still hand out a tree that is still being written.
+    assert_eq!(
+        std::fs::read_dir(roots[0].join("folder-00"))
+            .expect("the first folder exists")
+            .count(),
+        NOTES / FOLDERS
+    );
 }
 
 /// The vault must never read outside its root, whatever a note asks for.

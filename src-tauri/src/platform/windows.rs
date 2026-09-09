@@ -337,11 +337,28 @@ mod tests {
         unbind(true).expect("unbind");
 
         assert!(classes.open(PROG_ID).is_err(), "ProgID key survived unbind");
+
+        // `OpenWithProgids` is a SHARED key: every application that can open a
+        // `.md` lists its own ProgID there. What unbind must remove is our
+        // value; what it must NOT remove is the key itself when someone else is
+        // still listed in it. Deleting a shared key would silently un-register
+        // every other editor on the machine — the same class of harm the
+        // `OpenWithProgids`-rather-than-default-handler decision exists to
+        // avoid, arriving through cleanup instead of through install.
+        //
+        // The first version of this test asserted the key was gone. It passed
+        // nowhere and would have been "fixed" by making unbind destructive.
         for ext in EXTENSIONS {
-            assert!(
-                classes.open(format!("{ext}\\OpenWithProgids")).is_err(),
-                "{ext}\\OpenWithProgids survived unbind"
-            );
+            match classes.open(format!("{ext}\\OpenWithProgids")) {
+                // Key gone: correct, and only possible when we were the only
+                // application listed.
+                Err(_) => {}
+                // Key survives: correct only if OUR value is gone from it.
+                Ok(key) => assert!(
+                    key.get_string(PROG_ID).is_err(),
+                    "{ext}\\OpenWithProgids still lists {PROG_ID} after unbind"
+                ),
+            }
         }
         assert!(
             classes

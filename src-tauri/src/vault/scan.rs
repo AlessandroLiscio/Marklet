@@ -371,6 +371,45 @@ mod tests {
     }
 
     #[test]
+    fn the_size_and_mtime_a_walk_reports_are_stable_and_match_a_fresh_stat() {
+        // `size` and `mtime_ms` are not decoration: the index persists them as
+        // its per-file cache key, so a walk that reported them differently from
+        // one run to the next — or differently from a plain `stat` of the same
+        // path — would make every warm build miss and the cache worthless,
+        // silently and only on the filesystem where the two disagree.
+        //
+        // `entry.metadata()` is `walkdir`'s, taken during the walk;
+        // `stat` is `std::fs::metadata`, taken after it. The walk yields no
+        // symlinks (see `a_symlink_pointing_outside_the_vault_is_not_walked`),
+        // which is what lets the two be required to agree: on a symlink they
+        // would not, one following the link and one describing it.
+        let s = Sandbox::new("scan-metadata-stable");
+        for i in 0..64 {
+            s.note(
+                &format!("folder-{}/n{i:02}.md", i % 4),
+                &format!("# {i}\n\n{}\n", "x".repeat(i)),
+            );
+        }
+
+        let first = all(s.root());
+        let second = all(s.root());
+        assert_eq!(
+            first, second,
+            "two walks of an unchanged tree report the same entries"
+        );
+
+        for entry in first.iter().filter(|e| !e.dir) {
+            let fresh = stat(&s.root().join(&entry.path)).expect("the note is still there");
+            assert_eq!(
+                (entry.size, entry.mtime_ms),
+                fresh,
+                "{} disagrees with a fresh stat",
+                entry.path
+            );
+        }
+    }
+
+    #[test]
     fn a_false_from_the_callback_cancels() {
         let s = Sandbox::new("scan-cancel");
         for i in 0..10 {
