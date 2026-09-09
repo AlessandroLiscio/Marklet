@@ -370,6 +370,33 @@ mod tests {
         assert_eq!(batches, 4, "10 entries in batches of 3");
     }
 
+    /// Blocks until every file's `(size, mtime)` stops changing.
+    ///
+    /// Bounded, and a timeout is not a failure: on a filesystem that settles
+    /// immediately the first two passes already agree and this returns at once.
+    fn settle(root: &Path) {
+        fn snapshot(root: &Path) -> Vec<(String, Option<(u64, u64)>)> {
+            all(root)
+                .into_iter()
+                .filter(|e| !e.dir)
+                .map(|e| {
+                    let st = stat(&root.join(&e.path));
+                    (e.path, st)
+                })
+                .collect()
+        }
+
+        let mut previous = snapshot(root);
+        for _ in 0..40 {
+            std::thread::sleep(std::time::Duration::from_millis(25));
+            let current = snapshot(root);
+            if current == previous {
+                return;
+            }
+            previous = current;
+        }
+    }
+
     #[test]
     fn the_size_and_mtime_a_walk_reports_are_stable_and_match_a_fresh_stat() {
         // `size` and `mtime_ms` are not decoration: the index persists them as
@@ -390,6 +417,17 @@ mod tests {
                 &format!("# {i}\n\n{}\n", "x".repeat(i)),
             );
         }
+
+        // Wait for the tree to actually be unchanged before asserting that it
+        // is. NTFS updates a file's last-write time lazily — it can still
+        // settle after the handle closes — so two back-to-back walks of a
+        // just-written tree can legitimately disagree on Windows while
+        // agreeing everywhere else. That is not the property under test: the
+        // index cache compares two walks of a tree nobody is writing to.
+        //
+        // Polled through `stat`, deliberately, so the settling check does not
+        // use the same code path as the assertion and make this circular.
+        settle(s.root());
 
         let first = all(s.root());
         let second = all(s.root());

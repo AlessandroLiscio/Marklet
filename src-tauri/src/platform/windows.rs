@@ -276,17 +276,40 @@ fn remove_key_and_empty_ancestors(classes: &Key, full_path: &str) -> io::Result<
 /// walks the same empty-ancestor cleanup as [`remove_key_and_empty_ancestors`].
 /// Used for `.md\OpenWithProgids`, where `Marklet.Document` is a *value*
 /// under the key, not a subkey.
+/// Removes one value from a shared key, then the key itself only if nothing
+/// else remains in it.
+///
+/// Two details here were bugs, and both were invisible for the same reason.
+///
+/// `Key::open` opens **read-only** — `remove_value` on that handle fails with
+/// access denied, and the original `let _ = key.remove_value(..)` threw the
+/// error away, so `unbind` reported success while removing nothing. The value
+/// survived every uninstall. `options().read().write().open()` asks for the
+/// access this function actually needs; plain `create()` would be wrong, since
+/// it resurrects a key we may be about to delete.
+///
+/// The error is no longer discarded. `remove_value` fails both when the value
+/// is absent and when it cannot be removed, and those are opposite outcomes —
+/// so absence is established first, by reading, and only a genuine removal
+/// failure propagates.
 fn remove_value_and_clean(classes: &Key, key_path: &str, value_name: &str) -> io::Result<()> {
-    let key = match classes.open(key_path) {
+    let key = match classes.options().read().write().open(key_path) {
         Ok(k) => k,
+        // The key does not exist, so neither does our value in it.
         Err(_) => return Ok(()),
     };
-    let _ = key.remove_value(value_name);
+
+    if key.get_string(value_name).is_ok() {
+        key.remove_value(value_name).map_err(reg_err)?;
+    }
+
     let empty = is_empty(&key)?;
     drop(key);
     if empty {
         remove_key_and_empty_ancestors(classes, key_path)
     } else {
+        // Someone else is still registered for this extension. Removing the
+        // key here would un-register every other application that opens .md.
         Ok(())
     }
 }
