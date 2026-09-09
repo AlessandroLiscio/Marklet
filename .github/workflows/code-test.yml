@@ -86,9 +86,18 @@ jobs:
           & $exe --unbind --silent
           if ($LASTEXITCODE -ne 0) { throw "marklet --unbind exited $LASTEXITCODE" }
 
-          $leftover = (reg query 'HKCU\Software\Classes' /f marklet /s 2>$null)
-          if ($leftover) {
-            throw "residual 'marklet' registry entries survived --unbind:`n$leftover"
+          # `reg query` prints "End of search: 0 match(es) found." and exits 1
+          # when it finds NOTHING, so testing its output for truthiness reports
+          # a clean uninstall as a failure — which is what this step did on its
+          # first three runs, while --unbind was working correctly.
+          #
+          # Only lines naming an actual key are leftovers.
+          $leftover = @(
+            reg query 'HKCU\Software\Classes' /f marklet /s 2>$null |
+              Where-Object { $_ -match '^HKEY_CURRENT_USER\\' }
+          )
+          if ($leftover.Count -gt 0) {
+            throw "residual 'marklet' registry entries survived --unbind:`n$($leftover -join "`n")"
           }
 
           Write-Host "Registry round trip OK: --install wrote the association, --unbind left zero residual keys."
