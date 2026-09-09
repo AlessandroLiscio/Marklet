@@ -102,6 +102,12 @@ jobs:
 
           Write-Host "Registry round trip OK: --install wrote the association, --unbind left zero residual keys."
 
+          # `reg query` set $LASTEXITCODE to 1 by finding nothing, and pwsh fails
+          # the step on the last exit code — so the previous run printed this
+          # success line and then failed anyway. Everything above throws on a
+          # real problem; reaching here means there was none.
+          exit 0
+
       - uses: actions/setup-node@v5
         if: matrix.os == 'ubuntu-22.04'
         with:
