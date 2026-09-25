@@ -171,6 +171,28 @@
     return false;
   }
 
+  /**
+   * A diagram asked to be written beside the document.
+   *
+   * Raised by `src/lib/rich/mermaid.ts`'s fullscreen viewer, which has the SVG
+   * but knows nothing about which file is open and must not call `invoke`
+   * itself. The bytes go through the same command a pasted image does: it
+   * already writes into `assets/`, already picks a non-colliding name, and
+   * already refuses anything that is not an image format.
+   */
+  function onSaveAsset(event: Event): void {
+    const detail = (event as CustomEvent<{ bytes?: Uint8Array; ext?: string; error?: string }>)
+      .detail;
+    if (detail.error) {
+      say(detail.error, true);
+      return;
+    }
+    if (!doc || !detail.bytes || !detail.ext) return;
+    void savePastedImage(doc.path, detail.bytes, detail.ext)
+      .then((relative) => say(`Saved ${relative}`))
+      .catch((error: unknown) => say(reason(error), true));
+  }
+
   function onKeyDown(event: KeyboardEvent): void {
     if (edit?.handleKey(event)) return;
     exportShortcut(event);
@@ -193,6 +215,7 @@
         onError: (message) => say(message, true),
       });
       window.addEventListener('keydown', onKeyDown);
+      document.addEventListener('marklet-save-asset', onSaveAsset as EventListener);
     }
     if (root) {
       // Enrich whatever the boot script already put on screen. The first paint
@@ -229,6 +252,7 @@
     return () => {
       root?.removeEventListener('click', onDocClick);
       window.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('marklet-save-asset', onSaveAsset as EventListener);
     };
   });
 

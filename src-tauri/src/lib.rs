@@ -99,6 +99,15 @@ pub fn run(job: cli::WindowJob, started: Instant) {
         boot_script.push_str(&vault_boot_script(path));
     }
 
+    // `--settings` is a panel in this window, not a second one. A separate
+    // settings window is another WebView2 instance, roughly 40 MB RSS, for a
+    // surface with nine controls on it. The flag therefore reaches the frontend
+    // the same way the document does — before the window exists — so the panel
+    // is open on the first frame rather than opening visibly a moment later.
+    if job.settings {
+        boot_script.push_str("window.__MARKLET_SETTINGS__ = true;");
+    }
+
     let protocol_root = root.clone();
     let watch_target = if launch_is_vault {
         None

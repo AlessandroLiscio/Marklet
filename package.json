@@ -12,7 +12,6 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "wdio run tests/e2e/wdio.conf.ts",
     "tauri": "tauri",
     "contrast": "node scripts/check-contrast.mjs",
     "check:imports": "node scripts/check-imports.mjs",

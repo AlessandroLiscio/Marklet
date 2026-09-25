@@ -72,8 +72,6 @@ pub struct WindowJob {
     pub file: Option<PathBuf>,
     /// `--settings`: open the settings window.
     pub settings: bool,
-    /// `PORT` — dev server port for live reload.
-    pub port: Option<u16>,
     /// `MD_EDITOR` — external editor path for F4.
     pub editor: Option<String>,
 }
@@ -84,7 +82,6 @@ pub enum ParseError {
     UnknownFlag(String),
     MissingArgument(&'static str),
     TooManyArguments(String),
-    InvalidPort(String),
 }
 
 impl std::fmt::Display for ParseError {
@@ -93,7 +90,6 @@ impl std::fmt::Display for ParseError {
             ParseError::UnknownFlag(flag) => write!(f, "unknown flag: {flag}"),
             ParseError::MissingArgument(msg) => write!(f, "{msg}"),
             ParseError::TooManyArguments(arg) => write!(f, "unexpected extra argument: {arg}"),
-            ParseError::InvalidPort(value) => write!(f, "invalid PORT value: {value}"),
         }
     }
 }
@@ -111,7 +107,6 @@ impl std::error::Error for ParseError {}
 pub struct Env {
     pub md_html: Option<String>,
     pub md_html_output: Option<String>,
-    pub port: Option<String>,
     pub md_editor: Option<String>,
 }
 
@@ -120,7 +115,6 @@ impl Env {
         Env {
             md_html: env::var("MD_HTML").ok(),
             md_html_output: env::var("MD_HTML_OUTPUT").ok(),
-            port: env::var("PORT").ok(),
             md_editor: env::var("MD_EDITOR").ok(),
         }
     }
@@ -129,7 +123,7 @@ impl Env {
 // ---------------------------------------------------------------------
 // The parser — roughly 120 lines, replacing what `clap` would cost 350-450 KB
 // to do. Flags: <file.md>, --install, --uninstall, --unbind, --settings,
-// --help, --version, --benchmark, --silent. Env: PORT, MD_HTML,
+// --help, --version, --benchmark, --silent. Env: MD_HTML,
 // MD_HTML_OUTPUT, MD_EDITOR.
 // ---------------------------------------------------------------------
 
@@ -216,19 +210,15 @@ pub fn parse_with_env(args: &[String], env: &Env) -> Result<Mode, ParseError> {
         }));
     }
 
-    let port = match env.port.as_deref() {
-        Some(value) => Some(
-            value
-                .parse::<u16>()
-                .map_err(|_| ParseError::InvalidPort(value.to_string()))?,
-        ),
-        None => None,
-    };
-
+    // There is deliberately no `PORT`. An earlier draft of this CLI carried one
+    // because mdview runs a local HTTP server; Marklet does not. Local images
+    // are served by the `marklet://` scheme inside the webview and live reload
+    // is a `notify` watcher emitting a Tauri event, so there is no port for a
+    // number to configure. Parsing one and ignoring it is worse than not
+    // offering it: it reads as a feature in `--help` and fails silently.
     Ok(Mode::Window(WindowJob {
         file: file.map(PathBuf::from),
         settings,
-        port,
         editor: env.md_editor.clone(),
     }))
 }
@@ -397,7 +387,12 @@ fn cmd_benchmark(file: &Path) -> i32 {
     let _doc = render::render(&bytes, render::RenderOpts::default());
     let elapsed_ms = start.elapsed().as_millis();
 
-    // The release workflow's cold-start gate greps exactly this string.
+    // Same key as the window path's line in `lib.rs`, deliberately: both are
+    // "how long until there is something to read", measured at the only point
+    // each path can measure it. This one is render alone and is REPORTED by
+    // release.yml's cold-start gate, not gated by it — it is single-digit
+    // milliseconds and would pass any ceiling, so letting it stand in for the
+    // windowed number would be a gate that cannot fail.
     eprintln!("boot-ms={elapsed_ms}");
     0
 }
@@ -427,7 +422,6 @@ fn help_text() -> String {
          \x20   --version            Show the version\n\
          \n\
          ENVIRONMENT:\n\
-         \x20   PORT                 Dev server port for live reload\n\
          \x20   MD_HTML=1            Render FILE to standalone HTML on stdout, then exit\n\
          \x20   MD_HTML_OUTPUT       Write MD_HTML output to this path instead of stdout\n\
          \x20   MD_EDITOR            External editor launched by F4\n",
@@ -459,7 +453,6 @@ mod tests {
             Mode::Window(WindowJob {
                 file: None,
                 settings: false,
-                port: None,
                 editor: None,
             })
         );
@@ -516,7 +509,6 @@ mod tests {
             Mode::Window(WindowJob {
                 file: None,
                 settings: true,
-                port: None,
                 editor: None,
             })
         );
@@ -530,7 +522,6 @@ mod tests {
             Mode::Window(WindowJob {
                 file: None,
                 settings: false,
-                port: None,
                 editor: None,
             })
         );
@@ -550,7 +541,6 @@ mod tests {
             Mode::Window(WindowJob {
                 file: Some(PathBuf::from("notes.md")),
                 settings: false,
-                port: None,
                 editor: None,
             })
         );
@@ -649,38 +639,9 @@ mod tests {
             Mode::Window(WindowJob {
                 file: Some(PathBuf::from("doc.md")),
                 settings: false,
-                port: None,
                 editor: None,
             })
         );
-    }
-
-    #[test]
-    fn port_env_is_parsed() {
-        let env = Env {
-            port: Some("4173".to_string()),
-            ..Env::default()
-        };
-        let mode = parse_with_env(&args(&[]), &env).unwrap();
-        assert_eq!(
-            mode,
-            Mode::Window(WindowJob {
-                file: None,
-                settings: false,
-                port: Some(4173),
-                editor: None,
-            })
-        );
-    }
-
-    #[test]
-    fn invalid_port_env_is_an_error() {
-        let env = Env {
-            port: Some("not-a-port".to_string()),
-            ..Env::default()
-        };
-        let err = parse_with_env(&args(&[]), &env).unwrap_err();
-        assert_eq!(err, ParseError::InvalidPort("not-a-port".to_string()));
     }
 
     #[test]
@@ -695,7 +656,6 @@ mod tests {
             Mode::Window(WindowJob {
                 file: None,
                 settings: false,
-                port: None,
                 editor: Some("/usr/bin/vim".to_string()),
             })
         );

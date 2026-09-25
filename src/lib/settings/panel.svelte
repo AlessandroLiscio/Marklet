@@ -20,7 +20,10 @@
 
   const EDITION: 'lite' | 'full' = __MARKLET_EDITION__;
 
-  let open = $state(false);
+  // `marklet --settings` opens the panel with the window, not after it: the
+  // flag is injected by `lib.rs` into the same boot script that carries the
+  // document, so this is known before the first paint.
+  let open = $state(typeof window !== 'undefined' && window.__MARKLET_SETTINGS__ === true);
   let settings = $state<Settings>({ ...DEFAULT_SETTINGS });
   let loaded = $state(false);
 

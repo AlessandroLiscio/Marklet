@@ -69,19 +69,23 @@ deliberately not bound by it and is allowed to spend bytes on being good.
 | Tables, footnotes, task lists, frontmatter, local images | ✅ | ✅ |
 | Syntax highlighting, KaTeX math | ✅ | ✅ |
 | Editing — F2 live preview, F3 dual column, F4 external editor | ✅ | ✅ |
+| Export — PDF, standalone HTML, diagram SVG and PNG | ✅ | ✅ |
 | Vault — tree, `[[wiki-links]]`, backlinks | ✅ | ✅ |
 | **Mermaid diagrams** | ✗ | ✅ with fullscreen zoom and pan |
 | **Vault search** | literal, multi-term | ✅ plus full regex |
 | **Encoding** | BOM, UTF-8, UTF-16, cp1252 | ✅ plus CJK auto-detection |
 | **Typography** | system fonts only | ✅ curated bundled pairings, multiple palettes |
 | **Motion** | CSS state changes only | ✅ considered transitions |
-| **Tabs** | ✗ | ✅ |
-| **Settings** | panel in the main window | ✅ dedicated window |
-| **Export** | PDF, standalone HTML, diagram SVG/PNG | ✅ plus PNG of any block |
-| **Auto-update** | ✗ | ✅ |
+| **Tabs** | ✗ | ⏳ |
+| **Settings** | panel in the main window | ⏳ dedicated window |
+| **Auto-update** | ✗ | ⏳ |
 
 Where a row is ✅ on both sides, the two editions run the same code. Lite is never a worse
 implementation — it is the absence of a feature, or a narrower one that says so.
+
+**⏳ means planned and budgeted for, not written.** The full edition's ceiling was set with
+room for these; they are listed so a later release adding one is not a surprise. Everything
+marked ✅ is in the tree.
 
 **Marklet is the default download.** Choose Lite deliberately: when you want something small
 and fast, or your Markdown never contains a diagram.
@@ -91,12 +95,21 @@ is built.
 
 ### On the numbers
 
-Lite's 2.8 MiB is measured, not guessed: the first CI build produced a **904 KiB** empty
-shell, leaving about 1.9 MiB for the features. A pull request that spends more than that
-fails.
+Measured, not guessed. The ceilings were set from a **904 KiB** empty shell produced by the
+first CI build, leaving about 1.9 MiB for the features; with the feature set above complete,
+the installers CI builds today are:
 
-We are not yet claiming to beat `mdview`'s 2 MB — no shipped number exists. When the features
-are in, the honest comparison is against Lite, and it will be published either way.
+| | Installer | Ceiling | Headroom |
+|---|---:|---:|---:|
+| **Marklet Lite** | **1.56 MiB** | 2.81 MiB | 1.25 MiB |
+| **Marklet** | **3.01 MiB** | 12.00 MiB | 9.00 MiB |
+
+A pull request that spends past a ceiling fails, and the gate comments the delta.
+
+Two caveats on the comparison with `mdview`. Its 2 MB is a number from its own README, not
+one we have measured; and these are download sizes, not what lands on disk — Marklet Lite
+unpacks to roughly 5 MiB. The honest claim is narrow: **Marklet Lite downloads smaller than
+mdview says it does, with a vault, wiki-links, editing and export that it does not have.**
 
 ## Install
 
@@ -114,6 +127,11 @@ association. Making it the default is your call.
 > options"**, not at the top level. Windows 11's modern menu requires a packaged COM
 > extension with MSIX identity, which is deferred to v2.
 
+Every registry key Marklet writes is listed in
+[`docs/windows-integration.md`](docs/windows-integration.md), along with the one command that
+removes all of them. All of it is `HKEY_CURRENT_USER`; none of it needs administrator
+rights.
+
 ## Command line
 
 ```
@@ -129,8 +147,26 @@ marklet --help
 |---|---|
 | `MD_HTML=1` | Render to standalone HTML on stdout and exit, without opening a window |
 | `MD_HTML_OUTPUT` | Write that HTML to a path instead of stdout |
-| `MD_EDITOR` | Command used by `F4` (default: `code -g`) |
-| `PORT` | Local HTTP port; random free port by default |
+| `MD_EDITOR` | Command run by `F4`. Unset, Marklet tries `code`, `subl`, `notepad++`, `gedit`, `notepad` in that order and uses the first that starts. Set, it is the only one tried — a chosen editor that fails to start is a failure worth seeing, not a reason to open a different one. Line and column are placed from a table of known editors; `%f`, `%l` and `%c` in the value override it |
+
+## Keyboard
+
+| Key | What it does |
+|---|---|
+| `F2` | Live preview — edit the markdown with its syntax hidden on lines your cursor is not on |
+| `F3` | Split — plain source on the left, rendered preview on the right, scroll-synced both ways |
+| `F4` / `Ctrl+E` | Open the file in your own editor at the cursor |
+| `Esc` | Back to reading |
+| `Ctrl+P` | Export a PDF beside the document |
+| `Ctrl+Shift+S` | Export a standalone HTML file beside the document |
+
+Exports are named after the document and written next to it. There is no save dialog: a
+native one costs roughly 300 KB of plugin for a choice almost everyone makes the same way.
+Both formats are produced from what is on screen, so diagrams and maths are in them —
+`MD_HTML=1` renders the same document without a webview and therefore without either.
+
+A Mermaid diagram opens fullscreen on click, with wheel-zoom and drag-pan; **Save SVG** and
+**Save PNG** write it into `assets/` beside the note.
 
 ## Build from source
 

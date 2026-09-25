@@ -129,23 +129,84 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: out
-      - name: Median of 5 runs
+      # Generated rather than committed. A 470 KB blob in the repository would
+      # be paid for by every clone forever to serve one CI step, and a corpus
+      # file with no `.expected.html` beside it would break the golden-fixture
+      # harness, which pairs the two by name. Repeating `kitchen-sink.md` keeps
+      # the measurement honest for what it is: every construct the renderer
+      # handles, at a size no real note reaches.
+      - name: Build the benchmark document
+        shell: pwsh
+        run: |
+          $one = Get-Content tests/fixtures/kitchen-sink.md -Raw
+          New-Item -ItemType Directory -Force -Path bench | Out-Null
+          Set-Content -Path bench/large.md -Value ($one * 200) -NoNewline
+          "benchmark document: {0:N0} bytes" -f (Get-Item bench/large.md).Length |
+            Tee-Object -Append $env:GITHUB_STEP_SUMMARY
+
+      - name: Median of 5 cold starts
         shell: pwsh
         env:
           CEILING: ${{ matrix.ceiling }}
         run: |
+          $ErrorActionPreference = 'Stop'
           $exe = (Get-ChildItem out -Filter *.exe | Select-Object -First 1).FullName
           Start-Process -FilePath $exe -ArgumentList '/S' -Wait
           $app = "$env:LOCALAPPDATA\Programs\Marklet\marklet.exe"
-          $times = 1..5 | ForEach-Object {
-            $out = & $app --benchmark tests/fixtures/large.md 2>&1 | Out-String
-            if ($out -match 'boot-ms=(\d+)') { [int]$Matches[1] } else { throw "no boot-ms in output" }
+
+          # The number that matters is the one printed by the WINDOW path, in
+          # `setup`, after WebviewWindowBuilder::build() has returned — that is
+          # WebView2 initialization plus our own work, which is what a user
+          # experiences as "how long until I can read". `--benchmark` measures
+          # only the render and is reported below for contrast, not gated: it
+          # is single-digit milliseconds and would pass any ceiling, which is
+          # exactly why it must not be the thing standing in for this one.
+          #
+          # The app is launched for real and killed once it has said its number;
+          # it has no "exit after boot" flag, and adding one would put a test
+          # hook in the product to save this loop six lines.
+          function Measure-ColdStart {
+            param($run)
+            $err = "boot-$run.txt"
+            $proc = Start-Process -FilePath $app -ArgumentList 'bench/large.md' `
+              -RedirectStandardError $err -PassThru
+            try {
+              $deadline = (Get-Date).AddSeconds(60)
+              while ((Get-Date) -lt $deadline) {
+                if (Test-Path $err) {
+                  $text = Get-Content $err -Raw -ErrorAction SilentlyContinue
+                  if ($text -match 'boot-ms=(\d+)') { return [int]$Matches[1] }
+                }
+                Start-Sleep -Milliseconds 100
+              }
+              throw "run ${run}: the app never printed boot-ms within 60 s"
+            } finally {
+              if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+              $proc.WaitForExit(5000) | Out-Null
+            }
           }
+
+          $times = 1..5 | ForEach-Object { Measure-ColdStart $_ }
           $median = ($times | Sort-Object)[2]
           $ceiling = [int]$env:CEILING
-          "${{ matrix.edition }} cold start: $($times -join ', ') -> median ${median} ms (ceiling ${ceiling} ms)" |
-            Tee-Object -Append $env:GITHUB_STEP_SUMMARY
-          if ($median -gt $ceiling) { throw "median ${median} ms exceeds the ${ceiling} ms ceiling" }
+
+          $render = & $app --benchmark bench/large.md 2>&1 | Out-String
+          $renderMs = if ($render -match 'boot-ms=(\d+)') { $Matches[1] } else { 'n/a' }
+
+          @(
+            "### Cold start - ${{ matrix.edition }}"
+            ""
+            "| | |"
+            "|---|---:|"
+            "| runs | $($times -join ', ') ms |"
+            "| median | ${median} ms |"
+            "| ceiling | ${ceiling} ms |"
+            "| render only (not gated) | ${renderMs} ms |"
+          ) | Tee-Object -Append $env:GITHUB_STEP_SUMMARY
+
+          if ($median -gt $ceiling) {
+            throw "median ${median} ms exceeds the ${ceiling} ms ceiling"
+          }
 
   publish:
     name: Publish
