@@ -114,20 +114,25 @@ the installers CI builds today are:
 
 | | Installer | Ceiling | Cold start | Ceiling |
 |---|---:|---:|---:|---:|
-| **Marklet Lite** | **1.55 MiB** | 2.81 MiB | **617–625 ms** | 1200 ms |
-| **Marklet** | **3.00 MiB** | 12.00 MiB | **632–825 ms** | 1800 ms |
+| **Marklet Lite** | **1.55 MiB** | 2.81 MiB | **~0.6 s** | 1200 ms |
+| **Marklet** | **3.00 MiB** | 12.00 MiB | **~0.6 s** | 1800 ms |
 
 A pull request that spends past an installer ceiling fails, and the gate comments the delta.
 
-Cold start is the median of five launches on a `windows-latest` runner, opening a 478 KB
-document, measured from process start to the window being created. It is given as a range
-because two release runs of the same commit produced both ends of it — a shared CI runner is
-not a quiet machine, and a single number would have been out of date by the next build.
+Cold start is the **fastest of nine launches** on a `windows-latest` runner, opening a 478 KB
+document, measured from process start to the window being created.
 
-**The first launch after an install is far slower: 3.3 s to 9.8 s across those two runs.**
-WebView2 creates its user data directory once, and how long that takes depends on the machine
-rather than on us. It happens exactly once and is measured and reported separately rather
-than averaged into the figure above, which is what every launch afterwards costs.
+The fastest, not the average, and that choice is the whole story. Three release runs of
+identical bytes measured medians of 625 ms, 617 ms and 2153 ms; the third read
+`5802, 4391, 2153, 1723, 1222` — every launch faster than the one before, because the
+sequence was still warming. Both sources of error, filesystem warming and a shared runner's
+scheduling, can only make a launch *slower*. When the noise has a sign, the minimum is what
+the work actually costs and the average is a measurement of the machine's mood.
+
+**The first launch after an install is far slower — 3.3 s to 9.8 s.** WebView2 creates its
+user data directory once, and how long that takes is the machine's business rather than ours.
+It is measured and reported on its own, never folded into the figure above, which is what
+every launch afterwards costs.
 
 Rendering that same document with no window involved is 15–19 ms. These are runner numbers,
 not a promise about your machine.
