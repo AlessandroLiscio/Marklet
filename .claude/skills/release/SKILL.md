@@ -70,6 +70,15 @@ are needed because the difference lives in two places: `MARKLET_EDITION` decides
 The offline installer is built **only** on tags. It is 127 MB because it embeds the whole
 WebView2 runtime; it must never become the default download.
 
+Its one config difference lives in `src-tauri/tauri.offline.conf.json`, passed as
+`--config src-tauri/tauri.offline.conf.json`. **Do not inline that JSON back into the
+workflow.** `run:` on `windows-latest` is pwsh, which strips the double quotes out of
+`--config {"bundle":...}` before `npx` sees them, leaving `{bundle:{windows:...}}` — not
+JSON, and the build fails with the other two legs green, which makes it look like something
+about the offline bundler rather than about quoting. Bash mangles it differently and is no
+safer. A path has no quotes to lose. Tauri resolves a relative `--config` against the working
+directory, the repository root.
+
 ## The size gate runs first
 
 `size-gate.yml` fails the release if either primary installer is over budget:
