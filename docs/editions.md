@@ -30,7 +30,7 @@ its bytes there.
 | | **Marklet Lite** | **Marklet** |
 |---|---|---|
 | **Installer ceiling** | 2.8 MiB — a promise | 12 MiB — a tripwire |
-| **Cold start** | 625 ms measured, 1200 ms ceiling | 632 ms measured, 1800 ms ceiling |
+| **Cold start** | 617–625 ms measured, 1200 ms ceiling | 632–825 ms measured, 1800 ms ceiling |
 | **Reading core** — outline with scroll sync, live reload, reading position per file, font/density/column controls with real reflow | ✅ | ✅ |
 | **Markdown** — aligned tables, footnotes with backlinks, task lists, YAML frontmatter, local images | ✅ | ✅ |
 | **GFM alerts** — `> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`, each with its own colour and generated label | ✅ | ✅ |

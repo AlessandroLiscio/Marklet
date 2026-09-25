@@ -19,13 +19,18 @@ baseline every later entry is measured against:
 
 | | Installer | Ceiling | Cold start | Ceiling |
 |---|---:|---:|---:|---:|
-| Marklet Lite | 1.55 MiB | 2.81 MiB | 625 ms | 1200 ms |
-| Marklet | 3.00 MiB | 12.00 MiB | 632 ms | 1800 ms |
+| Marklet Lite | 1.55 MiB | 2.81 MiB | 617–625 ms | 1200 ms |
+| Marklet | 3.00 MiB | 12.00 MiB | 632–825 ms | 1800 ms |
 
 Cold start is the median of five launches on `windows-latest` opening a 478 KB
-document. The **first** launch after an install is 3–4 s, because WebView2
-creates its user data directory once; it is reported separately rather than
-averaged in. Rendering the same document with no window is 14–18 ms.
+document. A range, not a number: two release runs of the same commit produced
+both ends of it.
+
+The **first** launch after an install measured 3.3 s and 9.8 s in those two
+runs — WebView2 creates its user data directory once, and how long that takes
+is the machine's business rather than ours. It is measured and reported on its
+own line rather than averaged into the figure above. Rendering the same
+document with no window is 15–19 ms.
 
 Also published: `marklet-0.1.0.deb` (4.18 MB), `marklet-0.1.0.AppImage`
 (78.78 MB — AppImage carries the whole GTK and WebKit stack and is not
