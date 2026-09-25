@@ -159,7 +159,32 @@ get inlined. Edits are byte splices through `splice_range`, validated against th
 current length, never whole-file rewrites. Round-trip fidelity is a property of the
 architecture rather than a quality of the implementation.
 
-It is also 180 KB instead of 400 KB, and the same component serves both `F2` and `F3`.
+It is also 159 KiB xz instead of the ~400 KB a ProseMirror stack would have cost — measured,
+not budgeted — and the same component serves both `F2` and `F3`, so the chunk is paid for
+once and fetched on the first keypress that needs it.
+
+## Exporting what is on screen, not what is on disk
+
+There are two HTML exports and they are not redundant.
+
+`MD_HTML=1` runs headless, before `tauri::Builder::build()`, and renders the file through the
+same Rust pipeline the window uses. It cannot contain rendered maths or diagrams, because
+KaTeX and Mermaid are JavaScript and there is no webview to run them in.
+
+`Ctrl+Shift+S` serializes the **live** DOM, in which `enrich()` has already replaced every
+`.math-*` placeholder with KaTeX markup and every `.mermaid` node with an inlined `<svg>`.
+The KaTeX stylesheet and its fonts are inlined as `data:` URIs, because a "standalone" file
+that asks the network for fonts is not standalone and a `file://` page cannot fetch them at
+all.
+
+PDF is the same principle through the OS print engine — `ICoreWebView2_7::PrintToPdf` on
+Windows, `webkit_print_operation_print()` on Linux — driven over the page that is already
+rendered, with `print.css` imported at the moment of the export rather than at boot. Neither
+engine is asked to lay out markdown; both are asked to print a page the user can already see,
+which is why the output matches it.
+
+Local images are inlined on the Rust side in both paths. The webview has no filesystem
+permission and does not grow one to export a file.
 
 ## Search without an index
 

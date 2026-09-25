@@ -51,6 +51,11 @@ declare global {
      * without a round trip asking which vault is open.
      */
     __MARKLET_VAULT__?: string;
+    /**
+     * Set when the app was launched with `--settings`, so the panel is open on
+     * the first frame instead of opening visibly a moment after it.
+     */
+    __MARKLET_SETTINGS__?: boolean;
   }
 }
 

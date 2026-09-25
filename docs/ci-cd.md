@@ -113,7 +113,12 @@ hand-editing them is how a lock file stops matching its manifest.
 1. verifies the three version files agree with the tag, and fails the whole release if not;
 2. builds `full`, `lite` and `offline` Windows installers plus `.AppImage` and `.deb`;
 3. runs the cold-start gate on both editions — five runs each on `windows-latest`, median
-   under 1200 ms for lite and 1800 ms for full;
+   under 1200 ms for lite and 1800 ms for full. The number gated is the one the **window**
+   path prints, in `lib.rs`'s `setup`, after `WebviewWindowBuilder::build()` returns: the
+   installer is installed, the app is launched on a generated 470 KB document, and each run
+   is killed once it has reported. `--benchmark`, which measures the render alone, is shown
+   in the same summary but not gated — it is single-digit milliseconds and would pass any
+   ceiling, so letting it stand in for the windowed number would be a gate that cannot fail;
 4. writes `SHA256SUMS` and a size table into the run summary;
 5. opens a **draft** release.
 
@@ -124,6 +129,33 @@ Explorer double-click path, and that path is the product.
 
 Use the `release` skill to cut one and `version-sync-check` to audit the bookkeeping
 without changing anything.
+
+## What is not tested
+
+Worth stating plainly, because a green pipeline invites the assumption that it is.
+
+**Nothing asserts what the app looks like.** No WebDriver suite, no screenshots, no pixel
+comparison. What exists instead is one smoke step per build leg: the real binary is launched
+on `tests/fixtures/kitchen-sink.md` and has to reach the `boot-ms` line that is printed after
+the window is created — under `xvfb` on Linux, directly on Windows. A missing `dist/`, a CSP
+that blocks the bundle, a webview that will not initialise and a panic before the window
+exists all fail there. Whether the outline is aligned, whether dark mode is readable, whether
+a table overflows: unverified, and only a person looking at it will say.
+
+A `tauri-driver` + WebdriverIO suite is the tool for the gap and is not built. It needs
+`msedgedriver` on Windows and `WebKitWebDriver` under `xvfb` on Linux, both pinned against
+the runner's browser version, and it is the most failure-prone part of a Tauri pipeline. It
+is worth adding when there is a UI regression it would have caught; adding it first, and
+maintaining it flaky, is how a suite ends up disabled.
+
+**`PrintToPdf` is never called.** `scripts/check-windows.sh` type-checks the module from
+Linux and `code-test` compiles it on `windows-latest`, but no CI step produces a PDF. The
+WebKitGTK half is worse off: it needs the GTK "file" print backend and a display, so it is
+not even exercised. Both are on the manual pass in `.claude/skills/release/SKILL.md`.
+
+**The Explorer double-click path.** The registry round trip is tested — keys written, keys
+gone, nothing left behind — but no CI step double-clicks a `.md` file, and that is the
+product. Also manual, step 6.
 
 ## Distribution
 

@@ -12,6 +12,20 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Added
 
+- **Editing, in the Obsidian sense.** `F2` shows the markdown source with its syntax hidden
+  on every line the cursor is not on; `F3` splits source and preview with two-way scroll
+  sync; `F4` or `Ctrl+E` opens your own editor at the cursor; `Esc` goes back to reading.
+  The document stays markdown text the whole time — there is no serializer, so a
+  hand-aligned table elsewhere in the file is byte-identical after a save. Writes replace one
+  byte range and copy the rest through untouched, and a file that changed underneath is
+  reported as a conflict rather than overwritten. The editor is 159.4 KiB xz and is
+  downloaded on the first keypress that needs it, never by a read-only session.
+- **Export.** `Ctrl+P` writes a PDF beside the document, `Ctrl+Shift+S` a standalone HTML
+  file that opens anywhere with no network requests. Both are produced from what is on
+  screen, so maths and diagrams are in them. A Mermaid diagram's fullscreen viewer can save
+  itself as SVG or PNG into `assets/`.
+- **`marklet --settings`** opens with the settings panel already showing, on the first frame
+  rather than a moment after it.
 - **Vault.** Open a folder and get a virtualized folder tree, full-text search across it,
   `[[wiki-links]]` that resolve, and a backlinks panel. Measured on 5,000 notes: tree paints
   immediately, first search result in 1 ms, search completes in 31 ms, 622 bytes of index per
@@ -46,14 +60,30 @@ lightweight care about that number, and publishing it keeps us honest.
   stylesheets gzip to 2119 B against a 12 KiB gate; the full edition adds three selectable
   type pairings and four accent palettes through a dynamic import lite never fetches.
 - **CLI and headless export.** `--help`, `--version`, `--benchmark`, `--install`,
-  `--uninstall`, `--unbind`, plus `MD_HTML=1`, `MD_HTML_OUTPUT`, `MD_EDITOR` and `PORT`.
+  `--uninstall`, `--unbind`, `--settings`, plus `MD_HTML=1`, `MD_HTML_OUTPUT` and
+  `MD_EDITOR`.
   Every headless path exits before Tauri starts: `--help` completes in 29 ms. Standalone
   HTML export inlines CSS and images as `data:` URIs and makes no network requests.
 - Project foundation: Tauri 2 shell, Rust render core contract, Svelte 5 chrome, and the
   CI matrix that builds Windows and Linux artifacts from the first commit.
 
+### Security
+
+- **Choosing which program to run is Rust's job, not the webview's.** The editor-launch
+  command takes a line and a column; `MD_EDITOR` and a fixed table decide the rest. The
+  earlier shape, in which the frontend sent a program name and its arguments, would have let
+  anything that achieved script execution inside the webview run an arbitrary executable.
+  Naming a pasted image moved to Rust for the same reason.
+
 ### Fixed
 
+- The Windows PDF path did not compile: `webview2-com` pins `windows-core` 0.61 and the crate
+  asked for 0.62, so `.cast()` on an `ICoreWebView2` resolved to a trait the interface does
+  not implement. Unified downward, which also removes a duplicate `windows` facade from the
+  binary.
+- `PORT` was parsed and ignored. Marklet has no HTTP server — local images are served by the
+  `marklet://` scheme and live reload is a filesystem watcher — so the variable is gone
+  rather than documented as working.
 - Block math was emitted inside `<p>`, which browsers repair by closing the paragraph early
   — desynchronising every `data-l` after it, and with it all four features that read the
   line map.
@@ -61,14 +91,16 @@ lightweight care about that number, and publishing it keeps us honest.
   `pulldown-cmark` splits inline HTML into `InlineHtml`/`Text`/`InlineHtml`, so the script
   body never reached the sanitizer. Dropped tags now swallow their contents, bounded to the
   enclosing block so an unclosed `<script>` cannot blank the rest of the document.
+### Infrastructure
+
 - **Two editions from one codebase.** Marklet Lite carries the size promise — 2.8 MiB
   installer, 1200 ms cold start, both enforced in CI. Marklet (full) is deliberately not
   bound by the lightweight rule and is where Mermaid, regex vault search, CJK detection,
   bundled typography, motion, tabs and the updater live. `docs/editions.md` has the full
   comparison; the README carries a short version.
 - Size gate enforcing both ceilings, with the byte delta commented on every pull request.
-  The empty shell measures **904 KiB**, so lite has about 1.45 MiB left for the features
-  still to land.
+  With the feature set above complete, the installers measure **1.56 MiB** (lite, ceiling
+  2.81) and **3.01 MiB** (full, ceiling 12.00).
 - Agent configuration under `.claude/` — six skills and four agents encoding the size
   budget, the render contract, the IPC boundary, Windows integration, the release flow and
   the release-bookkeeping audit.

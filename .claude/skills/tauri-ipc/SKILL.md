@@ -25,15 +25,50 @@ easier. Add a narrow command instead.
 `snake_case`, verb first, no `get_` prefix on reads that are obviously reads.
 
 ```
-open_document      read_settings      write_settings
-splice_range       scan_vault         search_vault
-resolve_wikilink   backlinks_for      export_pdf
-export_html        save_pasted_image  reveal_in_editor
+open_document      open_note          read_source
+read_settings      write_settings     reading_position
+record_reading_position                splice_range
+open_vault         close_vault        scan_vault
+index_vault        search_vault       resolve_wikilink
+backlinks_for      export_pdf         export_html
+save_pasted_image  reveal_in_editor
 ```
 
 Frontend wrappers live in `src/lib/ipc.ts`, one typed function per command, and nothing
 else in the frontend calls `invoke()` directly. That file is the single place where a
 payload shape change shows up as a type error rather than a runtime surprise.
+
+## The webview describes intent; Rust decides the action
+
+Validating an argument is not the same as receiving a *decision* and carrying it out. Where
+a command would let the caller choose **what happens** rather than **what to happen to**,
+the choice belongs on this side of the boundary.
+
+The worked example is F4. The obvious shape is:
+
+```rust
+reveal_in_editor(program: String, args: Vec<String>)   // NO
+```
+
+Every argument is a string the webview supplies, and the command's whole job is to spawn a
+process — so anything that achieved script execution in the webview would have arbitrary
+code execution, no matter how carefully the strings were checked. The shape that ships is:
+
+```rust
+reveal_in_editor(path: String, line: usize, column: usize)
+```
+
+`src-tauri/src/editor.rs` reads `MD_EDITOR` and a fixed table and builds the command line
+itself. The frontend module that used to do it was deleted rather than left unused.
+
+`save_pasted_image` follows the same rule for the same reason: it takes bytes and a format
+from an allowlist, never a filename. A path the webview chose is a path the webview could
+choose to be `..\..\autorun`, and the numbering depends on a directory listing only Rust
+can read anyway.
+
+The test: if the command body would still be safe with every argument replaced by an
+attacker's choice, it is shaped right. If safety depends on the caller being our own code,
+it is not — move the decision.
 
 ## Payloads
 
@@ -82,7 +117,8 @@ resolving symlinks is a bypass waiting to happen.
 Edits never rewrite a whole file:
 
 ```rust
-splice_range(path: String, start_byte: usize, end_byte: usize, replacement: String)
+splice_range(path: String, start_byte: usize, end_byte: usize, replacement: String,
+             expected_len: usize)
 ```
 
 It validates the range against the file's **current** length and returns `Conflict` if the

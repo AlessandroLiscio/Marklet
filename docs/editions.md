@@ -3,9 +3,9 @@
 Marklet ships as **two products from one codebase**, not as one product with a stripped
 variant. They answer different questions, and the difference is deliberate on both sides.
 
-> **Status: planned.** The edition mechanism is in place and enforced by CI. Most of the
-> features below are not written yet — the table is the contract each phase builds against,
-> not a description of what you can download today.
+> **Status.** Everything marked ✅ below is written, tested and built by CI in both editions.
+> Rows marked ⏳ are budgeted for and not written. Nothing is released yet, so the table
+> describes what the tree does, not what you can download.
 
 ## What each one is for
 
@@ -40,15 +40,20 @@ its bytes there.
 | **Vault** — folder tree, `[[wiki-links]]`, backlinks panel | ✅ | ✅ |
 | **Vault search** | literal, multi-term AND | ✅ **plus full regex** (`regex-search`, +1.2–1.8 MB) |
 | **Encoding** | BOM, UTF-8, UTF-16, Windows-1252 | ✅ **plus CJK auto-detection** (`full-encodings`, +500 KB) |
-| **Editing** — F2 live preview, F3 dual column, F4 external editor, paste-image | ✅ CodeMirror 6 | ✅ same |
+| **Editing** — F2 live preview, F3 dual column, F4 external editor, paste-image | ✅ CodeMirror 6, loaded on first keypress | ✅ same |
 | **Themes** | 2 modes plus a WCAG-AA accent generator; **system fonts only** | ✅ same generator, plus the two rows below |
 | **Typography** | one system stack per role | **three selectable pairings** — `editorial` (Newsreader + Inter, the default), `literary` (Cormorant Garamond + Libre Baskerville), `technical` (JetBrains Mono + IBM Plex Sans), via `[data-typeface]` |
 | **Palettes** | the default accent hue | **four extra accent hues** — teal, amber, forest, violet, via `[data-palette]`. They recolour **only the accent**; background, foreground and border are identical across all of them, deliberately — reading comfort over decoration |
 | **Motion** | CSS state changes only | ✅ **considered transitions**, honouring `prefers-reduced-motion` |
-| **Tabs** | ✗ — one document per window | ✅ |
-| **Settings** | panel inside the main window | ✅ **dedicated window** (~40 MB RSS for a second webview) |
-| **Export** | PDF, standalone HTML, diagram SVG/PNG | ✅ **plus PNG of any block** and richer print themes |
-| **Auto-update** | ✗ — download manually | ✅ `tauri-plugin-updater`, ~200 KB plus a signing key |
+| **Tabs** | ✗ — one document per window | ⏳ |
+| **Settings** | panel inside the main window | ⏳ **dedicated window** (~40 MB RSS for a second webview) |
+| **Export** | PDF, standalone HTML, diagram SVG and PNG | ✅ same, plus richer print themes ⏳ |
+| **Auto-update** | ✗ — download manually | ⏳ `tauri-plugin-updater`, ~200 KB plus a signing key |
+
+**⏳ means designed and budgeted for, not written.** It is in this table because the full
+edition's ceiling was set with room for it, so a later pull request adding it is not a
+surprise — not because it is in a build you can download. Everything marked ✅ is in the
+tree and covered by tests.
 
 Where a row says ✅ on both sides, the two editions run the same code. The difference is never
 a worse implementation in lite; it is the absence of a feature, or a narrower one that is
@@ -59,6 +64,11 @@ honest about being narrower.
 - **The Windows 11 *modern* context menu.** It needs a packaged `IExplorerCommand` COM
   extension with MSIX identity. That is work and a signing requirement, not bytes. Both
   editions use the legacy verb, which appears under "Show more options".
+- **PNG export of an arbitrary block.** Not bytes either: the only reliable way to rasterize
+  live DOM is a library like `html-to-image`, and it is exactly the webfont case it gets
+  wrong. Diagrams export because a Mermaid `<svg>` carries its styling inline and goes
+  through `<canvas>` with no library at all; a quoted paragraph in a chosen typeface does
+  not, and a PNG that silently drops the font is worse than no button.
 - **Code signing.** A recurring certificate cost. Until it happens, SmartScreen warns on
   first run for both editions.
 - **macOS and Android.** Out of scope for v1 entirely.

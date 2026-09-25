@@ -37,21 +37,35 @@ The estimate was wrong by roughly 3×, in our favour: `default-features = false`
 Lite's ceiling was tightened onto that measurement. A gate with 4× headroom cannot fail, and
 a gate that cannot fail is decoration.
 
-## What lite spends
+## What was actually spent
 
-| Component | Installer | On disk | Loaded when |
-|---|---:|---:|---|
-| Rust exe + Tauri shell | **904 KiB measured** | 7.0–8.0 MB | always |
-| Svelte chrome, CSS, tokens | ~60 KB | ~200 KB | always |
-| highlight.js subset | ~28 KB | ~95 KB | document has a fenced code block, after first paint |
-| KaTeX + subset fonts | ~200 KB | ~430 KB | document has math delimiters |
-| CodeMirror 6 | ~180 KB | ~600 KB | `F2` / `F3` / `Ctrl+E` |
-| WebView2 bootstrapper | 0 | 0 | never on Windows 11 |
-| **Committed so far** | **≈1.35 MiB** | | |
-| **Headroom to 2.8 MiB** | **≈1.45 MiB** | | for render core, vault, watcher, platform, export |
+With the v1 feature set complete — render core, vault, watcher, platform integration,
+editing and export — the size gate measures:
 
-Comfortable, not generous. The Rust side is where most of the remaining growth will come
-from, and none of it is written yet.
+| | Installer | Ceiling | Headroom |
+|---|---:|---:|---:|
+| **Marklet Lite** | **1.56 MiB** | 2.81 MiB | 1.25 MiB |
+| **Marklet** (full) | **3.01 MiB** | 12.00 MiB | 9.00 MiB |
+
+So the whole of the Rust side — render core, vault scan and index, the watcher, the registry
+integration, the CLI, both export paths — cost roughly 670 KiB on top of the empty shell,
+against the ≈1.45 MiB that was set aside for it.
+
+Where lite's bytes go, and when each one is fetched:
+
+| Component | Installer | Loaded when |
+|---|---:|---|
+| Rust exe + Tauri shell | **904 KiB measured** | always |
+| Everything else in the binary | ~670 KiB measured, in aggregate | always |
+| Svelte chrome, CSS, tokens | 23.2 KiB xz + 9.9 KiB gzipped CSS | always |
+| highlight.js subset | 32.3 KiB xz | document has a fenced code block, after first paint |
+| KaTeX | 62.6 KiB xz plus fonts | document has math delimiters |
+| CodeMirror 6 | **159.4 KiB xz measured** | `F2` / `F3` / `Ctrl+E` |
+| WebView2 bootstrapper | 0 | never on Windows 11 |
+
+The lazy rows are not in the "installer" total a user downloads twice: they are in it once,
+and the point of the `import()` gate is that a session which does not need one never pays
+the *time*. A read-only document with no code, maths or diagrams fetches none of them.
 
 ## What full adds
 
@@ -63,10 +77,15 @@ from, and none of it is written yet.
 | Bundled typography | 100–300 KB per variable font | lite is system fonts only |
 | Motion | tens of KB | lite has CSS state changes and nothing else |
 | `tauri-plugin-updater` | ~200 KB plus a signing key | lite users download manually |
-| `html-to-image` (PNG of any block) | ~30 KB | unreliable with webfonts, and lite has none |
+Measured full total: **3.01 MiB**, against a 12 MiB tripwire. Four of the seven rows above
+are not written yet (see the ⏳ marks in `editions.md`), so the figure will grow; the gap is
+intentional slack, not a target to fill.
 
-Expected full total: roughly 4–5 MiB, against a 12 MiB tripwire. The gap is intentional
-slack, not a target to fill.
+PNG export of an arbitrary block was **cut from both editions**, not moved to full. It would
+have meant `html-to-image`, and the case it gets wrong is webfonts — which is exactly what
+the full edition has. A diagram exports because a Mermaid `<svg>` carries its styling inline
+and goes through `<canvas>` with no library at all; a quoted paragraph in a chosen typeface
+does not, and a PNG that silently drops the font is worse than no button.
 
 ## Build switches
 

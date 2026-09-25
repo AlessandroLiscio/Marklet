@@ -91,17 +91,94 @@ export async function renderMermaidIn(root: HTMLElement): Promise<EnrichResult> 
   return { rendered };
 }
 
+/**
+ * Rasterizes `svg` through a `<canvas>`, or hands back its own bytes.
+ *
+ * No `html-to-image`: the only thing being exported is an `<svg>` element that
+ * Mermaid just produced, and turning one of those into a PNG is three native
+ * browser APIs in a row. A library for it would cost bytes to do the same work
+ * less predictably — it is the webfont case that makes `html-to-image`
+ * unreliable, and this markup carries its styling inline.
+ *
+ * Rendered at twice the intrinsic size: a diagram exported at CSS pixels looks
+ * soft the moment it is put in a document or a slide.
+ */
+async function rasterize(svg: string, format: 'svg' | 'png'): Promise<Uint8Array> {
+  if (format === 'svg') return new TextEncoder().encode(svg);
+
+  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  try {
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('the diagram could not be rasterized'));
+      image.src = url;
+    });
+
+    const scale = 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round((image.naturalWidth || 800) * scale));
+    canvas.height = Math.max(1, Math.round((image.naturalHeight || 600) * scale));
+
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('no 2d context to draw the diagram on');
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('the diagram produced no image data');
+    return new Uint8Array(await blob.arrayBuffer());
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/**
+ * Asks whoever owns the document to write the diagram beside it.
+ *
+ * A `CustomEvent` rather than a direct `invoke`: this module is reached only
+ * through `enrich()` and has no idea which document is open, and importing the
+ * IPC layer here to find out would put a second `invoke` call site outside
+ * `src/lib/ipc.ts` — the one thing that file exists to prevent. `app.svelte`
+ * listens and calls `save_pasted_image`, which already writes exactly this
+ * kind of file next to the note and picks the name.
+ */
+async function saveDiagram(svg: string, format: 'svg' | 'png'): Promise<void> {
+  try {
+    const bytes = await rasterize(svg, format);
+    document.dispatchEvent(
+      new CustomEvent('marklet-save-asset', { detail: { bytes, ext: format } }),
+    );
+  } catch (error) {
+    document.dispatchEvent(
+      new CustomEvent('marklet-save-asset', {
+        detail: { error: error instanceof Error ? error.message : 'the diagram could not be saved' },
+      }),
+    );
+  }
+}
+
 /** Opens `svg` in a fullscreen overlay with wheel-zoom and drag-pan. */
 function openViewer(svg: string): void {
   const overlay = document.createElement('div');
   overlay.className = 'mermaid-viewer';
   overlay.innerHTML =
     `<div class="mermaid-viewer-stage">${svg}</div>` +
+    `<div class="mermaid-viewer-tools">` +
+    `<button class="mermaid-viewer-save" type="button" data-format="svg">Save SVG</button>` +
+    `<button class="mermaid-viewer-save" type="button" data-format="png">Save PNG</button>` +
+    `</div>` +
     `<button class="mermaid-viewer-close" type="button" aria-label="Close">✕</button>`;
   document.body.appendChild(overlay);
 
   const stage = overlay.querySelector<HTMLElement>('.mermaid-viewer-stage')!;
   const closeBtn = overlay.querySelector<HTMLElement>('.mermaid-viewer-close')!;
+
+  for (const button of overlay.querySelectorAll<HTMLButtonElement>('.mermaid-viewer-save')) {
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      void saveDiagram(svg, button.dataset['format'] === 'png' ? 'png' : 'svg');
+    });
+  }
   let scale = 1;
   let x = 0;
   let y = 0;

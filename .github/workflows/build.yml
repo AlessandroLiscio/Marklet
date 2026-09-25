@@ -70,6 +70,90 @@ jobs:
         env:
           MARKLET_EDITION: ${{ matrix.edition }}
 
+      # The one check that the thing actually starts.
+      #
+      # Everything else in this pipeline tests a part: the renderer against
+      # golden fixtures, the IPC surface against unit tests, the chunk graph
+      # against a byte budget. None of them opens a window, and an app that
+      # fails to create a webview passes all of them. This step launches the
+      # real binary on a real document and requires it to reach the line in
+      # `lib.rs`'s `setup` that is printed after `WebviewWindowBuilder::build()`
+      # returns — so a broken CSP, a missing `dist/`, a webview that will not
+      # initialise, or a panic before the window exists all fail here rather
+      # than in somebody's hands.
+      #
+      # It is not a substitute for a WebDriver suite and does not pretend to
+      # be: it asserts that the window was created, not that anything is on it.
+      # See docs/ci-cd.md, "What is not tested".
+      - name: Smoke - the app starts and creates its window (Linux)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          set -uo pipefail
+          sudo apt-get install -y xvfb
+          # `> boot.log 2>&1`, not `2> boot.log`. Debian's xvfb-run runs the
+          # command as `"$@" 2>&1` — it folds the child's stderr into its OWN
+          # stdout, so redirecting only fd 2 of xvfb-run captures nothing and
+          # `boot-ms` goes to the console instead. The first version of this
+          # step failed exactly that way: the app booted in 26 s and the check
+          # spent 90 s reading an empty file.
+          timeout 120 xvfb-run -a \
+            src-tauri/target/release/marklet tests/fixtures/kitchen-sink.md \
+            > boot.log 2>&1 &
+          pid=$!
+          # 120, not 90: measured at 25.8 s on a runner. WebKitGTK under Xvfb
+          # is software-rendered and nothing like the Windows number — this is
+          # a smoke test, not the cold-start gate, which runs in release.yml on
+          # real WebView2.
+          for _ in $(seq 1 120); do
+            grep -q 'boot-ms=' boot.log 2>/dev/null && break
+            sleep 1
+          done
+          # `kill $pid` reaches `timeout`, not the app underneath `xvfb-run`,
+          # so the binary is named directly as well. Neither is allowed to fail
+          # the step: by this point the measurement is already taken.
+          kill $pid 2>/dev/null || true
+          pkill -f 'target/release/marklet' 2>/dev/null || true
+          if ! grep -q 'boot-ms=' boot.log; then
+            echo "::error::the app never created its window"
+            cat boot.log || true
+            exit 1
+          fi
+          grep -o 'boot-ms=[0-9]*' boot.log | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke - the app starts and creates its window (Windows)
+        if: startsWith(matrix.os, 'windows')
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Absolute. `Start-Process` resolves a relative path against the .NET
+          # current directory, which is not necessarily the PowerShell
+          # location: the app would be handed a path that does not exist, open
+          # empty, and still print boot-ms — a smoke test that passes without
+          # having opened the document.
+          $app = (Resolve-Path src-tauri/target/release/marklet.exe).Path
+          $doc = (Resolve-Path tests/fixtures/kitchen-sink.md).Path
+          $log = Join-Path (Get-Location) 'boot.log'
+          $proc = Start-Process -FilePath $app -ArgumentList $doc `
+            -RedirectStandardError $log -PassThru
+          try {
+            $deadline = (Get-Date).AddSeconds(90)
+            $line = $null
+            while ((Get-Date) -lt $deadline -and -not $line) {
+              if (Test-Path $log) {
+                $text = Get-Content $log -Raw -ErrorAction SilentlyContinue
+                if ($text -match 'boot-ms=\d+') { $line = $Matches[0] }
+              }
+              Start-Sleep -Milliseconds 200
+            }
+          } finally {
+            if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+          }
+          if (-not $line) {
+            Get-Content $log -ErrorAction SilentlyContinue
+            throw 'the app never created its window'
+          }
+          $line | Tee-Object -Append $env:GITHUB_STEP_SUMMARY
+
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
