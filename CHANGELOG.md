@@ -10,6 +10,18 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.0] — 2026-09-25
+
+First release. Installers measured by the size gate on the release build:
+**1.56 MiB** for Marklet Lite against its 2.81 MiB ceiling, **3.01 MiB** for
+Marklet against its 12 MiB tripwire. No previous release to compare against.
+
+Unverified at release, and stated here rather than discovered later: nobody has
+reviewed the interface visually, `PrintToPdf` has never produced a file in CI,
+and the binaries are unsigned, so SmartScreen warns on first run.
+
 ### Added
 
 - **Editing, in the Obsidian sense.** `F2` shows the markdown source with its syntax hidden
@@ -115,3 +127,6 @@ lightweight care about that number, and publishing it keeps us honest.
 - Branch protection as code in `.github/rulesets/protect-main.json`, release write-targets
   in `.github/RELEASE_TARGETS.yml`, and contributor governance: PR template, three issue
   forms, commit template, `CONTRIBUTING.md`, `SECURITY.md`.
+
+[unreleased]: https://github.com/AlessandroLiscio/Marklet/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/AlessandroLiscio/Marklet/releases/tag/v0.1.0
