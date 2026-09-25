@@ -162,7 +162,24 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $exe = (Get-ChildItem out -Filter *.exe | Select-Object -First 1).FullName
           Start-Process -FilePath $exe -ArgumentList '/S' -Wait
-          $app = "$env:LOCALAPPDATA\Programs\Marklet\marklet.exe"
+
+          # Found, not assumed. Tauri's NSIS template has changed where a
+          # currentUser install lands more than once, and a hard-coded path
+          # that is wrong fails this gate with "the app never printed boot-ms"
+          # — a message that points at the app rather than at the path. The
+          # two known locations are tried first so the common case costs
+          # nothing, then the whole tree.
+          $app = @(
+            "$env:LOCALAPPDATA\Programs\Marklet\marklet.exe",
+            "$env:LOCALAPPDATA\Marklet\marklet.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+          if (-not $app) {
+            $app = (Get-ChildItem $env:LOCALAPPDATA -Recurse -Filter marklet.exe `
+              -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+          }
+          if (-not $app) { throw "the installer ran but marklet.exe is not under $env:LOCALAPPDATA" }
+          "installed at: $app" | Tee-Object -Append $env:GITHUB_STEP_SUMMARY
 
           # The number that matters is the one printed by the WINDOW path, in
           # `setup`, after WebviewWindowBuilder::build() has returned — that is
