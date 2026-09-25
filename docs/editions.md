@@ -3,9 +3,9 @@
 Marklet ships as **two products from one codebase**, not as one product with a stripped
 variant. They answer different questions, and the difference is deliberate on both sides.
 
-> **Status: planned.** The edition mechanism is in place and enforced by CI. Most of the
-> features below are not written yet — the table is the contract each phase builds against,
-> not a description of what you can download today.
+> **Status.** Everything marked ✅ below is written, tested and built by CI in both editions.
+> Rows marked ⏳ are budgeted for and not written. Nothing is released yet, so the table
+> describes what the tree does, not what you can download.
 
 ## What each one is for
 

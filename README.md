@@ -32,10 +32,20 @@ Every feature is free in both. The source is here.
 
 ## Status
 
-**Early development.** The architecture is settled and the foundation is in place; features
-land phase by phase. Not yet usable as a daily driver.
+**Feature-complete for v1, not released.** Everything described below is written, tested and
+building on Windows and Linux in CI. There is no tagged release yet, so there is nothing to
+download.
 
-## What it will do
+Three things are worth knowing before you build it yourself:
+
+- **Nobody has looked at it.** CI proves the app starts and creates its window; it does not
+  prove anything is laid out correctly. There are no screenshots and no UI test suite — see
+  [`docs/ci-cd.md`](docs/ci-cd.md), "What is not tested".
+- **PDF export has never run.** Both platform paths compile and are type-checked; neither has
+  produced a file in CI, because that needs a printer backend and a display.
+- **Not signed.** SmartScreen will warn on first run until a certificate exists.
+
+## What it does
 
 **Reading** — outline panel with scroll sync, live reload when an external editor saves,
 reading position remembered per file, light and dark themes with an accent generator,
@@ -45,15 +55,18 @@ backlinks, local images, task lists, YAML frontmatter, syntax-highlighted code.
 **Vault** — folder tree, full-text search across thousands of notes, `[[wiki-links]]` and a
 backlinks panel. This is the part `mdview` does not have.
 
-**Rich content** — Mermaid diagrams with fullscreen zoom and pan, KaTeX math. Both bundled,
-both loaded only when a document actually contains one, both working with the network off.
+**Rich content** — KaTeX math in both editions; Mermaid diagrams with fullscreen zoom and pan
+in the full edition only, because Mermaid alone is 27% of Lite's entire ceiling. Both are
+bundled, both work with the network off, and both are fetched only when a document actually
+contains one — a plain note downloads neither.
 
 **Editing** — `F2` live preview in the Obsidian sense: the markdown syntax hides on lines
 your cursor is not on. `F3` splits source and preview with two-way scroll sync. `F4` opens
 your real editor at the cursor. Pasted images are written to disk and linked.
 
-**Export** — PDF with proper pagination, standalone single-file HTML that opens anywhere
-with zero network requests, PNG or SVG of any diagram.
+**Export** — PDF with proper pagination, standalone single-file HTML that opens anywhere with
+zero network requests, and PNG or SVG of any diagram. All three are produced from the page
+you are looking at, so what is exported is what you saw.
 
 ## Two editions
 
