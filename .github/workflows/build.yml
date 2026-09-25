@@ -115,16 +115,22 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $app = 'src-tauri/target/release/marklet.exe'
-          $proc = Start-Process -FilePath $app `
-            -ArgumentList 'tests/fixtures/kitchen-sink.md' `
-            -RedirectStandardError boot.log -PassThru
+          # Absolute. `Start-Process` resolves a relative path against the .NET
+          # current directory, which is not necessarily the PowerShell
+          # location: the app would be handed a path that does not exist, open
+          # empty, and still print boot-ms — a smoke test that passes without
+          # having opened the document.
+          $app = (Resolve-Path src-tauri/target/release/marklet.exe).Path
+          $doc = (Resolve-Path tests/fixtures/kitchen-sink.md).Path
+          $log = Join-Path (Get-Location) 'boot.log'
+          $proc = Start-Process -FilePath $app -ArgumentList $doc `
+            -RedirectStandardError $log -PassThru
           try {
             $deadline = (Get-Date).AddSeconds(90)
             $line = $null
             while ((Get-Date) -lt $deadline -and -not $line) {
-              if (Test-Path boot.log) {
-                $text = Get-Content boot.log -Raw -ErrorAction SilentlyContinue
+              if (Test-Path $log) {
+                $text = Get-Content $log -Raw -ErrorAction SilentlyContinue
                 if ($text -match 'boot-ms=\d+') { $line = $Matches[0] }
               }
               Start-Sleep -Milliseconds 200
@@ -133,7 +139,7 @@ jobs:
             if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
           }
           if (-not $line) {
-            Get-Content boot.log -ErrorAction SilentlyContinue
+            Get-Content $log -ErrorAction SilentlyContinue
             throw 'the app never created its window'
           }
           $line | Tee-Object -Append $env:GITHUB_STEP_SUMMARY

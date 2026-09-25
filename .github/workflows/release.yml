@@ -165,10 +165,17 @@ jobs:
           # The app is launched for real and killed once it has said its number;
           # it has no "exit after boot" flag, and adding one would put a test
           # hook in the product to save this loop six lines.
+          # Absolute, both of them. `Start-Process` resolves a relative path
+          # against the .NET current directory, which is not necessarily the
+          # PowerShell location — the app would be handed a path that does not
+          # exist and would open empty, and the gate would time out measuring
+          # nothing.
+          $bench = (Resolve-Path bench/large.md).Path
+
           function Measure-ColdStart {
             param($run)
-            $err = "boot-$run.txt"
-            $proc = Start-Process -FilePath $app -ArgumentList 'bench/large.md' `
+            $err = Join-Path (Get-Location) "boot-$run.txt"
+            $proc = Start-Process -FilePath $app -ArgumentList $bench `
               -RedirectStandardError $err -PassThru
             try {
               $deadline = (Get-Date).AddSeconds(60)
@@ -190,7 +197,7 @@ jobs:
           $median = ($times | Sort-Object)[2]
           $ceiling = [int]$env:CEILING
 
-          $render = & $app --benchmark bench/large.md 2>&1 | Out-String
+          $render = & $app --benchmark $bench 2>&1 | Out-String
           $renderMs = if ($render -match 'boot-ms=(\d+)') { $Matches[1] } else { 'n/a' }
 
           @(
