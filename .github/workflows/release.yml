@@ -48,11 +48,21 @@ jobs:
             edition: lite
           # ~127 MB: it embeds the whole WebView2 runtime. Tag builds only,
           # for air-gapped machines. Never the default download.
+          #
+          # The override is a FILE, not an inline JSON string. `run:` on
+          # windows-latest is pwsh, which strips the double quotes out of
+          # `--config {"bundle":...}` before npx ever sees them, and the
+          # resulting `{bundle:{windows:...}}` is not JSON. Quoting around that
+          # differs between pwsh and bash and is a trap in both; a path has no
+          # quotes to lose. Tauri resolves a relative `--config` against the
+          # working directory, which is the repository root here — verified,
+          # not assumed: `src-tauri/...` is read, a bare `tauri.offline.conf.json`
+          # is not found.
           - name: windows-offline
             os: windows-latest
             args: "--features full"
             edition: full
-            tauri-args: "--config {\"bundle\":{\"windows\":{\"webviewInstallMode\":{\"type\":\"offlineInstaller\"}}}}"
+            tauri-args: "--config src-tauri/tauri.offline.conf.json"
           - name: linux
             os: ubuntu-22.04
             args: "--features full"
