@@ -331,11 +331,16 @@ Everything below is a real attack string. **You should see nothing happen** — 
 dialog, no broken layout. If any of it executes, that is a security bug and the
 fixture corpus missed a case.
 
-Two of them are refused in a way that is visible, and neither is a rendering fault:
+Three of them are refused in a way you can see, and none is a rendering fault:
 
-- the `<script>`, `<img onerror>`, `<svg><script>` and `<iframe>` lines **disappear
-  entirely**, contents and all, because a dropped tag swallows what is inside it —
-  otherwise `<svg><script>alert(1)</script></svg>` would print `alert(1)` as prose;
+- the `<script>`, `<svg><script>` and `<iframe>` lines **disappear entirely**,
+  contents and all, because a dropped tag swallows what is inside it — otherwise
+  `<svg><script>alert(1)</script></svg>` would print `alert(1)` as prose;
+- the `<img onerror>` line leaves a **broken-image icon**. That is the correct
+  outcome and the most interesting one here: `<img>` is on the allowlist, so the
+  element survives; `onerror` is not, so the handler is stripped. What is left is an
+  image pointing at `x`, which does not exist. A defused attack still occupies the
+  space it asked for — the sanitizer removes the danger, not the author's intent;
 - the `javascript:` link is **not made into a link**, so you see its Markdown source
   as plain text. That is the sanitizer declining to build an anchor it would have had
   to strip anyway.

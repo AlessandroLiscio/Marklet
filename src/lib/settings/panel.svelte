@@ -40,6 +40,7 @@
   ];
 
   const TYPEFACES: { value: Typeface; label: string }[] = [
+    { value: 'system', label: 'System' },
     { value: 'editorial', label: 'Editorial' },
     { value: 'literary', label: 'Literary' },
     { value: 'technical', label: 'Technical' },

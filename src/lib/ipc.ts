@@ -74,7 +74,7 @@ export type Theme = 'light' | 'dark' | 'system';
  * too, so opening the same vault in both editions never clobbers a choice
  * full made.
  */
-export type Typeface = 'editorial' | 'literary' | 'technical';
+export type Typeface = 'system' | 'editorial' | 'literary' | 'technical';
 
 /** Mirrors `store::Palette`. Same full-only-control, both-editions-persist
  * reasoning as {@link Typeface}. */
@@ -271,6 +271,20 @@ export function exportHtml(path: string, bodyHtml: string, extraCss: string): Pr
     body_html: bodyHtml,
     extra_css: extraCss,
   });
+}
+
+/**
+ * Opens a link in the user's browser, and answers with the program that was
+ * asked.
+ *
+ * **A link in a document is not navigation.** Left alone, clicking an `http`
+ * link replaces the application's own webview with that page — no address bar,
+ * no back button, and the document gone. Rust refuses anything that is not
+ * `http` or `https`, because the handler on the other side is the operating
+ * system's and a registered protocol handler can be an arbitrary program.
+ */
+export function openExternal(url: string): Promise<string> {
+  return invoke<string>('open_external', { url });
 }
 
 // ---------------------------------------------------------------------------

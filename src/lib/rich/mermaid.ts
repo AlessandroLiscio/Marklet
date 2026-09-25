@@ -157,12 +157,25 @@ async function saveDiagram(svg: string, format: 'svg' | 'png'): Promise<void> {
   }
 }
 
-/** Opens `svg` in a fullscreen overlay with wheel-zoom and drag-pan. */
+/**
+ * Opens `svg` in a fullscreen overlay.
+ *
+ * Zoom: the wheel, the `+` / `−` buttons, `+` / `-` on the keyboard, `0` or a
+ * double-click to reset. More than one way in on purpose — wheel zoom was
+ * reported dead in a build where dragging worked, so the buttons are the path
+ * that does not depend on a wheel event arriving.
+ */
 function openViewer(svg: string): void {
   const overlay = document.createElement('div');
   overlay.className = 'mermaid-viewer';
   overlay.innerHTML =
     `<div class="mermaid-viewer-stage">${svg}</div>` +
+    `<div class="mermaid-viewer-zoom">` +
+    `<button class="mermaid-viewer-step" type="button" data-step="out" aria-label="Zoom out">\u2212</button>` +
+    `<output class="mermaid-viewer-level">100%</output>` +
+    `<button class="mermaid-viewer-step" type="button" data-step="in" aria-label="Zoom in">+</button>` +
+    `<button class="mermaid-viewer-step" type="button" data-step="reset">Reset</button>` +
+    `</div>` +
     `<div class="mermaid-viewer-tools">` +
     `<button class="mermaid-viewer-save" type="button" data-format="svg">Save SVG</button>` +
     `<button class="mermaid-viewer-save" type="button" data-format="png">Save PNG</button>` +
@@ -186,20 +199,61 @@ function openViewer(svg: string): void {
   let lastX = 0;
   let lastY = 0;
 
+  const level = overlay.querySelector<HTMLOutputElement>('.mermaid-viewer-level')!;
+
   const apply = () => {
     stage.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+    level.textContent = `${Math.round(scale * 100)}%`;
   };
 
-  const onWheel = (e: WheelEvent) => {
-    e.preventDefault();
+  /**
+   * Zooms by `factor`, keeping the point `(cx, cy)` — measured from the centre
+   * of the overlay — under the cursor.
+   *
+   * Extracted from the wheel handler so the buttons and the keyboard drive the
+   * exact same arithmetic. `zoom.test.ts` covers it directly; the event
+   * plumbing around it cannot be unit-tested and, on the evidence, cannot be
+   * relied on either (see `onWheel`).
+   */
+  function zoomBy(factor: number, cx = 0, cy = 0): void {
     const prev = scale;
-    scale = Math.min(8, Math.max(0.25, scale * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
-    const rect = overlay.getBoundingClientRect();
-    const cx = e.clientX - rect.left - rect.width / 2;
-    const cy = e.clientY - rect.top - rect.height / 2;
+    scale = Math.min(8, Math.max(0.25, scale * factor));
+    if (scale === prev) return;
     x -= cx * (scale / prev - 1);
     y -= cy * (scale / prev - 1);
     apply();
+  }
+
+  /**
+   * Wheel zoom, written defensively because it was reported not working at all
+   * while dragging worked — which rules out the transform, the stage and the
+   * maths, and leaves event delivery.
+   *
+   * Three things are handled that the first version assumed away:
+   *
+   *   - `deltaMode`. A wheel event reports in pixels, lines or pages, and only
+   *     the sign was ever read. Reading the sign alone is fine; reading the
+   *     magnitude without the mode is not, so only the sign is used here too,
+   *     deliberately.
+   *   - `ctrlKey`. A trackpad pinch arrives as a wheel event with `ctrlKey`
+   *     set, which the browser otherwise turns into a page zoom.
+   *   - the listener is attached in the CAPTURE phase on the overlay *and* on
+   *     the stage. If something inside Mermaid's own SVG stops propagation —
+   *     and its pan-zoom-aware diagram types do — a bubble-phase listener on
+   *     the overlay never sees the event.
+   *
+   * The zoom controls exist so that none of this has to be right.
+   */
+  const onWheel = (e: WheelEvent) => {
+    if (e.deltaY === 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = overlay.getBoundingClientRect();
+    zoomBy(
+      e.deltaY < 0 ? 1.1 : 1 / 1.1,
+      e.clientX - rect.left - rect.width / 2,
+      e.clientY - rect.top - rect.height / 2,
+    );
   };
 
   const onPointerDown = (e: PointerEvent) => {
@@ -221,14 +275,32 @@ function openViewer(svg: string): void {
     stage.releasePointerCapture(e.pointerId);
   };
   const onKeydown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') close();
+    if (e.key === 'Escape') {
+      close();
+      return;
+    }
+    // `=` is the unshifted key `+` lives on, and is what people actually press.
+    if (e.key === '+' || e.key === '=') {
+      e.preventDefault();
+      zoomBy(1.2);
+    } else if (e.key === '-' || e.key === '_') {
+      e.preventDefault();
+      zoomBy(1 / 1.2);
+    } else if (e.key === '0') {
+      e.preventDefault();
+      scale = 1;
+      x = 0;
+      y = 0;
+      apply();
+    }
   };
   const onOverlayClick = (e: MouseEvent) => {
     if (e.target === overlay) close();
   };
 
   function close(): void {
-    overlay.removeEventListener('wheel', onWheel);
+    overlay.removeEventListener('wheel', onWheel, { capture: true });
+    stage.removeEventListener('wheel', onWheel, { capture: true });
     stage.removeEventListener('pointerdown', onPointerDown);
     stage.removeEventListener('pointermove', onPointerMove);
     stage.removeEventListener('pointerup', onPointerUp);
@@ -237,7 +309,33 @@ function openViewer(svg: string): void {
     overlay.remove();
   }
 
-  overlay.addEventListener('wheel', onWheel, { passive: false });
+  for (const button of overlay.querySelectorAll<HTMLButtonElement>('.mermaid-viewer-step')) {
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const step = button.dataset['step'];
+      if (step === 'in') zoomBy(1.2);
+      else if (step === 'out') zoomBy(1 / 1.2);
+      else {
+        scale = 1;
+        x = 0;
+        y = 0;
+        apply();
+      }
+    });
+  }
+
+  // Capture phase, and on both nodes: see `onWheel`.
+  overlay.addEventListener('wheel', onWheel, { passive: false, capture: true });
+  stage.addEventListener('wheel', onWheel, { passive: false, capture: true });
+  // Double-click resets, which is the gesture people try first when a diagram
+  // has ended up somewhere unhelpful.
+  stage.addEventListener('dblclick', () => {
+    scale = 1;
+    x = 0;
+    y = 0;
+    apply();
+  });
+  apply();
   stage.addEventListener('pointerdown', onPointerDown);
   stage.addEventListener('pointermove', onPointerMove);
   stage.addEventListener('pointerup', onPointerUp);

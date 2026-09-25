@@ -20,6 +20,7 @@
     exportPdf,
     isIpcError,
     openDocument,
+    openExternal,
     openNote,
     readSource,
     revealInEditor,
@@ -81,7 +82,26 @@
    * exists.
    */
   async function onDocClick(event: MouseEvent) {
-    const target = (event.target as HTMLElement | null)?.closest<HTMLAnchorElement>('a.wikilink');
+    const anchor = (event.target as HTMLElement | null)?.closest<HTMLAnchorElement>('a[href]');
+
+    // An external link must leave the application, not replace it.
+    //
+    // Left alone, this webview navigates: the app becomes a website, with no
+    // address bar and no way back, and the document is gone. That is also the
+    // shape of an attack — a markdown file that quietly swaps the app for a
+    // page dressed as it — so every http(s) link is handed to the OS browser
+    // instead. Rust re-checks the scheme; this is the convenience half, not
+    // the security half.
+    if (anchor && !anchor.classList.contains('wikilink')) {
+      const href = anchor.getAttribute('href') ?? '';
+      if (/^https?:\/\//i.test(href)) {
+        event.preventDefault();
+        void openExternal(href).catch((error: unknown) => say(reason(error), true));
+        return;
+      }
+    }
+
+    const target = anchor?.classList.contains('wikilink') ? anchor : null;
     if (!target) return;
 
     const note = target.dataset['target'];

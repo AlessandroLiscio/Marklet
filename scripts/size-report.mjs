@@ -20,7 +20,27 @@ const CHUNK_BUDGETS = {
   codemirror: 200 * 1024,
   hljs: 40 * 1024,
 };
-const STYLES_GZIP_MAX = 12288;
+/**
+ * The BOOT stylesheet — `dist/assets/index-*.css`, the one `index.html` links,
+ * gzipped — not `src/styles/**`.
+ *
+ * It used to be the source, and that was wrong in a way that quietly punished
+ * the thing this repository asks for everywhere else. The source gzips to
+ * 11.4 KiB against a 12 KiB ceiling; what actually ships is 3.9 KiB. The
+ * difference is comments, which Vite strips and which the old measurement
+ * charged in full — so explaining a rule in a stylesheet moved you toward a
+ * budget failure, and the fix for a "breach" would have been to delete the
+ * explanations.
+ *
+ * Source was chosen originally to avoid counting KaTeX's stylesheet, which is
+ * third-party, lazy, and has its own chunk. Naming the entry file solves that
+ * directly: the lazy stylesheets are separate outputs and are not in it.
+ *
+ * 6 KiB against a measured 3.9 leaves room to grow and still fails on
+ * something real. The old ceiling would now be 3x the measurement, and this
+ * file's own header says what a gate with that much headroom is worth.
+ */
+const STYLES_GZIP_MAX = 6144;
 
 const xz = (path) => Number(execSync(`xz -9c ${JSON.stringify(path)} | wc -c`).toString().trim());
 const kib = (n) => `${(n / 1024).toFixed(1)} KiB`;
@@ -42,19 +62,29 @@ if (!existsSync(assets)) {
   }
 }
 
-console.log('\nStylesheets (gzip -9)\n');
-const cssFiles = execSync(`find ${JSON.stringify(join(root, 'src/styles'))} -name '*.css'`)
-  .toString()
-  .trim()
-  .split('\n')
-  .filter(Boolean);
-const cssBytes = cssFiles.map((f) => readFileSync(f)).reduce((a, b) => Buffer.concat([a, b]), Buffer.alloc(0));
-const cssGzip = Number(
-  execSync('gzip -9 | wc -c', { input: cssBytes }).toString().trim(),
-);
-const cssOver = cssGzip > STYLES_GZIP_MAX;
-if (cssOver) failures++;
-console.log(`  ${kib(cssGzip).padStart(10)}  src/styles/** (budget ${kib(STYLES_GZIP_MAX)})${cssOver ? '  OVER' : ''}`);
+console.log('\nBoot stylesheet (gzip -9)\n');
+// The entry stylesheet is whatever index.html links; every other .css in
+// dist/assets is a lazy chunk with its own budget above, or none.
+const html = existsSync(join(root, 'dist/index.html'))
+  ? readFileSync(join(root, 'dist/index.html'), 'utf8')
+  : '';
+const entryCss = /href="[^"]*\/(index-[^"/]+\.css)"/.exec(html)?.[1];
+
+if (!entryCss) {
+  console.log('  not built — run `npm run build` first.');
+  failures++;
+} else {
+  const cssGzip = Number(
+    execSync(`gzip -9c ${JSON.stringify(join(root, 'dist/assets', entryCss))} | wc -c`)
+      .toString()
+      .trim(),
+  );
+  const cssOver = cssGzip > STYLES_GZIP_MAX;
+  if (cssOver) failures++;
+  console.log(
+    `  ${kib(cssGzip).padStart(10)}  ${entryCss} (budget ${kib(STYLES_GZIP_MAX)})${cssOver ? '  OVER' : ''}`,
+  );
+}
 
 console.log('\nBinary\n');
 const exe = join(root, 'src-tauri/target/release/marklet');

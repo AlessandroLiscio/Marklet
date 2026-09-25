@@ -107,10 +107,27 @@
   font-display: swap;
 }
 
-/* "editorial" (default) — typography.csv "News Editorial": Newsreader is
-   "designed for long-form reading" per that row's own notes; Roboto's slot
-   is filled by Inter, already the project's UI sans elsewhere. */
+/* "system" is the default, and is simply tokens.css's own stack restated so
+   that switching BACK to it from another pairing works: `[data-typeface]` is
+   an attribute swap, and without a rule to swap to, the previous pairing's
+   values would still be in effect.
+
+   It used to be that `:root` carried the editorial pairing, which made a
+   bundled serif the default reading face for everybody. A reading face is a
+   strong opinion to hold on someone else's behalf, and holding it by way of a
+   selector nobody reads is worse. The three pairings below are one click
+   away in settings for anyone who wants one. */
 :root,
+[data-typeface="system"] {
+  --font-ui: var(--font-ui-system);
+  --font-read: var(--font-read-system);
+  --font-code: var(--font-code-system);
+  --font-heading: var(--font-ui);
+}
+
+/* "editorial" — typography.csv "News Editorial": Newsreader is "designed for
+   long-form reading" per that row's own notes; Roboto's slot is filled by
+   Inter, already the project's UI sans elsewhere. */
 [data-typeface="editorial"] {
   --font-ui: 'Inter', var(--font-ui-system);
   --font-read: 'Newsreader', var(--font-read-system);

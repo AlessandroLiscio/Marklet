@@ -13,7 +13,7 @@ defeats both.
 |---|---:|---:|---|
 | Installer | **2.8 MiB** (2\_936\_013 B) | **12 MiB** (12\_582\_912 B) | `size-gate.yml` |
 | Cold start, median of 5 | 1200 ms | 1800 ms | `release.yml` |
-| `src/styles/**`, gzipped | 12 KiB (12\_288 B) | not gated | `npm run size` |
+| Boot stylesheet `dist/assets/index-*.css`, gzipped | 6 KiB (6\_144 B) | not gated | `npm run size` |
 
 Lite's ceiling is **a promise**: it is why the project exists, and raising it is a decision
 taken on a measurement, in its own change. Full's is **a tripwire**: it catches a dependency
