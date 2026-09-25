@@ -42,13 +42,44 @@ notify = "8"
 
 [target.'cfg(windows)'.dependencies]
 windows-registry = "0.5"
+# These two versions are ONE decision, not two.
+#
+# `PrintToPdf` (src-tauri/src/export/pdf.rs) is called on the ICoreWebView2 that
+# Tauri hands us, so our webview2-com must be the exact one wry 0.55.1 resolves
+# to — 0.38.2 — or the pointer is a different Rust type and will not cast.
+# webview2-com 0.38.2 in turn pins `windows` 0.61 and `windows-core` 0.61, which
+# is why `windows` below is 0.61 and not the newer 0.62: `.cast()` comes from
+# `windows_core::Interface`, and with two windows-core crates in the tree the
+# trait we import is not the trait the interface implements. That failure reads
+# as "no method named `cast` found for reference `&ICoreWebView2_2`", which
+# names neither version and sends you looking in the wrong place.
+#
+# Nothing else in the tree asks for 0.62; the only thing that did was this
+# declaration. Unifying downward therefore also removes a duplicate `windows`
+# facade from the binary.
+#
+# Bump either line only together with a Tauri bump, and only if afterwards
+#   grep -c 'name = "webview2-com"' Cargo.lock   still prints 1
+#   grep -c 'name = "windows-core"' Cargo.lock   still prints 1
+# `scripts/check-windows.sh` catches the mismatch from Linux in ~15 s.
 webview2-com = "0.38"
-windows = { version = "0.62", features = [
+windows = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_System_Console",
   "Win32_UI_Shell",
   "Win32_UI_WindowsAndMessaging",
 ] }
+
+# PDF export's Linux half (src-tauri/src/export/pdf.rs): webkit_print_operation
+# via WebKitGTK. Zero marginal installer size — `tauri-runtime-wry`'s Linux
+# backend already links webkit2gtk 2.0.2 and gtk 0.18.2 (see Cargo.lock); this
+# just names them directly instead of reaching them only through Tauri's own
+# (narrower) re-exports. size-budget's "every new dependency" rule still
+# applies to the *declaration*, hence this note, even though the bytes are
+# already paid for.
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = "2.0"
+gtk = "0.18"
 
 [features]
 # Marklet ships as TWO products from one codebase. `default` is the lite

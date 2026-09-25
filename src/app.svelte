@@ -11,15 +11,47 @@
   import { onDestroy, onMount } from 'svelte';
 
   import { currentDocument, setDocument } from './lib/doc';
+  import { createEditController, type EditController, type EditMode } from './lib/edit';
   import Outline from './lib/outline.svelte';
   import SettingsPanel from './lib/settings/panel.svelte';
   import Sidebar from './lib/sidebar/sidebar.svelte';
-  import { openDocument, openNote, type OpenedDocument } from './lib/ipc';
+  import {
+    exportHtml,
+    exportPdf,
+    isIpcError,
+    openDocument,
+    openNote,
+    readSource,
+    revealInEditor,
+    savePastedImage,
+    type OpenedDocument,
+  } from './lib/ipc';
 
   let doc = $state<OpenedDocument | null>(currentDocument());
+  let mode = $state<EditMode>('read');
+  /** The one transient line of feedback: an export's result, or a refusal. */
+  let notice = $state<{ text: string; bad: boolean } | null>(null);
+  let noticeTimer: ReturnType<typeof setTimeout> | null = null;
+  let edit: EditController | null = null;
+  /** Serializes exports: two Ctrl+P in a row must not print into each other. */
+  let exporting = false;
   const vaultPath = typeof window !== 'undefined' ? (window.__MARKLET_VAULT__ ?? null) : null;
 
   let unlisten: Array<() => void> = [];
+
+  function say(text: string, bad = false): void {
+    notice = { text, bad };
+    if (noticeTimer) clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => {
+      notice = null;
+    }, bad ? 6000 : 3500);
+  }
+
+  /** An `IpcError` reads better than whatever `String(error)` would produce. */
+  function reason(error: unknown): string {
+    if (isIpcError(error)) return error.message;
+    return error instanceof Error ? error.message : 'that did not work';
+  }
 
   /**
    * Swaps the document and re-runs the rich-render pass.
@@ -68,8 +100,100 @@
     }
   }
 
+  /**
+   * PDF and standalone HTML, both from **what is on screen**.
+   *
+   * Not from the file on disk: KaTeX and Mermaid have run in this webview and
+   * nowhere else, so printing or serializing the live document is the only way
+   * either format contains them. `MD_HTML=1` produces the other thing — the
+   * same document without them — and that difference is the whole reason the
+   * two paths exist separately (see `src-tauri/src/export/html.rs`).
+   */
+  async function runExport(format: 'pdf' | 'html'): Promise<void> {
+    const root = document.getElementById('doc');
+    if (!doc || !root || exporting) return;
+
+    exporting = true;
+    say(format === 'pdf' ? 'Printing to PDF…' : 'Writing standalone HTML…');
+    try {
+      // print.css is loaded here rather than at boot on purpose. It is ~5 KiB
+      // gzipped of rules that are entirely inside `@media print`, and
+      // `src/styles/**` is gated at 12 KiB gzipped for the lite edition
+      // (`.claude/skills/size-budget/SKILL.md`). Importing it at the moment of
+      // an export costs the reader nothing and gets it into the document
+      // before the native print engine looks at the page.
+      await import('./styles/print.css');
+
+      if (format === 'pdf') {
+        say(`Saved ${await exportPdf(doc.path)}`);
+      } else {
+        const { serializeEnrichedDocument } = await import('./lib/rich/export');
+        const { bodyHtml, extraCss } = await serializeEnrichedDocument(root);
+        say(`Saved ${await exportHtml(doc.path, bodyHtml, extraCss)}`);
+      }
+    } catch (error) {
+      say(reason(error), true);
+    } finally {
+      exporting = false;
+    }
+  }
+
+  /**
+   * Export shortcuts, checked **after** the editor has had the keystroke.
+   *
+   * `Ctrl+P` is the one everyone already knows, and Marklet's answer to it is
+   * a file rather than a dialog. `Ctrl+Shift+S` is "save a copy that works
+   * anywhere". Neither fires while a text field has focus — the settings
+   * panel and the search box both have inputs.
+   */
+  function exportShortcut(event: KeyboardEvent): boolean {
+    if (!event.ctrlKey || event.altKey || event.metaKey) return false;
+
+    const target = event.target as HTMLElement | null;
+    if (
+      target !== null &&
+      (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+    ) {
+      return false;
+    }
+
+    const key = event.key.toLowerCase();
+    if (key === 'p' && !event.shiftKey) {
+      event.preventDefault();
+      void runExport('pdf');
+      return true;
+    }
+    if (key === 's' && event.shiftKey) {
+      event.preventDefault();
+      void runExport('html');
+      return true;
+    }
+    return false;
+  }
+
+  function onKeyDown(event: KeyboardEvent): void {
+    if (edit?.handleKey(event)) return;
+    exportShortcut(event);
+  }
+
   onMount(() => {
     const root = document.getElementById('doc');
+    if (root) {
+      edit = createEditController({
+        docRoot: root,
+        path: () => doc?.path ?? null,
+        readSource: () => readSource(doc?.path ?? ''),
+        revealInEditor: async (line, column) => {
+          say(`Opened in ${await revealInEditor(doc?.path ?? '', line, column)}`);
+        },
+        savePastedImage: (bytes, ext) => savePastedImage(doc?.path ?? '', bytes, ext),
+        onMode: (next) => {
+          mode = next;
+        },
+        onError: (message) => say(message, true),
+      });
+      window.addEventListener('keydown', onKeyDown);
+    }
     if (root) {
       // Enrich whatever the boot script already put on screen. The first paint
       // happened before this component existed — that is the point of the boot
@@ -85,7 +209,11 @@
       // fast enough that diffing would be more code for less certainty.
       unlisten.push(
         await listen('file-changed', async () => {
-          if (doc) await show(await openDocument(doc.path));
+          if (!doc) return;
+          await show(await openDocument(doc.path));
+          // The preview is a new DOM tree, so the split columns' line map is
+          // stale until it is measured again. Harmless in read mode.
+          edit?.resync();
         }),
       );
 
@@ -100,12 +228,16 @@
 
     return () => {
       root?.removeEventListener('click', onDocClick);
+      window.removeEventListener('keydown', onKeyDown);
     };
   });
 
   onDestroy(() => {
     for (const off of unlisten) off();
     unlisten = [];
+    if (noticeTimer) clearTimeout(noticeTimer);
+    void edit?.destroy();
+    edit = null;
   });
 </script>
 
@@ -115,8 +247,18 @@
   <Sidebar {vaultPath} active={doc?.path ?? null} onopen={(path) => void openNote(path).then((d) => show(d as OpenedDocument))} />
 {/if}
 
+{#if notice}
+  <!-- One line, self-clearing. A modal for "saved a file" would be worse than
+       the silence it replaces; a refusal still has to be readable, so it stays
+       up longer and is coloured. -->
+  <p class="notice" class:bad={notice.bad} role="status" aria-live="polite">{notice.text}</p>
+{/if}
+
 {#if doc}
   <footer class="status" aria-label="Document status">
+    {#if mode !== 'read'}
+      <span class="status-item status-mode">{mode === 'live' ? 'live edit' : 'split'}</span>
+    {/if}
     <span class="status-item">{doc.outline.length} headings</span>
     <span class="status-item">{doc.line_map.length} blocks</span>
     {#if doc.encoding !== 'utf8'}
@@ -149,5 +291,33 @@
 
   .status-warn {
     color: var(--alert-warning);
+  }
+
+  .status-mode {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .notice {
+    position: fixed;
+    inset-block-end: var(--space-4);
+    inset-inline-start: 50%;
+    translate: -50% 0;
+    max-inline-size: min(48ch, calc(100vw - 2 * var(--space-4)));
+    margin: 0;
+    padding: var(--space-2) var(--space-4);
+    font-family: var(--font-ui);
+    font-size: var(--text-small);
+    color: var(--fg);
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 2px 12px oklch(0% 0 0 / 22%);
+    z-index: 40;
+  }
+
+  .notice.bad {
+    color: var(--alert-caution);
+    border-color: var(--alert-caution);
   }
 </style>

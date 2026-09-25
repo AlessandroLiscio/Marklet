@@ -23,6 +23,7 @@
 //! files — see `.claude/skills/tauri-ipc/SKILL.md`.
 
 pub mod cli;
+pub mod editor;
 pub mod export;
 pub mod ipc;
 pub mod platform;
@@ -118,6 +119,10 @@ pub fn run(job: cli::WindowJob, started: Instant) {
         }))
         .manage(root)
         .manage(vault)
+        // `MD_EDITOR`, parsed once by `cli::parse`. Held here so `F4` can ask
+        // for "my editor, at this line" without the webview ever naming a
+        // program — see `editor.rs`'s module doc for why that matters.
+        .manage(ipc::EditorSetting(job.editor.clone()))
         // The watcher handle has to outlive `setup`, or `notify` stops watching
         // the moment the function returns and live reload silently never fires.
         .manage(std::sync::Mutex::new(Option::<watch::Watch>::None))
@@ -138,6 +143,12 @@ pub fn run(job: cli::WindowJob, started: Instant) {
             ipc::search_vault,
             ipc::resolve_wikilink,
             ipc::backlinks_for,
+            ipc::splice_range,
+            ipc::read_source,
+            ipc::save_pasted_image,
+            ipc::reveal_in_editor,
+            ipc::export_pdf,
+            ipc::export_html,
         ])
         .setup(move |app| {
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
