@@ -91,6 +91,8 @@ lightweight care about that number, and publishing it keeps us honest.
   `pulldown-cmark` splits inline HTML into `InlineHtml`/`Text`/`InlineHtml`, so the script
   body never reached the sanitizer. Dropped tags now swallow their contents, bounded to the
   enclosing block so an unclosed `<script>` cannot blank the rest of the document.
+### Infrastructure
+
 - **Two editions from one codebase.** Marklet Lite carries the size promise — 2.8 MiB
   installer, 1200 ms cold start, both enforced in CI. Marklet (full) is deliberately not
   bound by the lightweight rule and is where Mermaid, regex vault search, CJK detection,
