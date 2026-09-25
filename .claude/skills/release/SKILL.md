@@ -58,7 +58,7 @@ Pushing `v*` runs `release.yml`, which builds on `windows-latest` and `ubuntu-22
 |---|---|---|
 | `marklet-setup.exe` | `MARKLET_EDITION=full` + `--features full` | the default download |
 | `marklet-lite-setup.exe` | defaults (both switches default to lite) | the deliberate small choice |
-| `marklet-offline-setup.exe` | full, plus `webviewInstallMode: offlineInstaller` | ~127 MB, air-gapped machines only |
+| `marklet-offline-setup.exe` | full, plus `webviewInstallMode: offlineInstaller` | **208 MB** measured at 0.1.0, air-gapped machines only |
 | `marklet-<ver>.AppImage` | full | Linux |
 | `marklet-<ver>.deb` | full | Linux |
 | `SHA256SUMS` | — | covers every artifact above |
@@ -67,8 +67,10 @@ The editions are two products, not a build variant — see `docs/editions.md`. B
 are needed because the difference lives in two places: `MARKLET_EDITION` decides the bundle,
 `--features full` decides the binary.
 
-The offline installer is built **only** on tags. It is 127 MB because it embeds the whole
-WebView2 runtime; it must never become the default download.
+The offline installer is built **only** on tags. It measured **208 MB** at 0.1.0 — the
+estimate carried here before that was 127 MB, which was Microsoft's figure for the runtime
+alone rather than for an NSIS installer carrying it. It must never become the default
+download.
 
 Its one config difference lives in `src-tauri/tauri.offline.conf.json`, passed as
 `--config src-tauri/tauri.offline.conf.json`. **Do not inline that JSON back into the

@@ -14,13 +14,37 @@ Nothing yet.
 
 ## [0.1.0] — 2026-09-25
 
-First release. Installers measured by the size gate on the release build:
-**1.56 MiB** for Marklet Lite against its 2.81 MiB ceiling, **3.01 MiB** for
-Marklet against its 12 MiB tripwire. No previous release to compare against.
+First release. No previous release to compare against, so these are the
+baseline every later entry is measured against:
+
+| | Installer | Ceiling | Cold start | Ceiling |
+|---|---:|---:|---:|---:|
+| Marklet Lite | 1.55 MiB | 2.81 MiB | 625 ms | 1200 ms |
+| Marklet | 3.00 MiB | 12.00 MiB | 632 ms | 1800 ms |
+
+Cold start is the median of five launches on `windows-latest` opening a 478 KB
+document. The **first** launch after an install is 3–4 s, because WebView2
+creates its user data directory once; it is reported separately rather than
+averaged in. Rendering the same document with no window is 14–18 ms.
+
+Also published: `marklet-0.1.0.deb` (4.18 MB), `marklet-0.1.0.AppImage`
+(78.78 MB — AppImage carries the whole GTK and WebKit stack and is not
+comparable to the Windows figures), and `marklet-offline-setup-0.1.0.exe`
+(208 MB, air-gapped machines only).
 
 Unverified at release, and stated here rather than discovered later: nobody has
 reviewed the interface visually, `PrintToPdf` has never produced a file in CI,
 and the binaries are unsigned, so SmartScreen warns on first run.
+
+### Fixed during the release itself
+
+- The offline installer's only config difference was passed as an inline JSON
+  string, which pwsh stripped the quotes out of before `npx` saw it. Now a
+  committed file passed by path.
+- The cold-start gate looked for the installed binary at a hard-coded
+  `%LOCALAPPDATA%\Programs\Marklet\`. It installs to `%LOCALAPPDATA%\Marklet\`.
+  The path is now resolved rather than assumed — the guess had never run,
+  because a build leg failed ahead of it.
 
 ### Added
 
