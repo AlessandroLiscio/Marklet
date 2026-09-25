@@ -24,8 +24,15 @@ motion, tabs, regex search, CJK detection, an updater. Its ceiling catches a dep
 by mistake; it does not shape design decisions, and raising it is cheap because nobody was
 promised it. See `docs/editions.md`.
 
-`src/styles/**` gzipped must stay under 12 KiB **in the lite build**. The full build's
-stylesheets are not gated.
+The **boot stylesheet** — `dist/assets/index-*.css`, the one `index.html` links, gzipped —
+must stay under 6 KiB in the lite build. Lazy stylesheets (KaTeX, Mermaid, hljs, the editor)
+are separate outputs with their own chunk budgets, and the full build's extra sheets are not
+gated.
+
+This used to measure `src/styles/**` instead, and that was wrong in a way worth remembering:
+the source gzips to about three times what ships, because Vite strips comments and the
+measurement did not. Explaining a rule in a stylesheet moved you toward a budget failure, and
+the fix for a "breach" would have been to delete the explanation. Measure what ships.
 
 `.github/workflows/size-gate.yml` fails the pull request when a ceiling is exceeded and
 comments the byte delta against `main`. Do not raise the **lite** ceiling to make a build
@@ -83,8 +90,9 @@ npm pack <pkg> --pack-destination /tmp >/dev/null && \
 # What a built chunk costs
 xz -9c dist/assets/mermaid-*.js | wc -c
 
-# All stylesheets together, against the 12 KiB gate
-cat src/styles/**/*.css | gzip -9 | wc -c
+# The boot stylesheet, against the 6 KiB gate. Build first — this measures
+# what ships, not the source, which is ~3x larger because of its comments.
+npm run build && gzip -9c dist/assets/index-*.css | wc -c
 
 # The stripped binary
 cargo build --release && du -b src-tauri/target/release/marklet

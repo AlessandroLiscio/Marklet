@@ -73,6 +73,15 @@
   --accent-muted: oklch(0.94 0.03 var(--accent-hue));
   --on-accent: #ffffff;
 
+  /* Links are BLUE, and are the one colour here that the accent generator
+     does not reach. Hue 250 is fixed on purpose: `--accent-hue` is a slider
+     the user owns, and a link that follows it to orange or green stops
+     reading as a link. Blue is the only colour convention the web actually
+     has, and spending it on personalisation buys nothing. Same lightness as
+     the accent, so it clears AA against `--bg` by the same sweep. */
+  --link: oklch(0.48 0.16 250);
+  --link-hover: oklch(0.40 0.17 250);
+
   /* GFM alert blockquotes (`> [!NOTE]` etc.). `note` intentionally rides the
      user's own accent hue — informational callouts sharing the link colour
      is a common, legible choice. The other four are fixed hues: their
@@ -131,6 +140,12 @@
     --accent-muted: oklch(0.24 0.05 var(--accent-hue));
     --on-accent: var(--ink-950);
 
+    /* Lighter than the light-mode blue for the same reason every other token
+       flips: the background did. See the light block for why the hue is
+       pinned rather than generated. */
+    --link: oklch(0.72 0.14 250);
+    --link-hover: oklch(0.80 0.12 250);
+
     --alert-note: var(--accent);
     --alert-tip: oklch(0.66 var(--accent-chroma) 142);
     --alert-important: oklch(0.66 var(--accent-chroma) 292);
@@ -154,6 +169,11 @@
   --accent-hover: oklch(0.71 var(--accent-chroma) var(--accent-hue));
   --accent-muted: oklch(0.24 0.05 var(--accent-hue));
   --on-accent: var(--ink-950);
+
+  /* Same values as the media-query block above; an explicit choice must not
+     depend on the OS. */
+  --link: oklch(0.72 0.14 250);
+  --link-hover: oklch(0.80 0.12 250);
 
   --alert-note: var(--accent);
   --alert-tip: oklch(0.66 var(--accent-chroma) 142);

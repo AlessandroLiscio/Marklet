@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use tauri::{Emitter, Manager};
 
+use crate::platform;
 use crate::protocol::AssetRoot;
 use crate::render::{self, RenderOpts, RenderedDoc};
 use crate::store;
@@ -838,6 +839,55 @@ pub fn export_html(
 
     Ok(target.display().to_string())
 }
+/// Opens `url` in the user's browser.
+///
+/// **A link is not navigation.** Without this, clicking an `http` link in a
+/// document navigates the *application's own webview* to that page: the app is
+/// replaced by a website, with no address bar and no back button, and the
+/// document the user was reading is gone. That is also the shape of an attack
+/// — a markdown file that quietly replaces the app with a page that looks like
+/// it — so the frontend intercepts every external link and sends it here
+/// instead.
+///
+/// Only `http` and `https`. The scheme allowlist is the whole security of this
+/// command: the handler on the other side is the operating system's, and on
+/// Windows a registered protocol handler can be an arbitrary program with
+/// arbitrary arguments. `file:` would open Explorer at a path of the
+/// document's choosing; `ms-msdt:` was a remote-code-execution chain for
+/// years. Neither the webview nor a markdown file gets to pick which handler
+/// runs, so anything that is not plain web browsing is refused here.
+///
+/// The URL is *not* otherwise inspected. Nothing is shelled out — see
+/// `platform::open_external` — so there is no metacharacter to escape and no
+/// second parser to disagree with the first.
+#[tauri::command]
+pub fn open_external(url: String) -> Result<String, IpcError> {
+    let scheme = url
+        .split_once("://")
+        .map(|(scheme, _)| scheme.to_ascii_lowercase());
+
+    match scheme.as_deref() {
+        Some("http") | Some("https") => {}
+        _ => {
+            return Err(IpcError::new(
+                IpcErrorKind::Denied,
+                "only http and https links can be opened",
+                None,
+            ))
+        }
+    }
+
+    platform::open_external(&url)
+        .map(str::to_string)
+        .map_err(|e| {
+            IpcError::new(
+                IpcErrorKind::Io,
+                format!("could not open that link: {e}"),
+                None,
+            )
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1178,5 +1228,53 @@ mod paste_and_export_tests {
                 "{bad} must not be writable"
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod external_link_tests {
+    use super::*;
+
+    /// The scheme allowlist is the entire security of `open_external`: whatever
+    /// survives it is handed to the operating system's registered handler,
+    /// which on Windows can be an arbitrary program. These cases are the ones
+    /// that must never get that far.
+    #[test]
+    fn only_http_and_https_are_openable() {
+        for refused in [
+            "file:///etc/passwd",
+            "file://C:/Windows/System32/calc.exe",
+            "ms-msdt:/id PCWDiagnostic",
+            "javascript://example.com/%0aalert(1)",
+            "data:text/html,<script>alert(1)</script>",
+            "vbscript:msgbox(1)",
+            "smb://attacker/share",
+            "marklet://internal",
+            "not a url at all",
+            "",
+        ] {
+            let err = open_external(refused.to_string()).unwrap_err();
+            assert_eq!(
+                err.kind,
+                IpcErrorKind::Denied,
+                "{refused} must be refused, not attempted"
+            );
+        }
+    }
+
+    #[test]
+    fn the_scheme_check_ignores_case_but_not_position() {
+        // Upper-case schemes are legal and common in pasted URLs.
+        assert!(!matches!(
+            open_external("HTTPS://example.com".into()),
+            Err(e) if e.kind == IpcErrorKind::Denied
+        ));
+        // A permitted scheme appearing later in the string is not a scheme.
+        assert_eq!(
+            open_external("file:///x?u=https://example.com".into())
+                .unwrap_err()
+                .kind,
+            IpcErrorKind::Denied
+        );
     }
 }

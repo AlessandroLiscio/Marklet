@@ -79,16 +79,41 @@ body {
 
 /* --------------------------------- links --------------------------------- */
 
+/* Blue, and not underlined at rest.
+   `--link` rather than `--accent`: the accent is a themeable brand colour that
+   a user can drag to any hue, and a link that turns orange because somebody
+   liked orange stops reading as a link. Blue is the one colour convention the
+   web has, so it is pinned here and deliberately not part of the palette.
+
+   The underline appears on hover instead of at rest. Colour alone does not
+   carry the meaning — the pointer changes, the underline appears, and both
+   `:focus-visible` and `forced-colors` below keep it legible for anyone who
+   is not seeing the colour at all. */
 #doc a {
-  color: var(--accent);
-  text-decoration-color: color-mix(in oklab, var(--accent) 40%, transparent);
+  color: var(--link);
+  text-decoration: none;
   text-underline-offset: 0.15em;
   transition: color var(--duration-fast) ease, text-decoration-color var(--duration-fast) ease;
 }
 
 #doc a:hover {
-  color: var(--accent-hover);
+  color: var(--link-hover);
+  text-decoration: underline;
   text-decoration-color: currentcolor;
+}
+
+/* Keyboard navigation has no hover, so the underline is permanent there. */
+#doc a:focus-visible {
+  text-decoration: underline;
+  text-decoration-color: currentcolor;
+}
+
+/* In a forced-colours mode the browser replaces our palette entirely, and a
+   link with no underline becomes indistinguishable from body text. */
+@media (forced-colors: active) {
+  #doc a {
+    text-decoration: underline;
+  }
 }
 
 /* A wiki-link to a note that does not exist yet is a normal state in a
@@ -141,16 +166,54 @@ body {
 /* Alignment (left/center/right) arrives as an inline `text-align` style from
    the renderer, so the cascade needs nothing extra for it. */
 
+/* `border-collapse: separate` with zero spacing, not `collapse`.
+   A collapsed table cannot have rounded corners: the corner cells' borders
+   have been merged away, so there is nothing left to round. Separate borders
+   with `border-spacing: 0` look identical — every internal edge is still one
+   pixel, because each cell draws only its top and left and the table draws
+   the outside — and the outer corners survive to be rounded. */
 #doc table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   inline-size: 100%;
   display: block;
   overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
 }
 
 #doc :is(th, td) {
-  border: 1px solid var(--border);
   padding: 0.4em 0.7em;
+  border-block-start: 1px solid var(--border);
+  border-inline-start: 1px solid var(--border);
+}
+
+/* The table's own border draws the outside, so the cells on the top row and
+   in the first column must not draw it a second time. */
+#doc tr:first-child :is(th, td) {
+  border-block-start: 0;
+}
+
+#doc :is(th, td):first-child {
+  border-inline-start: 0;
+}
+
+/* `overflow: hidden` on the table would clip its own horizontal scrolling,
+   so the corner cells are rounded individually to follow the border. */
+#doc tr:first-child :is(th, td):first-child {
+  border-start-start-radius: var(--radius-md);
+}
+
+#doc tr:first-child :is(th, td):last-child {
+  border-start-end-radius: var(--radius-md);
+}
+
+#doc tr:last-child :is(th, td):first-child {
+  border-end-start-radius: var(--radius-md);
+}
+
+#doc tr:last-child :is(th, td):last-child {
+  border-end-end-radius: var(--radius-md);
 }
 
 #doc thead th {

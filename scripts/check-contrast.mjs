@@ -26,8 +26,12 @@ const PAIRS = [
   ['--fg-muted', '--bg', 'muted text'],
   ['--fg', '--bg-subtle', 'text on subtle surface'],
   ['--fg-muted', '--bg-subtle', 'muted text on subtle surface'],
-  ['--accent', '--bg', 'links'],
-  ['--accent-hover', '--bg', 'links (hover)'],
+  ['--accent', '--bg', 'accent'],
+  ['--accent-hover', '--bg', 'accent (hover)'],
+  // Links do not ride the accent — see tokens.css. Checked on their own, or
+  // a blue that fails AA would pass behind the accent's numbers.
+  ['--link', '--bg', 'links'],
+  ['--link-hover', '--bg', 'links (hover)'],
   ['--on-accent', '--accent', 'text on solid accent (buttons, badges)'],
   ['--fg', '--accent-muted', 'selected text (::selection)'],
   ['--alert-note', '--bg', 'alert label: note'],

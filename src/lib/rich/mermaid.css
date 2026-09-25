@@ -104,6 +104,51 @@
   color: var(--accent);
 }
 
+/* Zoom sits bottom-centre, away from both the save buttons and the close
+   control. It exists because wheel zoom was reported dead in a build where
+   dragging worked: a control that is visibly there cannot fail silently the
+   way a missing event does. */
+.mermaid-viewer-zoom {
+  position: absolute;
+  bottom: var(--space-4);
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.mermaid-viewer-level {
+  min-inline-size: 4ch;
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-muted);
+}
+
+.mermaid-viewer-step {
+  min-inline-size: 2rem;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: var(--text-small);
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.mermaid-viewer-step:hover {
+  background: var(--bg-subtle);
+  color: var(--accent);
+}
+
 /* Bottom-left rather than beside the close button: the two are different
    kinds of action, and a "Save PNG" one pixel from "✕" is a misclick waiting
    to happen in a fullscreen overlay with no undo. */

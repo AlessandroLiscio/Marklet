@@ -18,7 +18,10 @@ export const DEFAULT_SETTINGS: Settings = {
   // tokens.css's own default (`--accent-hue: 221`). Kept in sync by eye with
   // store.rs's `Settings::default` — no build-time link between the two.
   accent_hue: 221,
-  typeface: 'editorial',
+  // The platform's own UI sans. A serif reading face is a strong opinion to
+  // hold on somebody else's behalf, and three of them are available one click
+  // away in the full edition for anyone who wants one.
+  typeface: 'system',
   palette: 'default',
   density: 'normal',
   motion: 'on',

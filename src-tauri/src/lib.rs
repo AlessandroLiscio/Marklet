@@ -158,6 +158,7 @@ pub fn run(job: cli::WindowJob, started: Instant) {
             ipc::reveal_in_editor,
             ipc::export_pdf,
             ipc::export_html,
+            ipc::open_external,
         ])
         .setup(move |app| {
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())

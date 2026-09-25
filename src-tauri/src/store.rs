@@ -50,6 +50,10 @@ pub enum Theme {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Typeface {
+    /// The platform's own UI sans, for reading as well as for chrome. The
+    /// default, and the only one lite can offer: it costs no bytes because
+    /// the fonts are already on the machine.
+    System,
     Editorial,
     Literary,
     Technical,
@@ -116,7 +120,7 @@ impl Default for Settings {
             // Base/Documentation" per its header's validated sweep). Keep the
             // two in sync by eye; there is no build-time link between them.
             accent_hue: 221,
-            typeface: Typeface::Editorial,
+            typeface: Typeface::System,
             palette: Palette::Default,
             density: Density::Normal,
             motion: Motion::On,

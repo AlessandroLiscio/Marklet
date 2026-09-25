@@ -54,6 +54,12 @@ and the binaries are unsigned, so SmartScreen warns on first run.
 
 ### Added
 
+- **The interface, after the first person looked at it.** Links are blue and underline on
+  hover rather than riding the themeable accent; tables have rounded corners; the default
+  reading face is the platform's own UI sans rather than a bundled serif, with three serif
+  and monospace pairings one click away in the full edition; the diagram viewer has `+` /
+  `−` / reset controls, keyboard zoom and double-click-to-reset, because wheel zoom alone
+  was reported doing nothing.
 - **Editing, in the Obsidian sense.** `F2` shows the markdown source with its syntax hidden
   on every line the cursor is not on; `F3` splits source and preview with two-way scroll
   sync; `F4` or `Ctrl+E` opens your own editor at the cursor; `Esc` goes back to reading.
@@ -99,7 +105,7 @@ and the binaries are unsigned, so SmartScreen warns on first run.
 - **Design system**, generated from `ui-ux-pro-max` rather than invented. Two themes plus an
   `oklch()` accent generator whose lightness/chroma constants were swept across the whole
   hue circle, so any accent a user picks clears WCAG AA — worst case 5.49:1. Lite's
-  stylesheets gzip to 2119 B against a 12 KiB gate; the full edition adds three selectable
+  boot stylesheet gzips to 3.9 KiB against a 6 KiB gate; the full edition adds three selectable
   type pairings and four accent palettes through a dynamic import lite never fetches.
 - **CLI and headless export.** `--help`, `--version`, `--benchmark`, `--install`,
   `--uninstall`, `--unbind`, `--settings`, plus `MD_HTML=1`, `MD_HTML_OUTPUT` and
@@ -111,6 +117,13 @@ and the binaries are unsigned, so SmartScreen warns on first run.
 
 ### Security
 
+- **An external link leaves the application instead of replacing it.** An `http` link in a
+  document used to navigate Marklet's own webview: the app became a website, with no address
+  bar and no way back. That is also the shape of an attack — a markdown file that quietly
+  swaps the app for a page dressed as it. Links now open in the system browser through a
+  command that accepts `http` and `https` and refuses everything else, `file:` and
+  `ms-msdt:` included, because the handler on the other side is the operating system's and a
+  registered protocol handler can be an arbitrary program.
 - **Choosing which program to run is Rust's job, not the webview's.** The editor-launch
   command takes a line and a column; `MD_EDITOR` and a fixed table decide the rest. The
   earlier shape, in which the frontend sent a program name and its arguments, would have let
