@@ -112,13 +112,21 @@ hand-editing them is how a lock file stops matching its manifest.
 
 1. verifies the three version files agree with the tag, and fails the whole release if not;
 2. builds `full`, `lite` and `offline` Windows installers plus `.AppImage` and `.deb`;
-3. runs the cold-start gate on both editions — five runs each on `windows-latest`, median
-   under 1200 ms for lite and 1800 ms for full. The number gated is the one the **window**
+3. runs the cold-start gate on both editions — nine runs each on `windows-latest`, the
+   **fastest** under 1200 ms for lite and 1800 ms for full. The number gated is the one the **window**
    path prints, in `lib.rs`'s `setup`, after `WebviewWindowBuilder::build()` returns: the
    installer is installed, the app is launched on a generated 470 KB document, and each run
    is killed once it has reported. `--benchmark`, which measures the render alone, is shown
    in the same summary but not gated — it is single-digit milliseconds and would pass any
-   ceiling, so letting it stand in for the windowed number would be a gate that cannot fail;
+   ceiling, so letting it stand in for the windowed number would be a gate that cannot fail.
+
+   **The fastest, not the median**, because the two sources of error here — filesystem and
+   loader warming, and a shared runner's scheduling — can only make a launch slower. When the
+   noise has a sign, the minimum is the honest estimator of the cost and an average measures
+   the machine. Three release runs of identical bytes proved the point: medians of 625 ms,
+   617 ms and 2153 ms, the last from `5802, 4391, 2153, 1723, 1222` — a warming curve rather
+   than an application. The first launch after an install is reported on its own line and
+   never gated; WebView2 creates its user data directory once, and that cost is not ours;
 4. writes `SHA256SUMS` and a size table into the run summary;
 5. opens a **draft** release.
 
