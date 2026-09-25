@@ -165,7 +165,7 @@ GitHub Releases only. No registry, no cluster, no update server.
 |---|---|---|
 | `marklet-setup-<ver>.exe` | full | Windows 11, **the default download** |
 | `marklet-lite-setup-<ver>.exe` | lite | Windows 11, the deliberate small choice |
-| `marklet-offline-setup-<ver>.exe` | full | air-gapped Windows; embeds the WebView2 runtime, ~127 MB |
+| `marklet-offline-setup-<ver>.exe` | full | air-gapped Windows; embeds the WebView2 runtime, **208 MB** measured |
 | `marklet-<ver>.AppImage` | full | Linux, self-contained |
 | `marklet-<ver>.deb` | full | Debian and Ubuntu |
 | `SHA256SUMS` | — | covers every artifact above |

@@ -227,15 +227,27 @@ jobs:
           $render = & $app --benchmark $bench 2>&1 | Out-String
           $renderMs = if ($render -match 'boot-ms=(\d+)') { $Matches[1] } else { 'n/a' }
 
+          # Two numbers, because they are two different things and reporting
+          # only the median would hide the larger one.
+          #
+          # The first launch after an install creates the WebView2 user data
+          # directory and warms the loader; on a runner that is 3-4 s, several
+          # times the ceiling. It happens once, ever, and it is not what the
+          # 1200 ms promise is about — that promise is "every time I
+          # double-click a .md", which is the steady state the median measures.
+          # So the median is gated and the first run is printed next to it
+          # rather than averaged into it, where it would read as a fast app
+          # some of the time and nobody would know why.
           @(
             "### Cold start - ${{ matrix.edition }}"
             ""
-            "| | |"
-            "|---|---:|"
-            "| runs | $($times -join ', ') ms |"
-            "| median | ${median} ms |"
-            "| ceiling | ${ceiling} ms |"
-            "| render only (not gated) | ${renderMs} ms |"
+            "| | | |"
+            "|---|---:|---|"
+            "| first launch after install | $($times[0]) ms | one-time: WebView2 profile creation. Not gated |"
+            "| median of 5 | ${median} ms | steady state. **Gated** |"
+            "| ceiling | ${ceiling} ms | |"
+            "| all runs | $($times -join ', ') ms | |"
+            "| render only | ${renderMs} ms | \`--benchmark\`, no window. Not gated |"
           ) | Tee-Object -Append $env:GITHUB_STEP_SUMMARY
 
           if ($median -gt $ceiling) {

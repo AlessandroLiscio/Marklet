@@ -112,12 +112,18 @@ Measured, not guessed. The ceilings were set from a **904 KiB** empty shell prod
 first CI build, leaving about 1.9 MiB for the features; with the feature set above complete,
 the installers CI builds today are:
 
-| | Installer | Ceiling | Headroom |
-|---|---:|---:|---:|
-| **Marklet Lite** | **1.56 MiB** | 2.81 MiB | 1.25 MiB |
-| **Marklet** | **3.01 MiB** | 12.00 MiB | 9.00 MiB |
+| | Installer | Ceiling | Cold start | Ceiling |
+|---|---:|---:|---:|---:|
+| **Marklet Lite** | **1.55 MiB** | 2.81 MiB | **625 ms** | 1200 ms |
+| **Marklet** | **3.00 MiB** | 12.00 MiB | **632 ms** | 1800 ms |
 
-A pull request that spends past a ceiling fails, and the gate comments the delta.
+A pull request that spends past an installer ceiling fails, and the gate comments the delta.
+
+Cold start is the median of five launches on a `windows-latest` runner, opening a 478 KB
+document, measured from process start to the window being created. **The first launch after
+an install is 3–4 s**, because WebView2 creates its user data directory; that happens once
+and is reported separately rather than averaged in. Rendering the same document, with no
+window involved, is 14–18 ms.
 
 Two caveats on the comparison with `mdview`. Its 2 MB is a number from its own README, not
 one we have measured; and these are download sizes, not what lands on disk — Marklet Lite
