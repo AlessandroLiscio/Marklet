@@ -205,11 +205,21 @@ pub mod linux {
     //! WebKitGTK's `webkit_print_operation_print()`, pointed at the "file"
     //! print backend so it produces a PDF with no dialog.
 
+    use std::cell::Cell;
     use std::path::Path;
+    use std::rc::Rc;
+    use std::time::{Duration, Instant};
 
     use webkit2gtk::{PrintOperation, PrintOperationExt, WebView};
 
     use super::PdfError;
+
+    /// How long to pump the GTK main loop waiting for `finished`.
+    ///
+    /// Generous: a long document on a slow machine is a legitimate reason to
+    /// take a while, and the failure this bounds is a print backend that never
+    /// answers, which is not a thing that gets better with more waiting.
+    const PRINT_TIMEOUT: Duration = Duration::from_secs(60);
 
     /// Prints `webview`'s current page to `output_path` as a PDF.
     ///
@@ -233,11 +243,42 @@ pub mod linux {
         settings.set(gtk::PRINT_SETTINGS_PRINTER, Some("Print to File"));
         operation.set_print_settings(&settings);
 
-        // `print()` is the dialog-free path (`run_dialog()` is the
-        // interactive one) — with an output-uri configured, WebKitGTK writes
-        // straight to `output_path` instead of showing UI.
+        // `print()` RETURNS IMMEDIATELY. It hands the job to the GTK main loop
+        // and the file appears some time later, so the obvious
+        // `operation.print(); if output_path.exists()` reports a failure for
+        // every successful export — the check runs before the printer has
+        // written a byte. WebKitGTK signals completion with `finished`, so the
+        // flag below is set from the main loop and this function pumps that
+        // same loop until it flips.
+        //
+        // Pumping rather than blocking is not optional: this runs on the GTK
+        // main thread (that is where `with_webview` puts it), and a thread
+        // parked on a condvar is a thread that will never dispatch the signal
+        // it is waiting for. `main_iteration_do(false)` is the non-blocking
+        // form, so the sleep is what keeps this from spinning a core.
+        let done = Rc::new(Cell::new(false));
+        let flag = done.clone();
+        operation.connect_finished(move |_| flag.set(true));
+
         operation.print();
 
+        let deadline = Instant::now() + PRINT_TIMEOUT;
+        while !done.get() && Instant::now() < deadline {
+            while gtk::events_pending() {
+                gtk::main_iteration_do(false);
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+
+        if !done.get() {
+            return Err(PdfError::Linux(format!(
+                "the print job did not finish within {} s",
+                PRINT_TIMEOUT.as_secs()
+            )));
+        }
+
+        // `finished` fires on failure too — it means "the operation is over",
+        // not "it worked" — so the file is still what decides.
         if output_path.exists() {
             Ok(())
         } else {
