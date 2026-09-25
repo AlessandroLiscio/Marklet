@@ -2,13 +2,44 @@
 //!
 //! The output must open in a browser with **zero** network requests: CSS is
 //! inlined into a `<style>` tag and local images are inlined as `data:` URIs.
-//! Math and Mermaid are left exactly as [`crate::render::render`] emits them
-//! — Rust does not render either (see `render/mod.rs`'s own doc comment) —
-//! pre-rendering both for export is phase P8; the emitted document carries a
-//! TODO comment saying so rather than pretending the gap does not exist.
 //!
-//! This module must not import `tauri`: it is reached from `MD_HTML=1`,
-//! which has to run before `tauri::Builder::build()`.
+//! There are **two ways in**, and they carry different promises about math
+//! and Mermaid, for a reason that is architectural rather than an oversight:
+//!
+//! - [`export_file`] reads a path straight off disk and calls
+//!   [`crate::render::render`] on it — the same headless path `MD_HTML=1`
+//!   uses. Rust renders no math and no Mermaid (`render/mod.rs`'s own doc
+//!   comment; `src/lib/rich/index.ts`'s `enrich()` is the only thing that
+//!   does, and it is JavaScript running in a webview). `MD_HTML=1` is
+//!   contractually forbidden from initializing WebView2 — every CLI path
+//!   "completes in under 50 ms with no window and no WebView2
+//!   initialization" (`docs/architecture.md`, this crate's own
+//!   `.claude/agents/platform-engineer.md`, rule 1) — so this path
+//!   structurally cannot carry rendered KaTeX markup or inlined Mermaid SVG.
+//!   It emits the same placeholders `render()` always emits and says so in
+//!   the output; that is not a gap to close from inside this module, it is
+//!   the tradeoff `MD_HTML=1` exists to make (see `README.md`'s "no window"
+//!   guarantee for that flag).
+//! - [`assemble_standalone`] takes a body that is **already enriched** —
+//!   `enrich()` has already run, in a live webview, on the actual document
+//!   the user is looking at, so real `<span class="katex">…</span>` markup
+//!   and real inlined `<svg>` elements are already sitting in the DOM this
+//!   function is handed. This is the function the "Export as standalone
+//!   HTML" menu action should call: the frontend calls `enrich()` (it
+//!   already has, for the visible document), serializes the resulting DOM
+//!   with `src/lib/rich/export.ts`'s `serializeEnrichedDocument()`, and
+//!   passes the result to a Tauri command that calls this. Wiring that
+//!   command is `ipc.rs`'s job, not this module's — see the P8 diff receipt.
+//!
+//! Both paths inline local images as `data:` URIs and produce zero-network
+//! output; only the math/Mermaid guarantee differs, and only because one of
+//! the two has a webview to draw on and the other is not allowed one.
+//!
+//! This module must not import `tauri`: [`export_file`] is reached from
+//! `MD_HTML=1`, which has to run before `tauri::Builder::build()`.
+//! [`assemble_standalone`] has no such constraint on its caller — it simply
+//! never touches a webview itself — so it stays in the same tauri-free
+//! module rather than fork the file in two.
 
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -40,7 +71,40 @@ pub fn export_file(path: &Path) -> Result<String, ExportError> {
         .and_then(|s| s.to_str())
         .unwrap_or("Marklet document");
 
-    Ok(standalone_document(title, &body))
+    Ok(standalone_document(title, &body, None))
+}
+
+/// Assembles a standalone HTML document from a body that has **already been
+/// enriched** in a live webview: `enrich()` (`src/lib/rich/index.ts`) has
+/// run on it, so any `.math-inline` / `.math-block` placeholder is already
+/// real KaTeX markup and any `.mermaid` placeholder is already an inlined
+/// `<svg>`. This function does not render anything itself — it only:
+///
+/// 1. inlines local (non-`http(s)`, non-`data:`) `<img src>` references as
+///    `data:` URIs, exactly like [`export_file`], resolved against
+///    `base_dir` when given;
+/// 2. adds `extra_css`, verbatim, to the document's inlined `<style>` — this
+///    is where the caller puts whatever stylesheet KaTeX's rendering needed
+///    (its generated markup depends on KaTeX's own CSS to lay out correctly;
+///    Mermaid's inlined `<svg>` needs nothing extra, it carries its own
+///    styling inline);
+/// 3. wraps the result in the same zero-network document shell
+///    [`export_file`] uses.
+///
+/// `extra_css` is trusted, already-rendered CSS text from the app's own
+/// bundle (see `src/lib/rich/export.ts`), not attacker-controlled markdown —
+/// it is concatenated as-is, the same way [`STANDALONE_CSS`] is.
+pub fn assemble_standalone(
+    title: &str,
+    enriched_body_html: &str,
+    extra_css: &str,
+    base_dir: Option<&Path>,
+) -> String {
+    let body = match base_dir {
+        Some(dir) => inline_local_images(enriched_body_html, dir),
+        None => enriched_body_html.to_string(),
+    };
+    standalone_document(title, &body, Some(extra_css))
 }
 
 /// What can go wrong turning a file into standalone HTML.
@@ -64,7 +128,26 @@ impl fmt::Display for ExportError {
 
 impl std::error::Error for ExportError {}
 
-fn standalone_document(title: &str, body: &str) -> String {
+/// `extra_css`, when given, is appended verbatim after [`STANDALONE_CSS`] —
+/// used by [`assemble_standalone`] to carry whatever stylesheet an enriched
+/// body's KaTeX markup needs. [`export_file`] passes `None`: its body is
+/// still the raw placeholder, which needs nothing beyond `STANDALONE_CSS`.
+fn standalone_document(title: &str, body: &str, extra_css: Option<&str>) -> String {
+    let placeholder_note = if extra_css.is_some() {
+        // This body came from assemble_standalone: enrich() already ran in a
+        // live webview, so there are no placeholders left to explain away.
+        String::new()
+    } else {
+        "<!-- Math delimiters and ```mermaid fences below are pulldown-cmark's raw\n     \
+              placeholders, exactly as render::render() emits them: this document was\n     \
+              produced by export_file(), the headless MD_HTML=1 path, which cannot run\n     \
+              a webview and therefore cannot render either — see this file's module\n     \
+              doc comment. assemble_standalone() is the path that carries real KaTeX\n     \
+              markup and inlined Mermaid SVG. -->\n"
+            .to_string()
+    };
+    let extra_css = extra_css.unwrap_or_default();
+
     format!(
         "<!DOCTYPE html>\n\
          <html lang=\"en\">\n\
@@ -72,11 +155,8 @@ fn standalone_document(title: &str, body: &str) -> String {
          <meta charset=\"utf-8\">\n\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\
          <title>{title}</title>\n\
-         <!-- Math delimiters and ```mermaid fences below are pulldown-cmark's raw\n\
-              placeholders, exactly as render::render() emits them: Rust does not\n\
-              render either. KaTeX and Mermaid pre-rendering for standalone export\n\
-              is phase P8 — TODO. -->\n\
-         <style>\n{STANDALONE_CSS}\n</style>\n\
+         {placeholder_note}\
+         <style>\n{STANDALONE_CSS}\n{extra_css}\n</style>\n\
          </head>\n\
          <body>\n\
          <article class=\"marklet-export\">\n{body}\n</article>\n\
@@ -387,5 +467,109 @@ mod tests {
     fn percent_decode_handles_escaped_spaces() {
         assert_eq!(percent_decode("a%20b.png"), "a b.png");
         assert_eq!(percent_decode("plain.png"), "plain.png");
+    }
+
+    // ------------------------------------------------------------------
+    // assemble_standalone: the enriched-body path. These assert the thing
+    // export_file() cannot — that a body already carrying real KaTeX markup
+    // and an inlined Mermaid SVG (i.e. what enrich() actually produces in
+    // the webview) comes through unrendered-placeholder-free and with zero
+    // network-fetching markup, which is the whole promise this file makes.
+    // ------------------------------------------------------------------
+
+    /// Stand-in for what `enrich()` actually leaves in the DOM: KaTeX's real
+    /// output shape (nested spans, no `data-tex` placeholder attribute left
+    /// behind) and Mermaid's real output shape (an inlined `<svg>`, not a
+    /// `<div class="mermaid" data-src="...">` placeholder).
+    const ENRICHED_BODY: &str = r#"<p data-l="1">Inline math:
+        <span class="katex"><span class="katex-mathml">E = mc^2</span></span>.</p>
+        <div class="mermaid-rendered" data-l="3">
+          <svg viewBox="0 0 100 40"><g><rect width="80" height="20"/><text>A</text></g></svg>
+        </div>"#;
+
+    const FAKE_KATEX_CSS: &str = ".katex { font: normal 1.21em KaTeX_Main, serif; }";
+
+    #[test]
+    fn assemble_standalone_preserves_real_katex_and_svg_markup_verbatim() {
+        let html = assemble_standalone("Doc", ENRICHED_BODY, FAKE_KATEX_CSS, None);
+
+        assert!(
+            html.contains(r#"<span class="katex">"#),
+            "real KaTeX markup must survive assembly, got: {html}"
+        );
+        assert!(
+            html.contains("<svg viewBox=\"0 0 100 40\">"),
+            "inlined Mermaid SVG must survive assembly, got: {html}"
+        );
+    }
+
+    #[test]
+    fn assemble_standalone_never_reintroduces_the_headless_placeholder_shapes() {
+        let html = assemble_standalone("Doc", ENRICHED_BODY, FAKE_KATEX_CSS, None);
+
+        // The two shapes export_file() emits when it cannot render math or
+        // Mermaid (see render/mod.rs's own placeholder tests). A regression
+        // that fell back to raw render() output here would reintroduce them.
+        assert!(
+            !html.contains("data-tex=\""),
+            "no unrendered math placeholder attribute should remain: {html}"
+        );
+        assert!(
+            !html.contains(r#"<div class="mermaid""#) || !html.contains("data-src="),
+            "no unrendered Mermaid placeholder (div[data-src]) should remain: {html}"
+        );
+    }
+
+    #[test]
+    fn assemble_standalone_carries_the_extra_css_and_makes_zero_network_requests() {
+        let html = assemble_standalone("Doc", ENRICHED_BODY, FAKE_KATEX_CSS, None);
+
+        assert!(
+            html.contains("KaTeX_Main"),
+            "extra_css must be inlined into the <style> tag, got: {html}"
+        );
+        assert!(!html.contains("<link "), "no external stylesheet link");
+        assert!(!html.contains("<script"), "no external script");
+        assert!(
+            !html.contains("http://") && !html.contains("https://"),
+            "no network-fetched resource, got: {html}"
+        );
+    }
+
+    #[test]
+    fn assemble_standalone_still_inlines_local_images_against_base_dir() {
+        let dir = temp_dir("assemble-image");
+        std::fs::create_dir_all(dir.join("img")).unwrap();
+        let png_bytes: &[u8] = &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 9, 9, 9];
+        std::fs::write(dir.join("img/pixel.png"), png_bytes).unwrap();
+
+        let body = r#"<img src="./img/pixel.png" alt="">"#;
+        let html = assemble_standalone("Doc", body, "", Some(&dir));
+
+        assert!(
+            html.contains("data:image/png;base64,"),
+            "local images must still be inlined in the enriched-body path, got: {html}"
+        );
+    }
+
+    #[test]
+    fn export_file_output_is_honest_about_being_unrendered() {
+        // export_file() is the MD_HTML=1 path: it cannot run a webview, so it
+        // cannot render KaTeX or Mermaid (see this file's module doc). This
+        // pins that it says so rather than silently shipping placeholders
+        // unlabelled — a future change that tried to "fix" this by deleting
+        // the note without actually rendering anything would be a regression
+        // this test catches.
+        let dir = temp_dir("honest-placeholder");
+        let md_path = dir.join("doc.md");
+        std::fs::write(&md_path, b"Inline: $E = mc^2$.\n").unwrap();
+
+        let html = export_file(&md_path).unwrap();
+
+        assert!(
+            html.contains("MD_HTML=1"),
+            "the headless path must document why math/Mermaid are unrendered here, got: {html}"
+        );
+        assert!(html.contains("data-tex=\"E = mc^2\""));
     }
 }

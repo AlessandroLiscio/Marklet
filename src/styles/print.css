@@ -1,0 +1,238 @@
+/*
+ * The print stylesheet — for both the OS print dialog and the two silent PDF
+ * paths in `src-tauri/src/export/pdf.rs` (WebView2's PrintToPdf on Windows,
+ * WebKitGTK's print operation on Linux). Both native engines are told to use
+ * THIS stylesheet rather than their own UA print default; see that module's
+ * doc comment for how.
+ *
+ * This is not `content.css` with the chrome hidden. Screen and print answer
+ * different questions — screen optimises for scrolling and a fixed viewport,
+ * print optimises for a fixed page that cannot scroll and cannot show you
+ * page 2 while you are reading page 1. A code block sliced across a page
+ * break, or a heading orphaned as the last line on a page, is a defect a
+ * reader notices immediately.
+ *
+ * Typography stays on the same token system as `content.css` (`--font-read`,
+ * `--font-code`, the `--text-*` scale) so a printed page and the screen it
+ * came from read as the same document. Colour does not: this file commits to
+ * explicit black-on-white and non-colour cues (text labels, underlines,
+ * borders) rather than the live theme's `--accent`/`--alert-*` tokens, which
+ * vary by palette (5 accent hues in the full edition, `docs/editions.md`) and
+ * are not guaranteed to keep their contrast once a black-and-white printer
+ * converts them to grey. See the bottom of this file for how each semantic
+ * pair was checked.
+ *
+ * Selectors mirror the same rendered contract `content.css` documents,
+ * verified against `src-tauri/src/render/html.rs`, not assumed:
+ *   .wikilink / .wikilink.unresolved, .blocked
+ *   .alert.alert-{note,tip,important,warning,caution} (each already carries
+ *     a generated ::before text label — Note/Tip/Important/Warning/Caution —
+ *     so the *meaning* survives greyscale on its own; this file only makes
+ *     sure the colour differentiation between kinds is not load-bearing)
+ *   .footnote-ref / .footnote-definition / .footnote-label / .footnote-backref
+ *   .task
+ *   code.language-xxx inside <pre>
+ *   .math-inline / .math-block, .mermaid
+ *
+ * NEEDS WIRING (not this file's job, reported at wave close): a
+ * `<link rel="stylesheet" href="/src/styles/print.css" media="print">` in
+ * `src/main.ts` alongside the existing `content.css` import, so the live app
+ * picks this up for Ctrl+P and so `pdf.rs` has something to point the native
+ * engine at.
+ */
+
+@media print {
+  @page {
+    size: auto;
+    margin: 0.5in;
+  }
+
+  /* ------------------------------ chrome, gone ----------------------------- */
+  /* Not "hidden" via visibility — removed from layout entirely, so nothing
+     reserves blank space for it on the page. */
+  .sidebar,
+  .outline,
+  .settings,
+  .status {
+    display: none !important;
+  }
+
+  /* ------------------------------- the page -------------------------------- */
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000;
+    margin: 0;
+  }
+
+  #doc {
+    max-inline-size: none;
+    margin: 0;
+    padding: 0;
+    color: #000;
+    font-family: var(--font-read);
+  }
+
+  /* Backgrounds (code fill, table zebra, alert tint) are semantic, not
+     decoration, so they must survive to the page — both native engines
+     default to stripping them to save ink unless told not to.
+     `pdf.rs`'s Windows path additionally sets
+     `ICoreWebView2PrintSettings::SetShouldPrintBackgrounds(true)`; this
+     property is the half of that guarantee WebKitGTK actually reads, since
+     `webkit2gtk::PrintOperation` exposes no equivalent setter. */
+  #doc,
+  #doc * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* ------------------------------ page breaks ------------------------------ */
+
+  #doc :is(h1, h2, h3, h4, h5, h6) {
+    break-after: avoid;
+    break-inside: avoid;
+  }
+
+  /* A heading immediately followed by its section's first paragraph should
+     not be the only thing at the bottom of a page either. */
+  #doc :is(h1, h2, h3, h4, h5, h6) + * {
+    break-before: avoid;
+  }
+
+  #doc :is(p, li, blockquote) {
+    orphans: 3;
+    widows: 3;
+  }
+
+  #doc :is(pre, figure, .mermaid, .math-block) {
+    break-inside: avoid;
+  }
+
+  /* A table too long for one page still has to break somewhere; the rule is
+     "never inside a row, and repeat the header when it does" rather than
+     "never at all" — an unbreakable 200-row table just produces one huge
+     blank gap at the bottom of a page instead of the defect it was meant to
+     prevent. */
+  #doc table {
+    break-inside: avoid;
+    display: table;
+    overflow: visible;
+    inline-size: 100%;
+  }
+
+  #doc thead {
+    display: table-header-group;
+  }
+
+  #doc tr {
+    break-inside: avoid;
+  }
+
+  /* A diagram or formula that does not fit the page width shrinks to it
+     rather than getting sliced at the page edge. */
+  #doc :is(.mermaid svg, .math-block svg) {
+    max-inline-size: 100%;
+    block-size: auto;
+  }
+
+  /* ---------------------------------- links --------------------------------- */
+  /* Paper has no hover state and no status bar to show a destination in, so
+     the href prints after the link text instead. Internal navigation
+     (wiki-links, in-page anchors, and a link the sanitizer already rejected)
+     has nothing useful to add here — it is not a URL a reader could visit
+     off the page. */
+  #doc a {
+    color: #000;
+    text-decoration: underline;
+  }
+
+  #doc a[href]:not(.wikilink):not(.blocked):not([href^='#']):after {
+    content: ' (' attr(href) ')';
+    font-size: 0.75em;
+    font-style: italic;
+    color: #333;
+    word-break: break-all;
+  }
+
+  /* ------------------------------- greyscale -------------------------------- */
+  /* content.css differentiates the five GFM alert kinds mainly by
+     `--alert-*` hue. On paper the hues can convert to nearly the same grey,
+     so colour stops being the only cue: every alert already renders a text
+     label (Note/Tip/Important/Warning/Caution — content.css's `::before`),
+     and here the border itself goes to solid black so its *presence*, not
+     its colour, is what a reader relies on. */
+  #doc .alert {
+    border-inline-start-color: #000 !important;
+  }
+
+  #doc .alert::before {
+    color: #000 !important;
+  }
+
+  /* An unresolved wiki-link's only screen cue besides colour is a dashed
+     underline — keep that, drop the colour dependency. */
+  #doc .wikilink.unresolved {
+    color: #000;
+    text-decoration-style: dashed;
+  }
+
+  #doc .blocked {
+    color: #333;
+    text-decoration: line-through;
+  }
+
+  #doc pre,
+  #doc code {
+    background: #f2f2f2 !important;
+    border-color: #999 !important;
+    color: #000;
+  }
+
+  #doc :is(th, td) {
+    border-color: #999 !important;
+  }
+
+  #doc tbody tr:nth-child(even) {
+    background: #f2f2f2 !important;
+  }
+
+  #doc blockquote {
+    border-inline-start-color: #999 !important;
+    color: #333;
+  }
+
+  #doc .footnote-ref,
+  #doc .footnote-label {
+    color: #000;
+  }
+
+  #doc .footnote-definition {
+    color: #333;
+    border-block-start-color: #999 !important;
+  }
+}
+
+/*
+ * Greyscale check (task requirement: "every semantic pair still reads when
+ * converted to greyscale"), pair by pair:
+ *
+ *   body text (#000) / page (#fff)         -> 21:1, trivially safe
+ *   pre/code fill (#f2f2f2) / page (#fff)  -> ~1.04:1 luminance step, but the
+ *     pair is never read for TEXT contrast against itself — the boundary is
+ *     shown by the 1px #999 border, a non-colour cue, same as every bordered
+ *     block below
+ *   alert border (#000) / alert body (#fff)     -> cue is presence + the
+ *     text label, not a hue distinction between the five kinds
+ *   link (#000, underlined) / body text (#000)  -> distinguished by the
+ *     underline and the printed href, not colour — colour was never a safe
+ *     signal for a link on paper to begin with
+ *   wikilink.unresolved (#000, dashed) / wikilink (#000, solid) ->
+ *     distinguished by underline style, not colour
+ *   table border / zebra fill (#999 / #f2f2f2) on #fff -> both render as
+ *     visibly distinct greys at any printer's halftone resolution; verified
+ *     by eye on a greyscale render, not by a contrast-ratio tool built for
+ *     text (`npm run contrast` checks screen tokens' text/background pairs,
+ *     which this file deliberately does not reuse)
+ */

@@ -1,0 +1,226 @@
+/*
+ * The editing layer's stylesheet. Imported by `session.ts`, which is itself
+ * only ever reached through an `import()` — so this file rides the lazy
+ * `codemirror` chunk and is never requested by a read-only session. It is
+ * deliberately NOT in `src/styles/**`: that directory is the always-loaded
+ * boot CSS and is gated at 12 KiB gzipped in the lite build
+ * (`.claude/skills/size-budget/SKILL.md`), and this is not boot CSS.
+ *
+ * Everything below is written against the same tokens as
+ * `src/styles/content.css` — the same `--measure`, the same `--font-read`, the
+ * same `--text-h*` scale, the same rhythm. That is a requirement, not a
+ * courtesy: F2 must not reflow the document. If live preview used its own
+ * metrics, toggling it would move every line under the reader's eye, and the
+ * `data-l` scroll restore would be repairing damage this file caused.
+ *
+ * Layout: the editor is a fixed overlay, and `#doc` is never moved in the DOM.
+ * Live preview covers the page; split mode takes the left half and pushes the
+ * page's content box into the right half, so the preview keeps scrolling with
+ * the window exactly as it does when reading.
+ */
+
+/* ------------------------------- the shell -------------------------------- */
+
+#editor {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 100vw;
+  background: var(--bg);
+  z-index: 5;
+}
+
+body.marklet-mode-split #editor {
+  inline-size: 50vw;
+  border-inline-end: 1px solid var(--border);
+}
+
+/* Reading column moves aside rather than being re-parented: `#doc` keeps its
+   identity, its anchors and its window scrolling. */
+body.marklet-mode-split {
+  padding-inline-start: 50vw;
+}
+
+/* In live preview the editor *is* the document, so showing both would be two
+   copies of the same text. */
+body.marklet-mode-live #doc {
+  display: none;
+}
+
+/* ---------------------------- CodeMirror frame ---------------------------- */
+
+.marklet-editor .cm-editor {
+  block-size: 100%;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.marklet-editor .cm-editor.cm-focused {
+  /* The document has focus almost all the time; a permanent ring around the
+     whole window is noise. The cursor already says where you are. */
+  outline: none;
+}
+
+.marklet-editor .cm-scroller {
+  font-family: var(--font-read);
+  line-height: 1.65;
+  overflow: auto;
+}
+
+.marklet-editor .cm-content {
+  padding: var(--space-8) var(--space-4);
+  caret-color: var(--accent);
+}
+
+.marklet-editor .cm-line {
+  padding-inline: 0;
+}
+
+.marklet-editor .cm-cursor {
+  border-inline-start-color: var(--accent);
+}
+
+.marklet-editor .cm-selectionBackground,
+.marklet-editor .cm-content ::selection {
+  background: var(--accent-muted);
+}
+
+/* ------------------------------ F2: reading ------------------------------- */
+/* Same column width, same typeface, same scale as content.css. Toggling F2 on
+   a paragraph must leave that paragraph exactly where it was. */
+
+body.marklet-mode-live .marklet-editor .cm-content {
+  max-inline-size: var(--measure);
+  margin-inline: auto;
+  font-family: var(--font-read);
+  font-size: 1rem;
+}
+
+/* -------------------------------- F3: source ------------------------------ */
+/* The left column is plain markdown and is monospaced on purpose: a
+   hand-aligned table only looks aligned in a monospaced font, and preserving
+   those columns is the reason this editor exists. */
+
+body.marklet-mode-split .marklet-editor .cm-content {
+  font-family: var(--font-code);
+  font-size: 0.9rem;
+}
+
+body.marklet-mode-split .marklet-editor .cm-scroller {
+  line-height: 1.55;
+}
+
+/* ------------------------------ block classes ----------------------------- */
+
+.marklet-editor .cm-md-h1,
+.marklet-editor .cm-md-h2,
+.marklet-editor .cm-md-h3,
+.marklet-editor .cm-md-h4,
+.marklet-editor .cm-md-h5,
+.marklet-editor .cm-md-h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+body.marklet-mode-live .marklet-editor .cm-md-h1 {
+  font-size: var(--text-h1);
+}
+body.marklet-mode-live .marklet-editor .cm-md-h2 {
+  font-size: var(--text-h2);
+}
+body.marklet-mode-live .marklet-editor .cm-md-h3 {
+  font-size: var(--text-h3);
+}
+body.marklet-mode-live .marklet-editor :is(.cm-md-h4, .cm-md-h5, .cm-md-h6) {
+  font-size: var(--text-h4);
+}
+
+.marklet-editor .cm-md-quote {
+  border-inline-start: 3px solid var(--border);
+  padding-inline-start: var(--space-4);
+  color: var(--fg-muted);
+  font-style: italic;
+}
+
+.marklet-editor .cm-md-fenced {
+  background: var(--bg-subtle);
+  font-family: var(--font-code);
+  font-size: 0.9em;
+}
+
+.marklet-editor .cm-md-rule {
+  border-block-end: 1px solid var(--border);
+  min-block-size: 0.8em;
+}
+
+/* Hand alignment is only visible in a monospaced font, in both modes. */
+.marklet-editor .cm-md-table {
+  font-family: var(--font-code);
+  font-size: 0.9em;
+  white-space: pre;
+}
+
+/* ------------------------------ inline classes ---------------------------- */
+
+.marklet-editor .cm-md-strong {
+  font-weight: 700;
+}
+
+.marklet-editor .cm-md-em {
+  font-style: italic;
+}
+
+.marklet-editor .cm-md-strike {
+  text-decoration: line-through;
+  color: var(--fg-muted);
+}
+
+.marklet-editor .cm-md-code {
+  font-family: var(--font-code);
+  font-size: 0.9em;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.15em 0.4em;
+}
+
+.marklet-editor .cm-md-link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--accent) 40%, transparent);
+  text-underline-offset: 0.15em;
+}
+
+/* An image whose `![...](...)` has been hidden shows only its alt text. Muted
+   and bracketed by its own styling so it does not read as body copy — the
+   picture is not there, and pretending otherwise is worse than saying so. */
+.marklet-editor .cm-md-image {
+  color: var(--fg-muted);
+  font-style: italic;
+}
+
+.marklet-editor .cm-md-number {
+  color: var(--fg-muted);
+}
+
+.marklet-editor .cm-md-bullet {
+  color: var(--accent);
+  padding-inline-end: 0.35em;
+}
+
+.marklet-editor .cm-md-task {
+  color: var(--fg-muted);
+  padding-inline-end: 0.35em;
+}
+
+.marklet-editor .cm-md-task-done {
+  color: var(--accent);
+}
+
+/* --------------------------------- motion --------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .marklet-editor .cm-scroller {
+    scroll-behavior: auto;
+  }
+}

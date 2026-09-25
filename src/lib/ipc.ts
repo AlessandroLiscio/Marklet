@@ -147,6 +147,133 @@ export function openDocument(path: string): Promise<OpenedDocument> {
 }
 
 // ---------------------------------------------------------------------------
+// Editing (P7)
+// ---------------------------------------------------------------------------
+
+/** Mirrors `ipc::Spliced`. */
+export interface Spliced {
+  /** The file's length in bytes **after** the splice — the next `expectedLen`. */
+  len: number;
+}
+
+/**
+ * Replaces the bytes in `[startByte, endByte)` of `path` with `replacement`.
+ *
+ * **The whole write path, and it never rewrites a whole file.** Every byte
+ * outside the range is copied through untouched, which is what makes a
+ * hand-aligned table or a reference-link block elsewhere in the document
+ * survive an edit verbatim. There is no markdown serializer anywhere in this
+ * codebase, and this command is why one is not needed.
+ *
+ * Offsets are **bytes**, never character indices — the file is bytes, `data-l`
+ * is lines, and a JavaScript string index is neither.
+ * `src/lib/edit/splice.ts` does the conversion.
+ *
+ * `expectedLen` is the file length the caller last saw. Rust compares it
+ * against the file's current length and answers `conflict` when they differ,
+ * because the watcher and the editor genuinely race and applying a stale range
+ * to changed bytes would destroy somebody's work. The caller re-reads and
+ * retries — see `createSession`'s `save`.
+ */
+export function spliceRange(
+  path: string,
+  startByte: number,
+  endByte: number,
+  replacement: string,
+  expectedLen: number,
+): Promise<Spliced> {
+  // `snake_case` keys: the command is declared
+  // `#[tauri::command(rename_all = "snake_case")]` so the payload spells the
+  // arguments the way `.claude/skills/tauri-ipc/SKILL.md` documents them,
+  // rather than depending on a case conversion being remembered here.
+  return invoke<Spliced>('splice_range', {
+    path,
+    start_byte: startByte,
+    end_byte: endByte,
+    replacement,
+    expected_len: expectedLen,
+  });
+}
+
+/**
+ * The markdown source of the open document, byte-for-byte.
+ *
+ * Rejects a file that is not already UTF-8 rather than converting it: the
+ * editor's guarantee is that a save differs from the file it read only where
+ * the user typed, and handing it a re-encoded copy of a Windows-1252 document
+ * would make the first keystroke rewrite the whole file.
+ */
+export function readSource(path: string): Promise<string> {
+  return invoke<string>('read_source', { path });
+}
+
+/**
+ * Writes clipboard image bytes beside the document and returns the relative
+ * path to put in the markdown.
+ *
+ * **Rust picks the filename**, from the document's name and whatever the asset
+ * folder already holds. The webview sends bytes and a format, never a path —
+ * see `src-tauri/src/ipc.rs`'s `save_pasted_image`.
+ */
+export function savePastedImage(
+  docPath: string,
+  bytes: Uint8Array,
+  ext: string,
+): Promise<string> {
+  return invoke<string>('save_pasted_image', {
+    doc_path: docPath,
+    // Tauri serializes a plain number array as JSON; a `Uint8Array` would go
+    // through as an object with numeric keys and arrive as an empty `Vec<u8>`.
+    bytes: Array.from(bytes),
+    ext,
+  });
+}
+
+/**
+ * Opens the document in the user's editor at a position, and answers with the
+ * program that started.
+ *
+ * A line and a column — never a program name. Which editor runs is decided in
+ * `src-tauri/src/editor.rs` from `MD_EDITOR` and a fixed table, because a
+ * command shaped `(program, args)` would let anything that got script
+ * execution in this webview run an arbitrary executable.
+ */
+export function revealInEditor(path: string, line: number, column: number): Promise<string> {
+  return invoke<string>('reveal_in_editor', { path, line, column });
+}
+
+/**
+ * Prints the document on screen to a PDF beside it, and answers with the file
+ * it wrote.
+ *
+ * The *live* document: KaTeX and Mermaid have already run in this webview, and
+ * printing what is on screen is the only way the PDF contains them. There is
+ * no save dialog — no `tauri-plugin-dialog`, roughly 300 KB for a choice
+ * almost everyone makes the same way — so the output is `<document>.pdf` in
+ * the document's own folder.
+ */
+export function exportPdf(path: string): Promise<string> {
+  return invoke<string>('export_pdf', { path });
+}
+
+/**
+ * Writes the document on screen as one standalone HTML file beside it, and
+ * answers with the file it wrote.
+ *
+ * `bodyHtml` is the enriched DOM, serialized by `src/lib/rich/export.ts`;
+ * `extraCss` is whatever stylesheet that markup needs to lay out (KaTeX's).
+ * Images are inlined in Rust, against the document's own directory — the
+ * webview has no filesystem permission and must not grow one.
+ */
+export function exportHtml(path: string, bodyHtml: string, extraCss: string): Promise<string> {
+  return invoke<string>('export_html', {
+    path,
+    body_html: bodyHtml,
+    extra_css: extraCss,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Vault
 // ---------------------------------------------------------------------------
 //
