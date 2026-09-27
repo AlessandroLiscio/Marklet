@@ -172,11 +172,18 @@ body {
    with `border-spacing: 0` look identical — every internal edge is still one
    pixel, because each cell draws only its top and left and the table draws
    the outside — and the outer corners survive to be rounded. */
+/* `max-content`, not `100%`.
+   A table stretched to the full measure spreads three short columns across
+   100 characters and reads as a layout mistake — which it was. Sizing to the
+   content and capping at the measure means a small table is small, and a wide
+   one still scrolls inside its own box rather than pushing the page sideways.
+   `display: block` is what makes `overflow-x` possible on a table at all. */
 #doc table {
   border-collapse: separate;
   border-spacing: 0;
-  inline-size: 100%;
   display: block;
+  inline-size: max-content;
+  max-inline-size: 100%;
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);

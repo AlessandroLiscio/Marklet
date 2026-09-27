@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   applySettingsToRoot,
+  clampFontSize,
   clampMeasure,
   DEFAULT_SETTINGS,
+  FONT_SIZE_MAX,
+  FONT_SIZE_MIN,
   MEASURE_MAX,
   MEASURE_MIN,
 } from '../../src/lib/settings/model';
@@ -74,6 +77,35 @@ describe('applySettingsToRoot', () => {
     const root = fakeRoot();
     applySettingsToRoot(root, { ...DEFAULT_SETTINGS, measure: 500 }, 'lite');
     expect(root.properties.get('--measure')).toBe('100ch');
+  });
+
+  it('always writes a clamped root font-size', () => {
+    // The root font size, not a token: `rem` and `ch` both resolve against it,
+    // which is what makes one slider move the type scale, the spacing and the
+    // column width together.
+    const root = fakeRoot();
+    applySettingsToRoot(root, { ...DEFAULT_SETTINGS, font_size: 1000 }, 'lite');
+    expect(root.properties.get('font-size')).toBe(`${FONT_SIZE_MAX}%`);
+
+    const small = fakeRoot();
+    applySettingsToRoot(small, { ...DEFAULT_SETTINGS, font_size: 1 }, 'lite');
+    expect(small.properties.get('font-size')).toBe(`${FONT_SIZE_MIN}%`);
+  });
+
+  it('clamps a text size from outside the slider', () => {
+    expect(clampFontSize(0)).toBe(FONT_SIZE_MIN);
+    expect(clampFontSize(100)).toBe(100);
+    expect(clampFontSize(1e9)).toBe(FONT_SIZE_MAX);
+    expect(clampFontSize(102.6)).toBe(103);
+  });
+
+  it('defaults match what tokens.css and store.rs declare', () => {
+    // Three constants live in three places with no build-time link: this file,
+    // `src/styles/tokens.css`, and `store::Settings::default`. Each side has a
+    // test naming the numbers so a change to one fails the others.
+    expect(DEFAULT_SETTINGS.accent_hue).toBe(249); // Material Blue 500, in oklch
+    expect(DEFAULT_SETTINGS.measure).toBe(100);
+    expect(DEFAULT_SETTINGS.font_size).toBe(100);
   });
 
   it('never sets data-typeface or data-palette in the lite edition', () => {

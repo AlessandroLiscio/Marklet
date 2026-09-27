@@ -50,8 +50,12 @@
   /* Accent generator input. A single hue (0-360); everything accent-shaped
      derives from it below. Default is validated ui-ux-pro-max colors.csv
      row "Knowledge Base/Documentation" (#2563EB, hue ~221) — see receipt. */
-  --accent-hue: 221;
-  --accent-chroma: 0.14;
+  /* Material Blue 500 (#2196F3) converted to oklch: hue 249, chroma 0.169.
+     The hue and the chroma only — the lightness still comes from the accent
+     generator below, so this clears WCAG AA in both themes exactly like any
+     other hue the slider can reach. */
+  --accent-hue: 249;
+  --accent-chroma: 0.17;
 
   /* System font stacks ONLY. Zero @font-face here — that is full/typography.css's
      job, gated behind a dynamic import so lite never pays for it. Windows
@@ -73,14 +77,15 @@
   --accent-muted: oklch(0.94 0.03 var(--accent-hue));
   --on-accent: #ffffff;
 
-  /* Links are BLUE, and are the one colour here that the accent generator
-     does not reach. Hue 250 is fixed on purpose: `--accent-hue` is a slider
-     the user owns, and a link that follows it to orange or green stops
-     reading as a link. Blue is the only colour convention the web actually
-     has, and spending it on personalisation buys nothing. Same lightness as
-     the accent, so it clears AA against `--bg` by the same sweep. */
-  --link: oklch(0.48 0.16 250);
-  --link-hover: oklch(0.40 0.17 250);
+  /* Links follow the accent, and therefore the palette.
+     They were pinned to a fixed blue for one round, on the reasoning that blue
+     is the web's one colour convention. Asked for directly, and the request is
+     the better call: a reader who has chosen a palette has said what they want
+     the coloured things to look like, and links are the coloured thing they
+     see most. The token stays separate so `check-contrast` measures it in its
+     own right — every hue the slider reaches was swept for AA. */
+  --link: var(--accent);
+  --link-hover: var(--accent-hover);
 
   /* GFM alert blockquotes (`> [!NOTE]` etc.). `note` intentionally rides the
      user's own accent hue — informational callouts sharing the link colour
@@ -94,7 +99,7 @@
   --alert-caution: oklch(0.48 var(--accent-chroma) 25);
 
   /* ============================== component =============================== */
-  --measure: 68ch; /* user-adjustable 48-100ch */
+  --measure: 100ch; /* user-adjustable 48-100ch */
   --density: 1; /* 0.85 | 1 | 1.15 — rescales --space-* only */
   --motion: 1; /* 0 | 1 — gates every transition/animation duration */
 
@@ -140,11 +145,8 @@
     --accent-muted: oklch(0.24 0.05 var(--accent-hue));
     --on-accent: var(--ink-950);
 
-    /* Lighter than the light-mode blue for the same reason every other token
-       flips: the background did. See the light block for why the hue is
-       pinned rather than generated. */
-    --link: oklch(0.72 0.14 250);
-    --link-hover: oklch(0.80 0.12 250);
+    --link: var(--accent);
+    --link-hover: var(--accent-hover);
 
     --alert-note: var(--accent);
     --alert-tip: oklch(0.66 var(--accent-chroma) 142);
@@ -170,10 +172,8 @@
   --accent-muted: oklch(0.24 0.05 var(--accent-hue));
   --on-accent: var(--ink-950);
 
-  /* Same values as the media-query block above; an explicit choice must not
-     depend on the OS. */
-  --link: oklch(0.72 0.14 250);
-  --link-hover: oklch(0.80 0.12 250);
+  --link: var(--accent);
+  --link-hover: var(--accent-hover);
 
   --alert-note: var(--accent);
   --alert-tip: oklch(0.66 var(--accent-chroma) 142);

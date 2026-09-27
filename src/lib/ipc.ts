@@ -97,6 +97,14 @@ export interface Settings {
   motion: Motion;
   /** Column width in `ch`, clamped 48-100. */
   measure: number;
+  /**
+   * Reading text size as a percentage of the platform default, 80-160.
+   *
+   * Applied as the ROOT font size, so everything expressed in `rem` or `ch` —
+   * the type scale, the spacing, the column width — follows it. A pixel size
+   * here would scale the text and leave the layout behind.
+   */
+  font_size: number;
 }
 
 /** Mirrors `store::ReadingPosition`. */

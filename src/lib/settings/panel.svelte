@@ -16,7 +16,7 @@
   import { onMount } from 'svelte';
   import { readSettings, writeSettings } from '../ipc';
   import type { Density, Palette, Settings, Theme, Typeface } from '../ipc';
-  import { applySettingsToRoot, DEFAULT_SETTINGS, MEASURE_MAX, MEASURE_MIN, preserveScrollAcrossReflow } from './model';
+  import { applySettingsToRoot, DEFAULT_SETTINGS, FONT_SIZE_MAX, FONT_SIZE_MIN, MEASURE_MAX, MEASURE_MIN, preserveScrollAcrossReflow } from './model';
 
   const EDITION: 'lite' | 'full' = __MARKLET_EDITION__;
 
@@ -90,6 +90,13 @@
 
   function setMeasure(measure: number): void {
     commit({ ...settings, measure }, true);
+  }
+
+  // `true`: changing the text size reflows the document, so the scroll
+  // position has to be re-anchored to its source line afterwards — the same
+  // reason the column-width slider passes it.
+  function setFontSize(font_size: number): void {
+    commit({ ...settings, font_size }, true);
   }
 
   function setAccentHue(accent_hue: number): void {
@@ -178,6 +185,21 @@
 
       <fieldset>
         <legend>
+          <label for="font-size-range">Text size — {settings.font_size}%</label>
+        </legend>
+        <input
+          id="font-size-range"
+          type="range"
+          min={FONT_SIZE_MIN}
+          max={FONT_SIZE_MAX}
+          step="5"
+          value={settings.font_size}
+          oninput={(e) => setFontSize(Number(e.currentTarget.value))}
+        />
+      </fieldset>
+
+      <fieldset>
+        <legend>
           <label for="measure-range">Column width — {settings.measure}ch</label>
         </legend>
         <input
@@ -192,7 +214,7 @@
 
       <fieldset>
         <legend>
-          <label for="motion-toggle">Motion</label>
+          <label for="motion-toggle">Animation</label>
         </legend>
         <label class="switch">
           <input
@@ -203,6 +225,15 @@
           />
           <span>{settings.motion === 'on' ? 'On' : 'Off'}</span>
         </label>
+        <!-- "Motion" said nothing about what it did. It does not animate the
+             document — it gates the transitions on the interface: panels
+             sliding, a link's colour easing, the diagram overlay fading. Off
+             makes every one of those instant. -->
+        <p class="hint">
+          Fades and slides in the interface — panels, hovers, the diagram
+          viewer. Off makes them instant. The document never animates either
+          way.
+        </p>
       </fieldset>
 
       {#if EDITION === 'full'}
@@ -355,6 +386,13 @@
   .segmented button.active {
     color: var(--on-accent);
     background: var(--accent);
+  }
+
+  .hint {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-small);
+    line-height: 1.45;
+    color: var(--fg-muted);
   }
 
   input[type='range'] {

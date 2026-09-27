@@ -110,21 +110,38 @@ pub struct Settings {
     /// future import) must not be able to make the reading column
     /// unreadably narrow or wide.
     pub measure: u8,
+    /// Reading text size, as a percentage of the platform default. Clamped to
+    /// 80-160 on write for the same reason as [`Settings::measure`]: a value
+    /// arriving from anywhere but the slider must not be able to make the
+    /// document unreadable.
+    ///
+    /// A percentage rather than a pixel size, because it is applied as the
+    /// root font size and everything else — the type scale, the spacing, the
+    /// column width in `ch` — is expressed in units that follow it. Setting a
+    /// pixel size here would scale the text and leave the layout behind.
+    pub font_size: u8,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
             theme: Theme::System,
-            // tokens.css's own default (`--accent-hue: 221`, "Knowledge
-            // Base/Documentation" per its header's validated sweep). Keep the
-            // two in sync by eye; there is no build-time link between them.
-            accent_hue: 221,
+            // tokens.css's own default. 249 deg is Material Blue 500
+            // (#2196F3) converted to oklch — the hue, not the colour: the
+            // lightness still comes from the accent generator, so it clears AA
+            // in both themes the same way any other hue does.
+            // Keep in sync with tokens.css by eye; there is no build-time link.
+            accent_hue: 249,
             typeface: Typeface::System,
             palette: Palette::Default,
             density: Density::Normal,
             motion: Motion::On,
-            measure: 68,
+            // 100ch, the widest the slider offers. A narrower measure is the
+            // classic typographic advice and it is the right default for a
+            // book; this is a window someone has already sized, and leaving
+            // half of it empty reads as a bug rather than as restraint.
+            measure: 100,
+            font_size: 100,
         }
     }
 }
@@ -136,6 +153,7 @@ impl Settings {
     /// unreadably narrow or absurdly wide.
     pub fn clamp(mut self) -> Self {
         self.measure = self.measure.clamp(48, 100);
+        self.font_size = self.font_size.clamp(80, 160);
         self
     }
 }
@@ -326,6 +344,7 @@ mod tests {
             density: Density::Compact,
             motion: Motion::Off,
             measure: 80,
+            font_size: 120,
         };
         write_settings(&dir, &settings).unwrap();
         assert_eq!(read_settings(&dir), settings);
@@ -465,5 +484,43 @@ mod tests {
             leftovers.is_empty(),
             "left temp files behind: {leftovers:?}"
         );
+    }
+}
+
+#[cfg(test)]
+mod font_size_tests {
+    use super::*;
+
+    #[test]
+    fn a_font_size_from_outside_the_slider_is_clamped() {
+        // `settings.json` is a plain file a person can edit, and a future
+        // import could carry anything. 0 would make the document invisible and
+        // 400 would put two words on a line; neither should be reachable by
+        // any path that does not go through the slider.
+        for (given, expected) in [
+            (0, 80),
+            (79, 80),
+            (80, 80),
+            (100, 100),
+            (160, 160),
+            (255, 160),
+        ] {
+            let clamped = Settings {
+                font_size: given,
+                ..Settings::default()
+            }
+            .clamp();
+            assert_eq!(clamped.font_size, expected, "font_size {given}");
+        }
+    }
+
+    #[test]
+    fn the_defaults_are_the_ones_tokens_css_states() {
+        // There is no build-time link between this and `src/styles/tokens.css`,
+        // so the two are kept in step by eye and this test is the reminder.
+        let d = Settings::default();
+        assert_eq!(d.accent_hue, 249, "Material Blue 500's hue in oklch");
+        assert_eq!(d.measure, 100, "--measure: 100ch");
+        assert_eq!(d.font_size, 100, "no scaling until the user asks");
     }
 }
