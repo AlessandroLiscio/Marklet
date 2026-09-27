@@ -209,11 +209,19 @@ jobs:
               while ((Get-Date) -lt $deadline) {
                 if (Test-Path $err) {
                   $text = Get-Content $err -Raw -ErrorAction SilentlyContinue
-                  if ($text -match 'boot-ms=(\d+)') { return [int]$Matches[1] }
+                  # `paint-ms`, not `boot-ms`. The window existing is not the
+                  # wait; the document being on screen is. `boot-ms` stops
+                  # before the bundle has been fetched or Svelte has mounted,
+                  # so gating on it published a number nobody experienced.
+                  if ($text -match 'paint-ms=(\d+)') {
+                    $paint = [int]$Matches[1]
+                    $window = if ($text -match 'boot-ms=(\d+)') { [int]$Matches[1] } else { -1 }
+                    return [pscustomobject]@{ Paint = $paint; Window = $window }
+                  }
                 }
                 Start-Sleep -Milliseconds 100
               }
-              throw "run ${run}: the app never printed boot-ms within 60 s"
+              throw "run ${run}: the document never reached the screen within 60 s"
             } finally {
               if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
               $proc.WaitForExit(5000) | Out-Null
@@ -244,8 +252,11 @@ jobs:
           # unlikely rather than merely improbable. If this still fails, the
           # number is real and the answer is to make the app faster or to move
           # the promise — not to widen the window until it passes.
-          $times = 1..9 | ForEach-Object { Measure-ColdStart $_ }
+          $runs = 1..9 | ForEach-Object { Measure-ColdStart $_ }
+          $times = @($runs | ForEach-Object { $_.Paint })
           $best = ($times | Measure-Object -Minimum).Minimum
+          $windows = @($runs | ForEach-Object { $_.Window } | Where-Object { $_ -ge 0 })
+          $bestWindow = if ($windows.Count) { ($windows | Measure-Object -Minimum).Minimum } else { 'n/a' }
           $ceiling = [int]$env:CEILING
 
           $render = & $app --benchmark $bench 2>&1 | Out-String
@@ -257,14 +268,15 @@ jobs:
             "| | | |"
             "|---|---:|---|"
             "| first launch after install | $($times[0]) ms | one-time: WebView2 profile creation. Not gated |"
-            "| best of 9 | ${best} ms | **Gated** |"
+            "| best of 9, to first paint | ${best} ms | **Gated** - the document is on screen |"
+            "| best of 9, to window created | ${bestWindow} ms | not gated - the window is still empty at this point |"
             "| ceiling | ${ceiling} ms | |"
             "| all runs | $($times -join ', ') ms | the spread is the runner, not the app |"
             "| render only | ${renderMs} ms | \`--benchmark\`, no window. Not gated |"
           ) | Tee-Object -Append $env:GITHUB_STEP_SUMMARY
 
           if ($best -gt $ceiling) {
-            throw "the fastest of nine launches was ${best} ms, over the ${ceiling} ms ceiling"
+            throw "the fastest of nine launches took ${best} ms to put the document on screen, over the ${ceiling} ms ceiling"
           }
 
   publish:

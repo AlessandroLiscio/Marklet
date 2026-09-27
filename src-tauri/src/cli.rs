@@ -397,8 +397,25 @@ fn cmd_benchmark(file: &Path) -> i32 {
     0
 }
 
+/// Which of the two products this binary is.
+///
+/// Marklet ships as two, and until now nothing printed which one you had. The
+/// install path is identical, the window is identical, and the only visible
+/// difference is that diagrams silently do not appear — which reads as a bug
+/// rather than as the edition doing what it says.
+///
+/// This reports the **cargo** switch. Its counterpart, `MARKLET_EDITION`,
+/// decides the bundle, and the two are set together by `build.yml`. A build
+/// where they disagree is a build mistake; `lib.rs` compares them at boot and
+/// says so rather than leaving it to be discovered.
+pub const EDITION: &str = if cfg!(feature = "full") {
+    "full"
+} else {
+    "lite"
+};
+
 fn version_text() -> String {
-    format!("marklet {}\n", env!("CARGO_PKG_VERSION"))
+    format!("marklet {} ({EDITION})\n", env!("CARGO_PKG_VERSION"))
 }
 
 fn help_text() -> String {

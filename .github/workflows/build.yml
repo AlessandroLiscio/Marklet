@@ -82,9 +82,12 @@ jobs:
       # initialise, or a panic before the window exists all fail here rather
       # than in somebody's hands.
       #
-      # It is not a substitute for a WebDriver suite and does not pretend to
-      # be: it asserts that the window was created, not that anything is on it.
-      # See docs/ci-cd.md, "What is not tested".
+      # It also reports `paint-ms`, which the FRONTEND sends once the document
+      # is on screen. That is the difference between "a window exists" and "the
+      # app works", and it is not yet a failure here because it is not yet
+      # known whether the one machine where it never arrives — WSLg, software
+      # EGL — is representative of Linux or is its own broken thing. This step
+      # is how that gets answered. See docs/ci-cd.md, "What is not tested".
       - name: Smoke - the app starts and creates its window (Linux)
         if: startsWith(matrix.os, 'ubuntu')
         run: |
@@ -119,6 +122,14 @@ jobs:
             exit 1
           fi
           grep -o 'boot-ms=[0-9]*' boot.log | tee -a "$GITHUB_STEP_SUMMARY"
+          if grep -q 'paint-ms=' boot.log; then
+            grep -o 'paint-ms=[0-9]*' boot.log | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::the window was created but the frontend never \
+              reported first paint - on this runner the app opens empty"
+            echo "no paint-ms: frontend did not run" >> "$GITHUB_STEP_SUMMARY"
+            tail -20 boot.log || true
+          fi
 
       - name: Smoke - the app starts and creates its window (Windows)
         if: startsWith(matrix.os, 'windows')
@@ -138,10 +149,14 @@ jobs:
           try {
             $deadline = (Get-Date).AddSeconds(90)
             $line = $null
-            while ((Get-Date) -lt $deadline -and -not $line) {
+            $paint = $null
+            while ((Get-Date) -lt $deadline -and -not $paint) {
               if (Test-Path $log) {
                 $text = Get-Content $log -Raw -ErrorAction SilentlyContinue
+                # Wait for BOTH, not just the window: `paint-ms` is the one
+                # that means the frontend ran.
                 if ($text -match 'boot-ms=\d+') { $line = $Matches[0] }
+                if ($text -match 'paint-ms=\d+') { $paint = $Matches[0]; break }
               }
               Start-Sleep -Milliseconds 200
             }
@@ -153,6 +168,13 @@ jobs:
             throw 'the app never created its window'
           }
           $line | Tee-Object -Append $env:GITHUB_STEP_SUMMARY
+          if ($paint) {
+            $paint | Tee-Object -Append $env:GITHUB_STEP_SUMMARY
+          } else {
+            Write-Warning 'the window was created but the frontend never reported first paint'
+            'no paint-ms: frontend did not run' | Tee-Object -Append $env:GITHUB_STEP_SUMMARY
+            Get-Content $log -ErrorAction SilentlyContinue | Select-Object -Last 20
+          }
 
       - uses: actions/upload-artifact@v4
         with:
