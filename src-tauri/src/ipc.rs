@@ -888,6 +888,35 @@ pub fn open_external(url: String) -> Result<String, IpcError> {
         })
 }
 
+/// When the process started, so first paint can be timed against it.
+///
+/// One clock, on the Rust side. Timing this in the webview would measure from
+/// `performance.timeOrigin`, which is when the *webview* was created — after
+/// WebView2 initialisation, which is most of what is being measured.
+pub struct StartedAt(pub std::time::Instant, pub std::sync::atomic::AtomicBool);
+
+/// Called by the frontend on the first frame that has the document in it.
+///
+/// **This is the number a person actually experiences**, and until now nothing
+/// measured it. `boot-ms`, printed in `lib.rs`, stops when
+/// `WebviewWindowBuilder::build()` returns — before the bundle has been
+/// fetched, before Svelte has mounted, before a single pixel of the document
+/// exists. It is a real number and it was gated, but it is not the wait.
+///
+/// Emitted once. The frontend calls this after a document swap as well, and
+/// the second one is not a cold start.
+#[tauri::command]
+pub fn report_ready(started: tauri::State<'_, StartedAt>) {
+    use std::sync::atomic::Ordering;
+
+    if started.1.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    // stderr for the same reason as `boot-ms`: stdout belongs to `MD_HTML=1`.
+    // `release.yml`'s cold-start gate greps this exact string.
+    eprintln!("paint-ms={}", started.0.elapsed().as_millis());
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

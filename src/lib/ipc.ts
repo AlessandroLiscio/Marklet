@@ -287,6 +287,23 @@ export function openExternal(url: string): Promise<string> {
   return invoke<string>('open_external', { url });
 }
 
+/**
+ * Tells Rust the document is on screen, so it can print `paint-ms`.
+ *
+ * **This is the cold-start number that matters**, and nothing measured it
+ * before: `boot-ms` stops when the window is created, which is before this
+ * bundle has been fetched or Svelte has mounted. Rust holds the clock, because
+ * the webview's own `performance.timeOrigin` begins after WebView2
+ * initialisation — which is most of the wait being measured.
+ *
+ * Fire-and-forget, and only the first call is reported.
+ */
+export function reportReady(): void {
+  void invoke<void>('report_ready').catch(() => {
+    /* a plain browser during `npm run dev`, where there is no Rust side */
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Vault
 // ---------------------------------------------------------------------------

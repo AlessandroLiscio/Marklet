@@ -120,6 +120,12 @@ hand-editing them is how a lock file stops matching its manifest.
    in the same summary but not gated — it is single-digit milliseconds and would pass any
    ceiling, so letting it stand in for the windowed number would be a gate that cannot fail.
 
+   **The number gated is `paint-ms`, sent by the frontend once the document is on
+   screen — not `boot-ms`.** `boot-ms` stops when `WebviewWindowBuilder::build()`
+   returns, which is before the bundle has been fetched, before Svelte has mounted and
+   before a single pixel of the document exists. It is a real number, it was what the
+   gate used, and it is not the wait. Both are reported; only the first is enforced.
+
    **The fastest, not the median**, because the two sources of error here — filesystem and
    loader warming, and a shared runner's scheduling — can only make a launch slower. When the
    noise has a sign, the minimum is the honest estimator of the cost and an average measures
@@ -144,10 +150,18 @@ Worth stating plainly, because a green pipeline invites the assumption that it i
 
 **Nothing asserts what the app looks like.** No WebDriver suite, no screenshots, no pixel
 comparison. What exists instead is one smoke step per build leg: the real binary is launched
-on `tests/fixtures/kitchen-sink.md` and has to reach the `boot-ms` line that is printed after
-the window is created — under `xvfb` on Linux, directly on Windows. A missing `dist/`, a CSP
-that blocks the bundle, a webview that will not initialise and a panic before the window
-exists all fail there. Whether the outline is aligned, whether dark mode is readable, whether
+on `tests/fixtures/kitchen-sink.md` under `xvfb` on Linux and directly on Windows.
+
+On Windows it must reach `paint-ms`, which the frontend sends once the document is on
+screen. On Linux it must reach `boot-ms` and merely *reports* whether `paint-ms` followed —
+because on at least one machine (WSLg, software EGL) the window is created and the frontend
+never runs at all, and it is not yet known whether that is Linux or is that machine. The
+warning in the run summary is how that gets answered.
+
+That distinction is the whole point. `boot-ms` prints whether or not the app works: it is
+Rust, in `setup`, and it does not know the webview is empty. A smoke test greping for it
+reads like proof and is not — the same shape as the cold-start gate that measured render
+time against a window-boot ceiling. Whether the outline is aligned, whether dark mode is readable, whether
 a table overflows: unverified, and only a person looking at it will say.
 
 A `tauri-driver` + WebdriverIO suite is the tool for the gap and is not built. It needs

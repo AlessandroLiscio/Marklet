@@ -132,6 +132,12 @@ pub fn run(job: cli::WindowJob, started: Instant) {
         // for "my editor, at this line" without the webview ever naming a
         // program — see `editor.rs`'s module doc for why that matters.
         .manage(ipc::EditorSetting(job.editor.clone()))
+        // The clock `paint-ms` is measured against. Started in `main.rs`, as
+        // the first statement of the program.
+        .manage(ipc::StartedAt(
+            started,
+            std::sync::atomic::AtomicBool::new(false),
+        ))
         // The watcher handle has to outlive `setup`, or `notify` stops watching
         // the moment the function returns and live reload silently never fires.
         .manage(std::sync::Mutex::new(Option::<watch::Watch>::None))
@@ -159,6 +165,7 @@ pub fn run(job: cli::WindowJob, started: Instant) {
             ipc::export_pdf,
             ipc::export_html,
             ipc::open_external,
+            ipc::report_ready,
         ])
         .setup(move |app| {
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
@@ -197,6 +204,10 @@ pub fn run(job: cli::WindowJob, started: Instant) {
             // stderr, not stdout: stdout belongs to `MD_HTML=1`, and a
             // diagnostic that corrupts a pipe is worse than no diagnostic.
             // `release.yml`'s cold-start gate greps this exact string.
+            // The window exists. This is NOT when the user can read anything
+            // — the bundle has not been fetched and Svelte has not mounted.
+            // `paint-ms`, reported by the frontend through `report_ready`, is
+            // that number, and it is the one the cold-start gate uses.
             eprintln!("boot-ms={}", started.elapsed().as_millis());
             Ok(())
         })

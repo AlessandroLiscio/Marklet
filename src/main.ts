@@ -2,7 +2,7 @@ import { mount } from 'svelte';
 
 import App from './app.svelte';
 import { setDocument } from './lib/doc';
-import type { IpcError, OpenedDocument } from './lib/ipc';
+import { reportReady, type IpcError, type OpenedDocument } from './lib/ipc';
 import './styles/tokens.css';
 import './styles/content.css';
 
@@ -88,8 +88,14 @@ mount(App, { target: document.getElementById('chrome')! });
  * numbers are fine. Two frames, not one: the first commits the DOM mutation
  * above, the second lets layout and paint settle before the window appears.
  */
+reportReady(); // TEMPORARY PROBE
+reportReady(); // TEMPORARY PROBE
 requestAnimationFrame(() => {
   requestAnimationFrame(() => {
+    // Reported before `show()`, not after: the frame being committed here is
+    // the one with the document in it, and awaiting the window call first
+    // would charge an IPC round trip to a number meant to measure reading.
+    reportReady();
     void import('@tauri-apps/api/window')
       .then(({ getCurrentWindow }) => getCurrentWindow().show())
       .catch(() => {
