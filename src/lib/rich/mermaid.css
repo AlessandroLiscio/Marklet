@@ -75,9 +75,17 @@
 
 .mermaid-viewer-stage {
   transform-origin: center;
-  will-change: transform;
   user-select: none;
 }
+
+/* NO `will-change: transform` here.
+   It promotes the stage to its own compositor layer, and a layer is
+   rasterized ONCE at its current size and then scaled as a bitmap. For an
+   `<svg>` that is the difference between zooming into vector geometry and
+   zooming into a screenshot: the text goes soft immediately and a stale copy
+   of the pre-zoom raster shows through behind it. The hint was added to make
+   dragging smooth and it cost the zoom its entire point. Panning is one
+   composited translate either way. */ 
 
 .mermaid-viewer-stage svg {
   display: block;

@@ -83,11 +83,17 @@ jobs:
       # than in somebody's hands.
       #
       # It also reports `paint-ms`, which the FRONTEND sends once the document
-      # is on screen. That is the difference between "a window exists" and "the
-      # app works", and it is not yet a failure here because it is not yet
-      # known whether the one machine where it never arrives — WSLg, software
-      # EGL — is representative of Linux or is its own broken thing. This step
-      # is how that gets answered. See docs/ci-cd.md, "What is not tested".
+      # is on screen — the difference between "a window exists" and "the app
+      # works". Windows requires it. Linux only reports it, because the Linux
+      # runner is slow enough that a missing value is as likely to mean "not
+      # yet" as "never": `boot-ms` alone has measured 25 s there, against
+      # 0.2 s on a developer machine, so the window is a hundred times slower
+      # to appear before any of the frontend has run.
+      #
+      # The timeout below is generous for that reason. An earlier version used
+      # 120 s, saw no `paint-ms`, and was read as proof that Linux was broken.
+      # It was not: a correctly built binary paints in about a second. See
+      # docs/ci-cd.md, "What is not tested".
       - name: Smoke - the app starts and creates its window (Linux)
         if: startsWith(matrix.os, 'ubuntu')
         run: |
@@ -99,15 +105,15 @@ jobs:
           # `boot-ms` goes to the console instead. The first version of this
           # step failed exactly that way: the app booted in 26 s and the check
           # spent 90 s reading an empty file.
-          timeout 120 xvfb-run -a \
+          timeout 300 xvfb-run -a \
             src-tauri/target/release/marklet tests/fixtures/kitchen-sink.md \
             > boot.log 2>&1 &
           pid=$!
-          # 120, not 90: measured at 25.8 s on a runner. WebKitGTK under Xvfb
-          # is software-rendered and nothing like the Windows number — this is
-          # a smoke test, not the cold-start gate, which runs in release.yml on
-          # real WebView2.
-          for _ in $(seq 1 120); do
+          # 300, not 120. WebKitGTK under Xvfb is software-rendered and
+          # nothing like the Windows number: `boot-ms` alone has measured 25 s
+          # here. This is a smoke test, not the cold-start gate — that runs in
+          # release.yml against real WebView2.
+          for _ in $(seq 1 300); do
             grep -q 'boot-ms=' boot.log 2>/dev/null && break
             sleep 1
           done

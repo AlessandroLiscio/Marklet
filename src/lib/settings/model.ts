@@ -15,9 +15,10 @@ export const MEASURE_MAX = 100;
 /** Mirrors `store::Settings::default()`. */
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
-  // tokens.css's own default (`--accent-hue: 221`). Kept in sync by eye with
-  // store.rs's `Settings::default` — no build-time link between the two.
-  accent_hue: 221,
+  // tokens.css's own default: Material Blue 500 (#2196F3) as an oklch hue.
+  // Kept in sync by eye with store.rs's `Settings::default` — no build-time
+  // link between the two, and `store::font_size_tests` is the reminder.
+  accent_hue: 249,
   // The platform's own UI sans. A serif reading face is a strong opinion to
   // hold on somebody else's behalf, and three of them are available one click
   // away in the full edition for anyone who wants one.
@@ -25,8 +26,21 @@ export const DEFAULT_SETTINGS: Settings = {
   palette: 'default',
   density: 'normal',
   motion: 'on',
-  measure: 68,
+  // 100ch, the widest the slider offers. A narrower measure is the classic
+  // typographic advice and the right default for a book; this is a window
+  // someone has already sized, and leaving half of it empty reads as a bug.
+  measure: 100,
+  font_size: 100,
 };
+
+/** The reading text size range the slider offers, mirrored by `store.rs`. */
+export const FONT_SIZE_MIN = 80;
+export const FONT_SIZE_MAX = 160;
+
+/** Clamps a text-size request, for the same reason as {@link clampMeasure}. */
+export function clampFontSize(size: number): number {
+  return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, Math.round(size)));
+}
 
 /**
  * Clamps a column-width request to the 48-100ch range the slider itself
@@ -80,6 +94,12 @@ export function applySettingsToRoot(
   else root.removeAttribute('data-motion');
 
   root.style.setProperty('--measure', `${clampMeasure(settings.measure)}ch`);
+
+  // The root font size, not a token: `rem` and `ch` both resolve against it,
+  // so the type scale, the spacing and the column width all follow in one
+  // move. Setting a `--text-base` token instead would scale the prose and
+  // leave the layout at its old size.
+  root.style.setProperty('font-size', `${clampFontSize(settings.font_size)}%`);
 
   if (edition === 'full' && settings.palette !== 'default') {
     // A named palette's CSS rule sets --accent-hue by selector

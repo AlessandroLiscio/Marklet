@@ -153,10 +153,16 @@ comparison. What exists instead is one smoke step per build leg: the real binary
 on `tests/fixtures/kitchen-sink.md` under `xvfb` on Linux and directly on Windows.
 
 On Windows it must reach `paint-ms`, which the frontend sends once the document is on
-screen. On Linux it must reach `boot-ms` and merely *reports* whether `paint-ms` followed —
-because on at least one machine (WSLg, software EGL) the window is created and the frontend
-never runs at all, and it is not yet known whether that is Linux or is that machine. The
-warning in the run summary is how that gets answered.
+screen. On Linux it must reach `boot-ms` and only *reports* whether `paint-ms` followed,
+because the Linux runner is slow enough that a missing value is as likely to mean "not yet"
+as "never" — `boot-ms` alone has measured 25 s there against 0.2 s on a developer machine.
+
+That distinction was learned the expensive way. A 120 s Linux smoke saw no `paint-ms` and
+was read as proof that the Linux build was broken and shipping a blank window. It was not:
+a binary built the way the Tauri CLI builds it paints in about a second. What was actually
+broken was the test — `cargo build`, used to reproduce it locally, produces a binary that
+loads the dev server in both debug and release, so three attempts to reproduce the failure
+were all measuring the wrong binary. See the third trap in the root `CLAUDE.md`.
 
 That distinction is the whole point. `boot-ms` prints whether or not the app works: it is
 Rust, in `setup`, and it does not know the webview is empty. A smoke test greping for it

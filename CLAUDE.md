@@ -98,7 +98,15 @@ Windows binaries come from GitHub Actions `windows-latest`, not from cross-compi
 Tauri's own documentation calls Linux to Windows cross-compilation a last resort. Push a
 branch to get an `.exe`.
 
-## Two traps that cost an afternoon each
+## Three traps that cost an afternoon each
+
+**`cargo build` does not build the app.** It produces a binary that loads
+`http://localhost:1420` — the dev server — in **both** debug and release, because only the
+Tauri CLI switches the frontend over to the embedded `dist/`. Run it standalone and you get
+an empty window with no error, which looks exactly like a broken frontend. Three separate
+investigations were spent on that appearance before the page-load URL was printed. Use
+`npx tauri build --no-bundle -- --features full` for a binary that runs on its own;
+`cargo build` is for compiling and testing, not for looking at.
 
 **No console.** The binary is built with `#![windows_subsystem = "windows"]`, so `--help`
 and `MD_HTML=1` print into the void unless `AttachConsole(ATTACH_PARENT_PROCESS)` runs
