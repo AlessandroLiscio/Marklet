@@ -20,10 +20,10 @@
 
   const EDITION: 'lite' | 'full' = __MARKLET_EDITION__;
 
-  // `marklet --settings` opens the panel with the window, not after it: the
-  // flag is injected by `lib.rs` into the same boot script that carries the
-  // document, so this is known before the first paint.
-  let open = $state(typeof window !== 'undefined' && window.__MARKLET_SETTINGS__ === true);
+  // Opened and closed by the activity bar. `marklet --settings` still opens it
+  // with the window rather than a moment after — `app.svelte` reads the same
+  // boot flag and chooses the initial panel before the first paint.
+  let { open = false }: { open?: boolean } = $props();
   let settings = $state<Settings>({ ...DEFAULT_SETTINGS });
   let loaded = $state(false);
 
@@ -169,24 +169,6 @@
 </script>
 
 <div class="settings">
-  <button
-    type="button"
-    class="toggle"
-    aria-expanded={open}
-    aria-controls="settings-panel"
-    aria-label="Settings"
-    onclick={() => (open = !open)}
-  >
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <circle cx="8" cy="8" r="2.25" stroke="currentColor" stroke-width="1.5" />
-      <path
-        d="M8 1.5v1.6M8 12.9v1.6M14.5 8h-1.6M3.1 8H1.5M12.4 3.6l-1.13 1.13M4.73 11.27L3.6 12.4M12.4 12.4l-1.13-1.13M4.73 4.73L3.6 3.6"
-        stroke="currentColor"
-        stroke-width="1.5"
-        stroke-linecap="round"
-      />
-    </svg>
-  </button>
 
   {#if open}
     <div id="settings-panel" class="panel" class:panel-loading={!loaded}>
@@ -251,7 +233,6 @@
         />
       </fieldset>
 
-
       {#if EDITION === 'full'}
         <fieldset>
           <legend>
@@ -304,49 +285,16 @@
 
 <style>
   .settings {
-    position: fixed;
-    inset-block-end: var(--space-4);
-    inset-inline-end: var(--space-4);
+    block-size: 100%;
+    overflow-y: auto;
     font-family: var(--font-ui);
-    z-index: 10;
-  }
-
-  .toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    inline-size: 2.25rem;
-    block-size: 2.25rem;
-    padding: 0;
-    background: color-mix(in oklab, var(--bg) 88%, transparent);
-    color: var(--fg-muted);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    backdrop-filter: blur(6px);
-    transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
-  }
-
-  .toggle:hover {
-    color: var(--fg);
-    border-color: var(--fg-muted);
   }
 
   .panel {
-    position: absolute;
-    inset-block-end: calc(2.25rem + var(--space-2));
-    inset-inline-end: 0;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    inline-size: 18rem;
-    max-block-size: 70vh;
-    overflow-y: auto;
     padding: var(--space-4);
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    transition: opacity var(--duration-fast) ease;
   }
 
   .panel-loading {
@@ -403,7 +351,6 @@
     background: var(--accent);
   }
 
-
   input[type='range'] {
     accent-color: var(--accent);
     inline-size: 100%;
@@ -418,6 +365,5 @@
     font-family: inherit;
     font-size: var(--text-small);
   }
-
 
 </style>

@@ -47,8 +47,19 @@ export interface Row {
  *
  * Folders are collapsed by default. A vault's top level is a handful of rows;
  * expanding everything on open would present five thousand and hide the shape.
+ *
+ * `listed` is the set of folders whose children have been fetched, and it is
+ * what makes lazy loading work: a folder that nobody has opened has no
+ * children *in the array*, which says nothing about the disk, so it stays
+ * expandable until a listing proves it empty. Passing `null` — the default,
+ * and what the full-scan path does — means "every folder has been listed", so
+ * a folder with no children really is empty and gets no disclosure arrow.
  */
-export function visibleRows(entries: readonly Entry[], expanded: ReadonlySet<string>): Row[] {
+export function visibleRows(
+  entries: readonly Entry[],
+  expanded: ReadonlySet<string>,
+  listed: ReadonlySet<string> | null = null
+): Row[] {
   const rows: Row[] = [];
   let skip: string | null = null;
 
@@ -67,7 +78,7 @@ export function visibleRows(entries: readonly Entry[], expanded: ReadonlySet<str
       name: entry.name,
       dir: entry.dir,
       depth: entry.depth,
-      expandable: entry.dir && hasChildren(entries, i),
+      expandable: entry.dir && ((listed !== null && !listed.has(entry.path)) || hasChildren(entries, i)),
       expanded: isExpanded,
     });
 
@@ -75,6 +86,30 @@ export function visibleRows(entries: readonly Entry[], expanded: ReadonlySet<str
   }
 
   return rows;
+}
+
+/**
+ * Splices `children` into `entries` directly after `parent`.
+ *
+ * The flat array is required to be depth-first with parents before children —
+ * `visibleRows` reads nothing else — and inserting a folder's listing at the
+ * position right after it preserves exactly that, with no re-sort and no tree
+ * structure in between. Which is why lazy loading needed no new model.
+ */
+export function spliceChildren(
+  entries: readonly Entry[],
+  parent: string,
+  children: readonly Entry[]
+): Entry[] {
+  const at = entries.findIndex((e) => e.path === parent);
+  if (at === -1) return [...entries, ...children];
+
+  // Anything already under this parent is replaced, so re-listing a folder
+  // after it changed on disk does not duplicate every row in it.
+  let end = at + 1;
+  while (end < entries.length && entries[end]!.path.startsWith(`${parent}/`)) end += 1;
+
+  return [...entries.slice(0, at + 1), ...children, ...entries.slice(end)];
 }
 
 /**

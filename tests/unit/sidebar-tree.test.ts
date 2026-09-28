@@ -14,6 +14,7 @@ import {
   OVERSCAN,
   ROW_HEIGHT,
   toggle,
+  spliceChildren,
   visibleRows,
   windowOf,
 } from '../../src/lib/sidebar/tree';
@@ -158,5 +159,52 @@ describe('displayName', () => {
     expect(displayName('archive.tar.md', false)).toBe('archive.tar');
     expect(displayName('journal', true)).toBe('journal');
     expect(displayName('.hidden', false)).toBe('.hidden');
+  });
+});
+
+describe('lazy listing', () => {
+  const dir = (path: string, depth: number): Entry => ({
+    path,
+    name: path.split('/').pop()!,
+    dir: true,
+    depth,
+    size: 0,
+    mtime_ms: 0,
+  });
+  const note = (path: string, depth: number): Entry => ({ ...dir(path, depth), dir: false });
+
+  it('keeps an unlisted folder expandable, and an listed empty one not', () => {
+    // The whole difference between the two modes. After a full walk a folder
+    // with no children really is empty. Lazily, a folder nobody has opened has
+    // no children in the array, which says nothing about the disk — showing it
+    // as a leaf would be a dead end the user cannot get past.
+    const entries = [dir('empty', 0), dir('unopened', 0)];
+    const listed = new Set(['empty']);
+
+    const rows = visibleRows(entries, new Set(), listed);
+    expect(rows.find((r) => r.path === 'empty')?.expandable).toBe(false);
+    expect(rows.find((r) => r.path === 'unopened')?.expandable).toBe(true);
+
+    // Default (null) is the full-scan contract: both are known-empty leaves.
+    const scanned = visibleRows(entries, new Set());
+    expect(scanned.every((r) => !r.expandable)).toBe(true);
+  });
+
+  it('splices children directly after their parent, preserving depth-first order', () => {
+    const entries = [dir('a', 0), note('b.md', 0)];
+    const out = spliceChildren(entries, 'a', [note('a/one.md', 1), dir('a/sub', 1)]);
+    expect(out.map((e) => e.path)).toEqual(['a', 'a/one.md', 'a/sub', 'b.md']);
+  });
+
+  it('replaces a previous listing rather than duplicating it', () => {
+    // Re-listing a folder after it changed on disk must not double every row.
+    const entries = [dir('a', 0), note('a/gone.md', 1), dir('a/sub', 1), note('b.md', 0)];
+    const out = spliceChildren(entries, 'a', [note('a/new.md', 1)]);
+    expect(out.map((e) => e.path)).toEqual(['a', 'a/new.md', 'b.md']);
+  });
+
+  it('appends when the parent is not in the array at all', () => {
+    const out = spliceChildren([], '', [note('x.md', 0)]);
+    expect(out.map((e) => e.path)).toEqual(['x.md']);
   });
 });

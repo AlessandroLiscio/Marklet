@@ -462,9 +462,17 @@ Things to try, in order:
 
 ---
 
-## 16. Vault — needs a folder, not a file
+## 16. Explorer and vault
 
-Open the repository folder rather than this file. You should get:
+The **Explorer** button at the top of the activity bar opens the folder tree, rooted at this
+file's own folder — no need to have launched on a directory. Folders list their contents
+when you expand them, one level at a time, so opening a note inside a large folder does not
+read everything underneath it.
+
+The **Search** tab is the exception: it runs the full walk, because a directory listing
+cannot answer a search. That is the one place you should expect to wait on a big folder.
+
+Open the repository folder rather than this file, and you should also get:
 
 - a folder tree in the sidebar, virtualized, so a vault of thousands of notes still
   paints immediately,

@@ -23,6 +23,11 @@
 
 body {
   margin: 0;
+  /* Cleared by the fixed chrome layer on the left. Set from `app.svelte`, which
+     is the only thing that knows whether a panel is open; the document stays
+     centred in whatever width is left rather than sliding under the panel. */
+  padding-inline-start: var(--chrome-inset, var(--activity-bar-size));
+  transition: padding-inline-start var(--duration-base) ease;
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-read);

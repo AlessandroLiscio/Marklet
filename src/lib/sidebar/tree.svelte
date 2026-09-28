@@ -25,16 +25,24 @@
     entries: readonly Entry[];
     /** The open note, vault-relative. Highlighted, and revealed when it changes. */
     active?: string | null;
+    /**
+     * Folders whose children have been fetched, or `null` when every folder
+     * has — see `visibleRows`. Lazily, a folder with no rows under it is
+     * unopened rather than empty, and must keep its disclosure arrow.
+     */
+    listed?: ReadonlySet<string> | null;
+    /** Asked before a folder is expanded for the first time. */
+    onexpand?: (path: string, depth: number) => void;
     onopen?: (path: string) => void;
   }
 
-  let { entries, active = null, onopen }: Props = $props();
+  let { entries, active = null, listed = null, onexpand, onopen }: Props = $props();
 
   let expanded = $state(new Set<string>());
   let scrollTop = $state(0);
   let viewport = $state(480);
 
-  const rows = $derived(visibleRows(entries, expanded));
+  const rows = $derived(visibleRows(entries, expanded, listed));
   const slice = $derived(windowOf(rows.length, scrollTop, viewport));
 
   // Revealing the open note is a state change, not a render: expanding its
@@ -63,15 +71,22 @@
     return () => observer.disconnect();
   }
 
-  function activate(path: string, dir: boolean): void {
-    if (dir) expanded = toggle(expanded, path);
-    else onopen?.(path);
+  function activate(path: string, dir: boolean, depth: number): void {
+    if (!dir) {
+      onopen?.(path);
+      return;
+    }
+    // Asked on every expand; the sidebar ignores a folder it has already
+    // listed. Doing that check here would need this component to know what
+    // has been fetched, which is the sidebar's business, not the tree's.
+    if (!expanded.has(path)) onexpand?.(path, depth);
+    expanded = toggle(expanded, path);
   }
 
-  function onKey(event: KeyboardEvent, path: string, dir: boolean): void {
+  function onKey(event: KeyboardEvent, path: string, dir: boolean, depth: number): void {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      activate(path, dir);
+      activate(path, dir, depth);
     }
   }
 </script>
@@ -99,8 +114,8 @@
         aria-selected={row.path === active}
         aria-expanded={row.expandable ? row.expanded : undefined}
         tabindex="0"
-        onclick={() => activate(row.path, row.dir)}
-        onkeydown={(e) => onKey(e, row.path, row.dir)}
+        onclick={() => activate(row.path, row.dir, row.depth)}
+        onkeydown={(e) => onKey(e, row.path, row.dir, row.depth)}
       >
         <span class="twist" aria-hidden="true">
           {#if row.expandable}

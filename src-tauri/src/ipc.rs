@@ -21,6 +21,7 @@ use crate::protocol::AssetRoot;
 use crate::render::{self, RenderOpts, RenderedDoc};
 use crate::store;
 use crate::vault::{
+    self,
     index::{Backlink, NoteMeta},
     scan::{Entry, ScanStats},
     search::{Hit, Query, SearchStats},
@@ -915,6 +916,76 @@ pub fn report_ready(started: tauri::State<'_, StartedAt>) {
     // stderr for the same reason as `boot-ms`: stdout belongs to `MD_HTML=1`.
     // `release.yml`'s cold-start gate greps this exact string.
     eprintln!("paint-ms={}", started.0.elapsed().as_millis());
+}
+
+// --- navigation (explorer, pickers) -----------------------------------------
+
+/// One level of the folder tree.
+///
+/// Lazy on purpose: opening a single note roots the explorer at that note's
+/// folder, which may be a home directory. `scan_vault` walks everything and is
+/// what search needs; this is what the tree can actually show, and it is what
+/// runs on open. See `vault::scan::list_dir`.
+#[tauri::command]
+pub fn list_dir(
+    rel: String,
+    depth: usize,
+    root: tauri::State<'_, AssetRoot>,
+    vault: tauri::State<'_, VaultState>,
+) -> Result<Vec<Entry>, IpcError> {
+    // The vault root when one is open, otherwise the asset root — which is the
+    // open document's own folder. Both are already canonical, and both are
+    // what `marklet://` is serving, so the explorer can never show a file the
+    // rest of the app would refuse to load.
+    let base = vault.root().or_else(|| root.get()).ok_or_else(|| {
+        IpcError::new(
+            IpcErrorKind::Denied,
+            "nothing is open, so there is no folder to list",
+            None,
+        )
+    })?;
+
+    vault::scan::list_dir(&base, &rel, depth)
+}
+
+/// Asks the OS for a markdown file to open.
+///
+/// Blocking, and therefore `async`: a synchronous command runs on the main
+/// thread, which is the thread the dialog needs in order to appear.
+///
+/// Returns `None` when the user cancels. Cancelling is a normal answer, not an
+/// error — the caller does nothing and the app stays as it was.
+#[tauri::command]
+pub async fn pick_file(app: tauri::AppHandle) -> Result<Option<String>, IpcError> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("Markdown", &["md", "markdown", "mdown", "mkd"])
+        .set_title("Open a Markdown file")
+        .blocking_pick_file();
+
+    Ok(picked.and_then(|p| p.into_path().ok()).map(path_string))
+}
+
+/// Asks the OS for a folder to browse.
+#[tauri::command]
+pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, IpcError> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let picked = app
+        .dialog()
+        .file()
+        .set_title("Open a folder")
+        .blocking_pick_folder();
+
+    Ok(picked.and_then(|p| p.into_path().ok()).map(path_string))
+}
+
+/// A picked path as the string the rest of the boundary speaks.
+fn path_string(path: PathBuf) -> String {
+    path.display().to_string()
 }
 
 #[cfg(test)]

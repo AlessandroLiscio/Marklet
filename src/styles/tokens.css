@@ -118,6 +118,8 @@
   --space-6: calc(1.5rem * var(--density));
   --space-8: calc(2rem * var(--density));
 
+  --activity-bar-size: 3.25rem;
+
   --radius-sm: 4px;
   --radius-md: 6px;
 
