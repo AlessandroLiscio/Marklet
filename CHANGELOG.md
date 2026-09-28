@@ -61,6 +61,16 @@ and the binaries are unsigned, so SmartScreen warns on first run.
 
 ### Added
 
+- **An activity bar, an explorer, and a way in from nothing.** A VS Code-style strip on the
+  left edge switches between the file explorer, the outline and settings, and toggles the
+  split editor. Launching Marklet with no file now offers the OS file picker instead of an
+  empty window. The explorer roots itself at the open document's folder, so the folder tree
+  is reachable by anyone who double-clicked a file — before this it existed but could only
+  be reached by launching on a directory, and even then it rendered *below* the document
+  rather than beside it, because nothing had ever laid it out.
+- **The explorer lists one folder level at a time.** Opening a note roots the tree at that
+  note's folder, which may be a home directory; walking it to show six rows is work nobody
+  asked for. The full walk still runs, on the Search tab, which cannot answer without it.
 - **Zoom, scoped to the document.** `Ctrl` and the wheel, or `Ctrl` `+` / `-` / `0`, or the
   slider in settings. It scales the column being read — text, spacing, images, tables — and
   leaves the sidebar, the outline and the settings panel alone. For one release it was the

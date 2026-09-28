@@ -116,6 +116,7 @@ pub fn run(job: cli::WindowJob, started: Instant) {
     };
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             // A second WebView2 instance costs roughly 40 MB RSS. Forward the
             // path to the window that already exists instead of spawning one.
@@ -166,6 +167,9 @@ pub fn run(job: cli::WindowJob, started: Instant) {
             ipc::export_html,
             ipc::open_external,
             ipc::report_ready,
+            ipc::list_dir,
+            ipc::pick_file,
+            ipc::pick_folder,
         ])
         .setup(move |app| {
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())

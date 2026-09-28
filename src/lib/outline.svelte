@@ -22,7 +22,10 @@
   const doc = currentDocument();
   const outline = doc?.outline ?? [];
 
-  let open = $state(false);
+  // Opened and closed by the activity bar, which is the one place that knows
+  // which panel is showing. This component used to own its own button and its
+  // own corner; four such corners was the layout this replaced.
+  let { open = false }: { open?: boolean } = $props();
   let activeSlug = $state<string | null>(null);
 
   let docRoot: HTMLElement | null = null;
@@ -65,29 +68,10 @@
   });
 </script>
 
-{#if outline.length > 0}
+{#if open && outline.length > 0}
   <nav class="outline" aria-label="Table of contents">
-    <button
-      type="button"
-      class="toggle"
-      aria-expanded={open}
-      aria-controls="outline-list"
-      onclick={() => (open = !open)}
-    >
-      <!-- Inline SVG per the icon rule — no icon font, no icon package. -->
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path
-          d="M2 4h12M2 8h12M2 12h8"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-        />
-      </svg>
-      <span>Contents</span>
-    </button>
 
-    {#if open}
-      <ol id="outline-list" class="list">
+    <ol id="outline-list" class="list">
         {#each outline as heading (heading.slug)}
           <li class="entry" class:active={heading.slug === activeSlug}>
             <button
@@ -99,40 +83,18 @@
             </button>
           </li>
         {/each}
-      </ol>
-    {/if}
+    </ol>
   </nav>
 {/if}
 
 <style>
   .outline {
-    position: fixed;
-    inset-block-start: var(--space-4);
-    inset-inline-end: var(--space-4);
+    block-size: 100%;
+    overflow-y: auto;
     font-family: var(--font-ui);
-    z-index: 10;
   }
 
-  .toggle {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
-    background: color-mix(in oklab, var(--bg) 88%, transparent);
-    color: var(--fg-muted);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    font-size: var(--text-small);
-    font-family: inherit;
-    cursor: pointer;
-    backdrop-filter: blur(6px);
-    transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
-  }
 
-  .toggle:hover {
-    color: var(--fg);
-    border-color: var(--fg-muted);
-  }
 
   .list {
     list-style: none;

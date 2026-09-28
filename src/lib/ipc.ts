@@ -323,6 +323,31 @@ export function reportReady(): void {
 // place where a payload change in Rust becomes a type error instead of a
 // runtime surprise.
 
+/**
+ * One level of the folder tree: the immediate children of `rel`.
+ *
+ * `rel` is empty for the root. Lazy by design — the explorer roots itself at
+ * the open document's folder, which may be very large, and a listing is what a
+ * tree can show. The full walk still runs, for search, which cannot answer
+ * from a directory listing.
+ */
+export function listDir(rel: string, depth: number): Promise<Entry[]> {
+  return invoke<Entry[]>('list_dir', { rel, depth });
+}
+
+/**
+ * Asks the OS for a file to open. `null` when the user cancels — a normal
+ * answer, not an error.
+ */
+export function pickFile(): Promise<string | null> {
+  return invoke<string | null>('pick_file');
+}
+
+/** Asks the OS for a folder to browse. `null` when the user cancels. */
+export function pickFolder(): Promise<string | null> {
+  return invoke<string | null>('pick_folder');
+}
+
 /** Mirrors `vault::VaultInfo`. */
 export interface VaultInfo {
   /** Absolute and canonical. Shown; never sent back. */

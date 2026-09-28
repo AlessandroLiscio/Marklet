@@ -16,6 +16,7 @@
   import SearchPanel from './search.svelte';
   import Tree from './tree.svelte';
   import {
+    listDir,
     onScanDone,
     onScanProgress,
     openVault,
@@ -24,6 +25,7 @@
     type Entry,
     type VaultInfo,
   } from '../ipc';
+  import { spliceChildren } from './tree';
 
   interface Props {
     /** The folder to open. Changing it opens a different vault. */
@@ -40,6 +42,25 @@
   let scanning = $state(false);
   let error = $state<string | null>(null);
   let tab = $state<'files' | 'search'>('files');
+
+  /**
+   * Folders whose children have been fetched.
+   *
+   * The tree needs this to know whether a folder with no rows under it is
+   * empty or merely unopened — see `visibleRows`. It is also what stops a
+   * second expand from re-listing a folder that has not changed.
+   */
+  let listed = $state<Set<string>>(new Set());
+
+  /**
+   * The full walk has run, so every folder is known.
+   *
+   * Searching needs the walk — a directory listing cannot answer it — and once
+   * it has run the lazy bookkeeping is not just unnecessary but wrong: the
+   * array holds every folder's children, so an empty folder really is empty.
+   * Passing `null` for `listed` is how the tree is told that.
+   */
+  let walked = $state(false);
 
   // One subscription for the component's life. Batches that arrive between
   // `openVault` and `scanVault` belong to this vault too, so the listener is
@@ -67,15 +88,24 @@
 
     let current = true;
     entries = [];
+    listed = new Set();
+    walked = false;
     error = null;
     scanning = true;
 
+    // One level, not a walk. Opening a note roots this at the note's folder,
+    // which may be a home directory; listing the children shows the same rows
+    // a walk would show first, without reading everything underneath them.
+    // The walk still happens — on the Search tab, which cannot work without it.
     void (async () => {
       try {
         const opened = await openVault(path);
         if (!current) return;
         info = opened;
-        await scanVault();
+        const top = await listDir('', 0);
+        if (!current) return;
+        entries = top;
+        listed = new Set(['']);
       } catch (e) {
         if (!current) return;
         error = e instanceof Object && 'message' in e ? String(e.message) : 'Could not open that folder';
@@ -89,6 +119,39 @@
       current = false;
     };
   });
+  /** Fetches a folder's children the first time it is opened. */
+  async function expand(path: string, depth: number): Promise<void> {
+    if (walked || listed.has(path)) return;
+    try {
+      const children = await listDir(path, depth + 1);
+      entries = spliceChildren(entries, path, children);
+      listed = new Set(listed).add(path);
+    } catch {
+      // An unreadable folder stays expandable and shows nothing. Refusing to
+      // open the rest of the tree over one permission error would be worse.
+    }
+  }
+
+  /**
+   * Runs the full walk, once, when the Search tab is first opened.
+   *
+   * Deferred to here rather than done on open because this is the only thing
+   * that needs it, and it is the expensive thing — see `vault::scan::list_dir`.
+   */
+  async function ensureWalked(): Promise<void> {
+    if (walked || info === null) return;
+    scanning = true;
+    try {
+      entries = [];
+      listed = new Set();
+      await scanVault();
+      walked = true;
+    } catch {
+      // Search reports its own failure; the tree keeps the rows it has.
+    } finally {
+      scanning = false;
+    }
+  }
 </script>
 
 <aside class="sidebar" aria-label="Vault">
@@ -99,7 +162,14 @@
 
   <nav class="tabs">
     <button type="button" class:on={tab === 'files'} onclick={() => (tab = 'files')}>Files</button>
-    <button type="button" class:on={tab === 'search'} onclick={() => (tab = 'search')}>
+    <button
+      type="button"
+      class:on={tab === 'search'}
+      onclick={() => {
+        tab = 'search';
+        void ensureWalked();
+      }}
+    >
       Search
     </button>
   </nav>
@@ -109,7 +179,13 @@
   {/if}
 
   {#if tab === 'files'}
-    <Tree {entries} {active} onopen={(path) => onopen?.(path)} />
+    <Tree
+      {entries}
+      {active}
+      listed={walked ? null : listed}
+      onexpand={(path, depth) => void expand(path, depth)}
+      onopen={(path) => onopen?.(path)}
+    />
   {:else}
     <SearchPanel
       enabled={info !== null}

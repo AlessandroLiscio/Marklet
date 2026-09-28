@@ -10,6 +10,7 @@
    */
   import { onDestroy, onMount } from 'svelte';
 
+  import ActivityBar, { type PanelId } from './lib/chrome/activity-bar.svelte';
   import { currentDocument, setDocument } from './lib/doc';
   import { createEditController, type EditController, type EditMode } from './lib/edit';
   import Outline from './lib/outline.svelte';
@@ -22,6 +23,8 @@
     openDocument,
     openExternal,
     openNote,
+    pickFile,
+    pickFolder,
     readSource,
     revealInEditor,
     savePastedImage,
@@ -36,7 +39,43 @@
   let edit: EditController | null = null;
   /** Serializes exports: two Ctrl+P in a row must not print into each other. */
   let exporting = false;
-  const vaultPath = typeof window !== 'undefined' ? (window.__MARKLET_VAULT__ ?? null) : null;
+  /**
+   * The folder the explorer is rooted at.
+   *
+   * A directory argument sets it at launch. Otherwise it becomes the open
+   * document's own folder, the first time the explorer is opened — which is
+   * what makes the tree reachable for anyone who double-clicked a file, rather
+   * than only for someone who knew to launch on a directory.
+   */
+  let vaultPath = $state<string | null>(
+    typeof window !== 'undefined' ? (window.__MARKLET_VAULT__ ?? null) : null
+  );
+
+  /** Which side panel is showing, or `null` for the document at full width. */
+  let panel = $state<PanelId | null>(
+    typeof window !== 'undefined' && window.__MARKLET_SETTINGS__ === true ? 'settings' : null
+  );
+
+  /**
+   * How much room the fixed chrome takes, published to `:root` for
+   * `content.css` to inset the body by.
+   *
+   * On the root element rather than on a component, because the thing being
+   * inset — `#doc` — is outside the Svelte tree entirely, which is invariant 2
+   * in CLAUDE.md. A custom property is the only channel between them.
+   */
+  $effect(() => {
+    document.documentElement.style.setProperty(
+      '--chrome-inset',
+      panel === null ? 'var(--activity-bar-size)' : 'calc(var(--activity-bar-size) + 260px)'
+    );
+  });
+
+  /** The folder of a document path, for rooting the explorer. */
+  function folderOf(path: string): string {
+    const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+    return cut > 0 ? path.slice(0, cut) : path;
+  }
 
   let unlisten: Array<() => void> = [];
 
@@ -213,6 +252,38 @@
       .catch((error: unknown) => say(reason(error), true));
   }
 
+  /**
+   * Opens the explorer, rooting it at the document's folder the first time.
+   *
+   * Rooting happens here rather than at launch because listing a folder is
+   * work, and until this button is pressed nobody has asked for it.
+   */
+  function showExplorer(): void {
+    if (vaultPath === null && doc) vaultPath = folderOf(doc.path);
+    panel = 'explorer';
+  }
+
+  /** The activity bar's split button. `F3` does the same thing. */
+  function toggleSplit(): void {
+    void edit?.setMode(mode === 'split' ? 'read' : 'split');
+  }
+
+  /** Nothing was opened: ask the OS for a file, or for a folder to browse. */
+  async function openFromDialog(kind: 'file' | 'folder'): Promise<void> {
+    try {
+      const picked = kind === 'file' ? await pickFile() : await pickFolder();
+      if (picked === null) return; // cancelled, which is a normal answer
+      if (kind === 'folder') {
+        vaultPath = picked;
+        panel = 'explorer';
+      } else {
+        await show(await openDocument(picked));
+      }
+    } catch (error) {
+      say(reason(error), true);
+    }
+  }
+
   function onKeyDown(event: KeyboardEvent): void {
     if (edit?.handleKey(event)) return;
     exportShortcut(event);
@@ -285,10 +356,53 @@
   });
 </script>
 
-<Outline />
-<SettingsPanel />
-{#if vaultPath}
-  <Sidebar {vaultPath} active={doc?.path ?? null} onopen={(path) => void openNote(path).then((d) => show(d as OpenedDocument))} />
+<div class="chrome-layer">
+  <ActivityBar
+    {panel}
+    split={mode === 'split'}
+    onpanel={(next) => (next === 'explorer' ? showExplorer() : (panel = next))}
+    onsplit={toggleSplit}
+  />
+
+  {#if panel !== null}
+    <div class="panel-dock">
+      {#if panel === 'explorer'}
+        {#if vaultPath}
+          <Sidebar
+            {vaultPath}
+            active={doc?.path ?? null}
+            onopen={(path) => void openNote(path).then((d) => show(d as OpenedDocument))}
+          />
+        {:else}
+          <div class="empty-panel">
+            <p>No folder open.</p>
+            <button type="button" onclick={() => void openFromDialog('folder')}>
+              Open a folder…
+            </button>
+          </div>
+        {/if}
+      {:else if panel === 'outline'}
+        <Outline open />
+      {:else}
+        <SettingsPanel open />
+      {/if}
+    </div>
+  {/if}
+</div>
+
+{#if !doc}
+  <!-- Launched with nothing. An empty window with no explanation is the worst
+       version of this; the OS file picker is the one people already know. -->
+  <div class="welcome">
+    <h1>Marklet</h1>
+    <p>Open a Markdown file, or a folder to browse.</p>
+    <div class="welcome-actions">
+      <button type="button" onclick={() => void openFromDialog('file')}>Open file…</button>
+      <button type="button" class="secondary" onclick={() => void openFromDialog('folder')}>
+        Open folder…
+      </button>
+    </div>
+  </div>
 {/if}
 
 {#if notice}
@@ -315,6 +429,86 @@
 {/if}
 
 <style>
+  /* The chrome is a fixed layer on the left edge, and the document is inset
+     by exactly its width. Before this the sidebar was a plain flex column in
+     normal document flow, which put it *below* the document — nobody had seen
+     it, because reaching it needed launching on a directory. */
+  .chrome-layer {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    display: flex;
+    z-index: 20;
+    font-family: var(--font-ui);
+  }
+
+  .panel-dock {
+    inline-size: 260px;
+    block-size: 100%;
+    overflow: hidden;
+    background: var(--bg-subtle);
+    border-inline-end: 1px solid var(--border);
+  }
+
+  .empty-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    font-size: var(--text-small);
+    color: var(--fg-muted);
+  }
+
+  .welcome {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    padding-inline-start: var(--activity-bar-size);
+    text-align: center;
+    font-family: var(--font-ui);
+    background: var(--bg);
+    z-index: 15;
+  }
+
+  .welcome h1 {
+    margin: 0;
+    font-size: var(--text-h2);
+    font-weight: 600;
+  }
+
+  .welcome p {
+    margin: 0;
+    color: var(--fg-muted);
+  }
+
+  .welcome-actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-block-start: var(--space-2);
+  }
+
+  .welcome button,
+  .empty-panel button {
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-md);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-family: inherit;
+    font-size: var(--text-small);
+    cursor: pointer;
+  }
+
+  .welcome button.secondary {
+    background: transparent;
+    color: var(--accent);
+  }
+
   .status {
     position: fixed;
     inset-block-end: 0;

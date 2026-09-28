@@ -517,3 +517,140 @@ mod tests {
         );
     }
 }
+
+/// Lists one directory level: the immediate children of `rel` under `root`.
+///
+/// The explorer's unit of work, and deliberately **not** [`walk`]. Opening a
+/// single note roots the tree at that note's folder, which might be a home
+/// directory with a hundred thousand files under it — walking it to show six
+/// rows is work nobody asked for, on every launch. One level is what the tree
+/// can actually display, so one level is what this reads.
+///
+/// The full walk still exists and still runs, on the one action that needs it:
+/// search cannot answer from a directory listing.
+///
+/// `rel` is empty for the root itself. Folders come before notes and each
+/// group is sorted by name, case-insensitively — the order a file manager
+/// uses, and the order [`walk`] already yields, so the two can be spliced into
+/// one array without re-sorting.
+pub fn list_dir(root: &Path, rel: &str, depth: usize) -> Result<Vec<Entry>, IpcError> {
+    let dir = if rel.is_empty() {
+        root.to_path_buf()
+    } else {
+        resolve_in(root, rel)?
+    };
+
+    let reader = std::fs::read_dir(&dir).map_err(|e| {
+        err(
+            IpcErrorKind::Io,
+            format!("could not read that folder: {e}"),
+            Some(&dir),
+        )
+    })?;
+
+    let mut out = Vec::new();
+    for entry in reader.flatten() {
+        // Not valid UTF-8, so it cannot cross the IPC boundary as an identity.
+        // Skipped rather than lossily renamed: a name that round-trips wrong is
+        // a file the user cannot open from a row that claims they can.
+        let Ok(name) = entry.file_name().into_string() else {
+            continue;
+        };
+
+        let Ok(meta) = entry.metadata() else { continue };
+        let is_dir = meta.is_dir();
+
+        if is_dir && is_ignored_dir(&name) {
+            continue;
+        }
+        if !is_dir && !is_note(Path::new(&name)) {
+            continue;
+        }
+
+        let (size, mtime) = if is_dir {
+            (0, 0)
+        } else {
+            (meta.len(), mtime_ms(&meta))
+        };
+        out.push(Entry {
+            path: if rel.is_empty() {
+                name.clone()
+            } else {
+                format!("{rel}/{name}")
+            },
+            name,
+            dir: is_dir,
+            depth,
+            size,
+            mtime_ms: mtime,
+        });
+    }
+
+    out.sort_by(|a, b| {
+        b.dir
+            .cmp(&a.dir)
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+    });
+    Ok(out)
+}
+
+#[cfg(test)]
+mod list_dir_tests {
+    use super::*;
+
+    fn sandbox(name: &str) -> PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("marklet-listdir-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("notes")).unwrap();
+        std::fs::create_dir_all(dir.join(".git")).unwrap();
+        std::fs::create_dir_all(dir.join("Assets")).unwrap();
+        std::fs::write(dir.join("readme.md"), b"# r").unwrap();
+        std::fs::write(dir.join("Alpha.md"), b"# a").unwrap();
+        std::fs::write(dir.join("notes/deep.md"), b"# d").unwrap();
+        std::fs::write(dir.join("photo.png"), b"x").unwrap();
+        dir
+    }
+
+    #[test]
+    fn one_level_only_folders_first_case_insensitive() {
+        let root = sandbox("basic").canonicalize().unwrap();
+        let rows = list_dir(&root, "", 0).unwrap();
+        let names: Vec<&str> = rows.iter().map(|e| e.name.as_str()).collect();
+
+        // Folders before notes; each group sorted ignoring case. `deep.md` is
+        // absent because it is a level down — that is the whole point.
+        assert_eq!(names, ["Assets", "notes", "Alpha.md", "readme.md"]);
+        assert!(
+            !rows.iter().any(|e| e.name == ".git"),
+            "ignored dirs stay out"
+        );
+        assert!(
+            !rows.iter().any(|e| e.name == "photo.png"),
+            "non-notes stay out"
+        );
+    }
+
+    #[test]
+    fn a_child_listing_carries_the_parent_prefix_and_depth() {
+        let root = sandbox("child").canonicalize().unwrap();
+        let rows = list_dir(&root, "notes", 1).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].path, "notes/deep.md", "paths stay root-relative");
+        assert_eq!(
+            rows[0].depth, 1,
+            "depth is the caller's, not counted from the path"
+        );
+    }
+
+    #[test]
+    fn it_refuses_to_list_outside_the_root() {
+        let root = sandbox("escape").canonicalize().unwrap();
+        for outside in ["..", "../..", "/etc", "notes/../.."] {
+            assert!(
+                list_dir(&root, outside, 0).is_err(),
+                "{outside} must not be listable"
+            );
+        }
+    }
+}
