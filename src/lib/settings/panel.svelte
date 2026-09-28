@@ -16,7 +16,7 @@
   import { onMount } from 'svelte';
   import { readSettings, writeSettings } from '../ipc';
   import type { Density, Palette, Settings, Theme, Typeface } from '../ipc';
-  import { applySettingsToRoot, DEFAULT_SETTINGS, FONT_SIZE_MAX, FONT_SIZE_MIN, MEASURE_MAX, MEASURE_MIN, preserveScrollAcrossReflow } from './model';
+  import { applySettingsToRoot, clampZoom, DEFAULT_SETTINGS, MEASURE_MAX, MEASURE_MIN, preserveScrollAcrossReflow, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './model';
 
   const EDITION: 'lite' | 'full' = __MARKLET_EDITION__;
 
@@ -84,19 +84,47 @@
     commit({ ...settings, density }, true);
   }
 
-  function setMotion(on: boolean): void {
-    commit({ ...settings, motion: on ? 'on' : 'off' }, false);
-  }
-
   function setMeasure(measure: number): void {
     commit({ ...settings, measure }, true);
   }
 
-  // `true`: changing the text size reflows the document, so the scroll
-  // position has to be re-anchored to its source line afterwards — the same
-  // reason the column-width slider passes it.
-  function setFontSize(font_size: number): void {
-    commit({ ...settings, font_size }, true);
+  // `true`: zooming reflows the document, so the scroll position has to be
+  // re-anchored to its source line afterwards — the same reason the
+  // column-width slider passes it.
+  function setZoom(zoom: number): void {
+    commit({ ...settings, zoom: clampZoom(zoom) }, true);
+  }
+
+  /**
+   * Ctrl+wheel and Ctrl+plus/minus/0, the way every browser does it.
+   *
+   * Handled here rather than in `app.svelte` because this component owns the
+   * settings state and the write path; routing it through the app shell would
+   * mean a second place that can change a preference.
+   *
+   * `preventDefault` matters twice over: the webview has its own Ctrl+wheel
+   * page zoom, and leaving it enabled would scale the chrome as well as the
+   * document — the exact behaviour this release is removing.
+   */
+  function onZoomWheel(event: WheelEvent): void {
+    if (!event.ctrlKey || event.deltaY === 0) return;
+    event.preventDefault();
+    setZoom(settings.zoom * (event.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP));
+  }
+
+  function onZoomKey(event: KeyboardEvent): void {
+    if (!event.ctrlKey || event.altKey || event.metaKey) return;
+    // `=` is the unshifted key `+` sits on, and is what people press.
+    if (event.key === '+' || event.key === '=') {
+      event.preventDefault();
+      setZoom(settings.zoom * ZOOM_STEP);
+    } else if (event.key === '-' || event.key === '_') {
+      event.preventDefault();
+      setZoom(settings.zoom / ZOOM_STEP);
+    } else if (event.key === '0') {
+      event.preventDefault();
+      setZoom(DEFAULT_SETTINGS.zoom);
+    }
   }
 
   function setAccentHue(accent_hue: number): void {
@@ -112,6 +140,12 @@
   }
 
   onMount(() => {
+    // `passive: false` — a passive listener cannot preventDefault, and without
+    // that the webview's own Ctrl+wheel page zoom fires as well and scales the
+    // chrome along with the document.
+    window.addEventListener('wheel', onZoomWheel, { passive: false });
+    window.addEventListener('keydown', onZoomKey);
+
     readSettings()
       .then((s) => {
         settings = s;
@@ -126,6 +160,11 @@
       .finally(() => {
         loaded = true;
       });
+
+    return () => {
+      window.removeEventListener('wheel', onZoomWheel);
+      window.removeEventListener('keydown', onZoomKey);
+    };
   });
 </script>
 
@@ -185,16 +224,16 @@
 
       <fieldset>
         <legend>
-          <label for="font-size-range">Text size — {settings.font_size}%</label>
+          <label for="zoom-range">Zoom — {settings.zoom}%</label>
         </legend>
         <input
-          id="font-size-range"
+          id="zoom-range"
           type="range"
-          min={FONT_SIZE_MIN}
-          max={FONT_SIZE_MAX}
-          step="5"
-          value={settings.font_size}
-          oninput={(e) => setFontSize(Number(e.currentTarget.value))}
+          min={ZOOM_MIN}
+          max={ZOOM_MAX}
+          step="10"
+          value={settings.zoom}
+          oninput={(e) => setZoom(Number(e.currentTarget.value))}
         />
       </fieldset>
 
@@ -212,29 +251,6 @@
         />
       </fieldset>
 
-      <fieldset>
-        <legend>
-          <label for="motion-toggle">Animation</label>
-        </legend>
-        <label class="switch">
-          <input
-            id="motion-toggle"
-            type="checkbox"
-            checked={settings.motion === 'on'}
-            onchange={(e) => setMotion(e.currentTarget.checked)}
-          />
-          <span>{settings.motion === 'on' ? 'On' : 'Off'}</span>
-        </label>
-        <!-- "Motion" said nothing about what it did. It does not animate the
-             document — it gates the transitions on the interface: panels
-             sliding, a link's colour easing, the diagram overlay fading. Off
-             makes every one of those instant. -->
-        <p class="hint">
-          Fades and slides in the interface — panels, hovers, the diagram
-          viewer. Off makes them instant. The document never animates either
-          way.
-        </p>
-      </fieldset>
 
       {#if EDITION === 'full'}
         <fieldset>
@@ -279,7 +295,6 @@
           min="0"
           max="360"
           value={settings.accent_hue}
-          disabled={EDITION === 'full' && settings.palette !== 'default'}
           oninput={(e) => setAccentHue(Number(e.currentTarget.value))}
         />
       </fieldset>
@@ -388,12 +403,6 @@
     background: var(--accent);
   }
 
-  .hint {
-    margin: var(--space-1) 0 0;
-    font-size: var(--text-small);
-    line-height: 1.45;
-    color: var(--fg-muted);
-  }
 
   input[type='range'] {
     accent-color: var(--accent);
@@ -410,16 +419,5 @@
     font-size: var(--text-small);
   }
 
-  .switch {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    color: var(--fg);
-    font-size: var(--text-small);
-    cursor: pointer;
-  }
 
-  .switch input {
-    accent-color: var(--accent);
-  }
 </style>

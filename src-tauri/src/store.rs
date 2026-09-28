@@ -82,19 +82,21 @@ pub enum Density {
     Spacious,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum Motion {
-    On,
-    Off,
-}
-
 /// Every control `src/lib/settings/**` exposes. Adding a control means adding
 /// its field here, in the frontend's mirrored `Settings` type in
 /// `src/lib/ipc.ts`, and its row in `docs/editions.md` if it differs by
 /// edition.
+/// `#[serde(default)]` on every field, not just on the struct.
+///
+/// A settings file is written by one version and read by the next. Without
+/// this, adding or removing a single field makes the whole document fail to
+/// parse, `read_json_or_default` hands back `Settings::default()`, and every
+/// preference the user had set is silently gone — which is exactly what
+/// happened to `motion` and `font_size`. Per-field defaults mean an old file
+/// keeps the values it does have and picks up defaults only for what it is
+/// missing.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case", default)]
 pub struct Settings {
     pub theme: Theme,
     /// Degrees, 0-360. Ignored while `palette` is anything but `Default` —
@@ -103,45 +105,44 @@ pub struct Settings {
     pub typeface: Typeface,
     pub palette: Palette,
     pub density: Density,
-    pub motion: Motion,
     /// Column width in `ch`. Clamped to 48-100 on write — see
     /// [`Settings::clamp`] — because a value that reaches this store through
     /// anything other than the slider (a hand-edited `settings.json`, a
     /// future import) must not be able to make the reading column
     /// unreadably narrow or wide.
     pub measure: u8,
-    /// Reading text size, as a percentage of the platform default. Clamped to
-    /// 80-160 on write for the same reason as [`Settings::measure`]: a value
-    /// arriving from anywhere but the slider must not be able to make the
-    /// document unreadable.
+    /// Document zoom, as a percentage. Clamped to 50-250 on write for the same
+    /// reason as [`Settings::measure`]: a value arriving from anywhere but the
+    /// slider must not be able to make the document unreadable.
     ///
-    /// A percentage rather than a pixel size, because it is applied as the
-    /// root font size and everything else — the type scale, the spacing, the
-    /// column width in `ch` — is expressed in units that follow it. Setting a
-    /// pixel size here would scale the text and leave the layout behind.
-    pub font_size: u8,
+    /// Scales the **document column only**, through `#doc { zoom: … }` — not
+    /// the root font size, which is what it was for one release and which took
+    /// the sidebar and the settings panel with it. Zoom belongs to the thing
+    /// being read.
+    pub zoom: u8,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
             theme: Theme::System,
-            // tokens.css's own default. 249 deg is Material Blue 500
-            // (#2196F3) converted to oklch — the hue, not the colour: the
+            // tokens.css's own default. 70 deg is Material Amber 700
+            // (#FFA000) converted to oklch — the hue, not the colour: the
             // lightness still comes from the accent generator, so it clears AA
-            // in both themes the same way any other hue does.
+            // in both themes the same way any other hue does. Amber 500
+            // (#FFC107) is hue 86, a yellow that the generator has to darken
+            // so far to reach AA that it stops reading as amber at all.
             // Keep in sync with tokens.css by eye; there is no build-time link.
-            accent_hue: 249,
+            accent_hue: 70,
             typeface: Typeface::System,
             palette: Palette::Default,
             density: Density::Normal,
-            motion: Motion::On,
             // 100ch, the widest the slider offers. A narrower measure is the
             // classic typographic advice and it is the right default for a
             // book; this is a window someone has already sized, and leaving
             // half of it empty reads as a bug rather than as restraint.
             measure: 100,
-            font_size: 100,
+            zoom: 100,
         }
     }
 }
@@ -153,7 +154,7 @@ impl Settings {
     /// unreadably narrow or absurdly wide.
     pub fn clamp(mut self) -> Self {
         self.measure = self.measure.clamp(48, 100);
-        self.font_size = self.font_size.clamp(80, 160);
+        self.zoom = self.zoom.clamp(50, 250);
         self
     }
 }
@@ -321,7 +322,7 @@ fn tmp_path(path: &Path) -> PathBuf {
 mod tests {
     use super::*;
 
-    fn sandbox(name: &str) -> PathBuf {
+    pub(super) fn sandbox(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("marklet-store-{}-{name}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         dir
@@ -342,9 +343,8 @@ mod tests {
             typeface: Typeface::Literary,
             palette: Palette::Forest,
             density: Density::Compact,
-            motion: Motion::Off,
             measure: 80,
-            font_size: 120,
+            zoom: 140,
         };
         write_settings(&dir, &settings).unwrap();
         assert_eq!(read_settings(&dir), settings);
@@ -366,7 +366,7 @@ mod tests {
         // and therefore its own clamp — must still come back clamped.
         std::fs::write(
             settings_path(&dir),
-            br#"{"theme":"system","accent-hue":221,"typeface":"editorial","palette":"default","density":"normal","motion":"on","measure":255}"#,
+            br#"{"theme":"system","accent-hue":221,"typeface":"editorial","palette":"default","density":"normal","measure":255}"#,
         )
         .unwrap();
         assert_eq!(read_settings(&dir).measure, 100);
@@ -488,29 +488,29 @@ mod tests {
 }
 
 #[cfg(test)]
-mod font_size_tests {
+mod zoom_tests {
     use super::*;
 
     #[test]
-    fn a_font_size_from_outside_the_slider_is_clamped() {
+    fn a_zoom_from_outside_the_slider_is_clamped() {
         // `settings.json` is a plain file a person can edit, and a future
         // import could carry anything. 0 would make the document invisible and
         // 400 would put two words on a line; neither should be reachable by
-        // any path that does not go through the slider.
+        // any path that does not go through the slider or Ctrl+wheel.
         for (given, expected) in [
-            (0, 80),
-            (79, 80),
-            (80, 80),
+            (0, 50),
+            (49, 50),
+            (50, 50),
             (100, 100),
-            (160, 160),
-            (255, 160),
+            (250, 250),
+            (255, 250),
         ] {
             let clamped = Settings {
-                font_size: given,
+                zoom: given,
                 ..Settings::default()
             }
             .clamp();
-            assert_eq!(clamped.font_size, expected, "font_size {given}");
+            assert_eq!(clamped.zoom, expected, "zoom {given}");
         }
     }
 
@@ -519,8 +519,54 @@ mod font_size_tests {
         // There is no build-time link between this and `src/styles/tokens.css`,
         // so the two are kept in step by eye and this test is the reminder.
         let d = Settings::default();
-        assert_eq!(d.accent_hue, 249, "Material Blue 500's hue in oklch");
+        assert_eq!(d.accent_hue, 70, "Material Amber 700's hue in oklch");
         assert_eq!(d.measure, 100, "--measure: 100ch");
-        assert_eq!(d.font_size, 100, "no scaling until the user asks");
+        assert_eq!(d.zoom, 100, "no scaling until the user asks");
+    }
+}
+
+#[cfg(test)]
+mod migration_tests {
+    use super::tests::sandbox;
+    use super::*;
+
+    /// A settings file written by an older version must keep the preferences it
+    /// does carry.
+    ///
+    /// This is the regression that motivated `#[serde(default)]` per field:
+    /// before it, one unknown or missing key made the whole document fail to
+    /// parse and every preference reverted to the default — silently, at the
+    /// next launch, with the file rewritten on the first change so the original
+    /// values were gone for good.
+    #[test]
+    fn an_older_settings_file_keeps_what_it_has() {
+        let dir = sandbox("settings-migration");
+
+        // Exactly what 0.1.0 wrote: `motion`, which no longer exists, and no
+        // `font-size`, which did not exist yet.
+        std::fs::write(
+            settings_path(&dir),
+            br#"{"theme":"dark","accent-hue":142,"typeface":"literary","palette":"forest","density":"compact","motion":"off","measure":72}"#,
+        )
+        .unwrap();
+
+        let read = read_settings(&dir);
+        assert_eq!(read.theme, Theme::Dark, "a kept field must survive");
+        assert_eq!(read.accent_hue, 142);
+        assert_eq!(read.measure, 72);
+        assert_eq!(read.density, Density::Compact);
+        assert_eq!(
+            read.zoom, 100,
+            "a field the old file never had takes the default"
+        );
+    }
+
+    #[test]
+    fn a_file_that_is_not_json_at_all_still_yields_defaults() {
+        // The other half of the contract: per-field defaults must not turn a
+        // genuinely corrupt file into a partial read.
+        let dir = sandbox("settings-corrupt");
+        std::fs::write(settings_path(&dir), b"{ this is not json").unwrap();
+        assert_eq!(read_settings(&dir), Settings::default());
     }
 }

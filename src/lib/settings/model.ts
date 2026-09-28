@@ -15,31 +15,33 @@ export const MEASURE_MAX = 100;
 /** Mirrors `store::Settings::default()`. */
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
-  // tokens.css's own default: Material Blue 500 (#2196F3) as an oklch hue.
+  // tokens.css's own default: Material Amber 700 (#FFA000) as an oklch hue.
   // Kept in sync by eye with store.rs's `Settings::default` — no build-time
-  // link between the two, and `store::font_size_tests` is the reminder.
-  accent_hue: 249,
+  // link between the two, and `store::zoom_tests` is the reminder.
+  accent_hue: 70,
   // The platform's own UI sans. A serif reading face is a strong opinion to
   // hold on somebody else's behalf, and three of them are available one click
   // away in the full edition for anyone who wants one.
   typeface: 'system',
   palette: 'default',
   density: 'normal',
-  motion: 'on',
   // 100ch, the widest the slider offers. A narrower measure is the classic
   // typographic advice and the right default for a book; this is a window
   // someone has already sized, and leaving half of it empty reads as a bug.
   measure: 100,
-  font_size: 100,
+  zoom: 100,
 };
 
-/** The reading text size range the slider offers, mirrored by `store.rs`. */
-export const FONT_SIZE_MIN = 80;
-export const FONT_SIZE_MAX = 160;
+/** The document-zoom range the slider and Ctrl+wheel offer, mirrored by `store.rs`. */
+export const ZOOM_MIN = 50;
+export const ZOOM_MAX = 250;
 
-/** Clamps a text-size request, for the same reason as {@link clampMeasure}. */
-export function clampFontSize(size: number): number {
-  return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, Math.round(size)));
+/** The multiplier Ctrl+wheel applies per notch, and what the buttons step by. */
+export const ZOOM_STEP = 1.1;
+
+/** Clamps a zoom request, for the same reason as {@link clampMeasure}. */
+export function clampZoom(zoom: number): number {
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(zoom)));
 }
 
 /**
@@ -67,8 +69,7 @@ export interface StyleTarget {
 /**
  * Applies `settings` to `:root` as the data-attributes and custom properties
  * tokens.css and `src/styles/full/**` already know how to read:
- * `data-theme`, `data-density`, `data-motion` (tokens.css's own "Density
- * presets" / motion comments describe exactly this future control),
+ * `data-theme`, `data-density`,
  * `data-typeface` / `data-palette` (full/typography.css, full/palettes.css),
  * plus the two live-adjustable custom properties `--measure` and
  * `--accent-hue`.
@@ -90,16 +91,13 @@ export function applySettingsToRoot(
   if (settings.density === 'normal') root.removeAttribute('data-density');
   else root.setAttribute('data-density', settings.density);
 
-  if (settings.motion === 'off') root.setAttribute('data-motion', 'off');
-  else root.removeAttribute('data-motion');
-
   root.style.setProperty('--measure', `${clampMeasure(settings.measure)}ch`);
 
-  // The root font size, not a token: `rem` and `ch` both resolve against it,
-  // so the type scale, the spacing and the column width all follow in one
-  // move. Setting a `--text-base` token instead would scale the prose and
-  // leave the layout at its old size.
-  root.style.setProperty('font-size', `${clampFontSize(settings.font_size)}%`);
+  // A custom property, read by `#doc { zoom: … }` in content.css — not the
+  // root font size, which is what it was for one release and which scaled the
+  // sidebar and the settings panel along with the document. Zoom belongs to
+  // the thing being read.
+  root.style.setProperty('--doc-zoom', String(clampZoom(settings.zoom) / 100));
 
   if (edition === 'full' && settings.palette !== 'default') {
     // A named palette's CSS rule sets --accent-hue by selector

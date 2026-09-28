@@ -83,8 +83,6 @@ export type Palette = 'default' | 'teal' | 'amber' | 'forest' | 'violet';
 /** Mirrors `store::Density`. */
 export type Density = 'compact' | 'normal' | 'spacious';
 
-/** Mirrors `store::Motion`. */
-export type Motion = 'on' | 'off';
 
 /** Mirrors `store::Settings`. One field per control in `src/lib/settings/**`. */
 export interface Settings {
@@ -94,17 +92,20 @@ export interface Settings {
   typeface: Typeface;
   palette: Palette;
   density: Density;
-  motion: Motion;
   /** Column width in `ch`, clamped 48-100. */
   measure: number;
   /**
-   * Reading text size as a percentage of the platform default, 80-160.
+   * Document zoom, as a percentage, 50-250.
    *
-   * Applied as the ROOT font size, so everything expressed in `rem` or `ch` —
-   * the type scale, the spacing, the column width — follows it. A pixel size
-   * here would scale the text and leave the layout behind.
+   * Scales the **document column only** — its text, its spacing, its images,
+   * its tables — and leaves the sidebar, the outline and the settings panel at
+   * their own size. Browser zoom, scoped to the thing being read.
+   *
+   * Named `font_size` on disk for one release before this; the field is
+   * `zoom` now and an older file simply picks up the default, which
+   * `store::migration_tests` covers.
    */
-  font_size: number;
+  zoom: number;
 }
 
 /** Mirrors `store::ReadingPosition`. */
@@ -115,7 +116,7 @@ export interface ReadingPosition {
 }
 
 /**
- * Reads the persisted UI preferences — theme, accent, density, motion,
+ * Reads the persisted UI preferences — theme, accent, density, zoom,
  * measure, and (full edition) typeface/palette. Never rejects: a missing or
  * corrupt `settings.json` on the Rust side reads back as defaults rather
  * than failing the app open.
