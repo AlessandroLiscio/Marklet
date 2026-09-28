@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   applySettingsToRoot,
-  clampFontSize,
   clampMeasure,
+  clampZoom,
   DEFAULT_SETTINGS,
-  FONT_SIZE_MAX,
-  FONT_SIZE_MIN,
   MEASURE_MAX,
   MEASURE_MIN,
+  ZOOM_MAX,
+  ZOOM_MIN,
 } from '../../src/lib/settings/model';
 import type { StyleTarget } from '../../src/lib/settings/model';
 import type { Settings } from '../../src/lib/ipc';
@@ -53,11 +53,15 @@ describe('clampMeasure', () => {
 });
 
 describe('applySettingsToRoot', () => {
-  it('sets no theme/density/motion attribute for the defaults ("system"/"normal"/"on")', () => {
+  it('sets no theme or density attribute for the defaults ("system"/"normal")', () => {
     const root = fakeRoot();
     applySettingsToRoot(root, DEFAULT_SETTINGS, 'lite');
     expect(root.attributes.has('data-theme')).toBe(false);
     expect(root.attributes.has('data-density')).toBe(false);
+    // `data-motion` is gone entirely: the toggle that set it gated four
+    // transitions under 200ms and could not be told apart from nothing. The
+    // OS `prefers-reduced-motion` preference is what remains, and nothing in
+    // this function touches it.
     expect(root.attributes.has('data-motion')).toBe(false);
   });
 
@@ -67,45 +71,42 @@ describe('applySettingsToRoot', () => {
     expect(root.attributes.get('data-theme')).toBe('dark');
   });
 
-  it('sets data-motion="off" only when motion is off', () => {
-    const root = fakeRoot();
-    applySettingsToRoot(root, { ...DEFAULT_SETTINGS, motion: 'off' }, 'lite');
-    expect(root.attributes.get('data-motion')).toBe('off');
-  });
-
   it('always writes a clamped --measure custom property', () => {
     const root = fakeRoot();
     applySettingsToRoot(root, { ...DEFAULT_SETTINGS, measure: 500 }, 'lite');
     expect(root.properties.get('--measure')).toBe('100ch');
   });
 
-  it('always writes a clamped root font-size', () => {
-    // The root font size, not a token: `rem` and `ch` both resolve against it,
-    // which is what makes one slider move the type scale, the spacing and the
-    // column width together.
+  it('writes zoom as a clamped multiplier, not a root font size', () => {
+    // A custom property read by `#doc { zoom: … }` — the document column and
+    // nothing else. It was the root font size for one release, which scaled
+    // the sidebar and the settings panel along with it.
     const root = fakeRoot();
-    applySettingsToRoot(root, { ...DEFAULT_SETTINGS, font_size: 1000 }, 'lite');
-    expect(root.properties.get('font-size')).toBe(`${FONT_SIZE_MAX}%`);
+    applySettingsToRoot(root, { ...DEFAULT_SETTINGS, zoom: 1000 }, 'lite');
+    expect(root.properties.get('--doc-zoom')).toBe(String(ZOOM_MAX / 100));
+    expect(root.properties.has('font-size')).toBe(false);
 
     const small = fakeRoot();
-    applySettingsToRoot(small, { ...DEFAULT_SETTINGS, font_size: 1 }, 'lite');
-    expect(small.properties.get('font-size')).toBe(`${FONT_SIZE_MIN}%`);
+    applySettingsToRoot(small, { ...DEFAULT_SETTINGS, zoom: 1 }, 'lite');
+    expect(small.properties.get('--doc-zoom')).toBe(String(ZOOM_MIN / 100));
   });
 
-  it('clamps a text size from outside the slider', () => {
-    expect(clampFontSize(0)).toBe(FONT_SIZE_MIN);
-    expect(clampFontSize(100)).toBe(100);
-    expect(clampFontSize(1e9)).toBe(FONT_SIZE_MAX);
-    expect(clampFontSize(102.6)).toBe(103);
+  it('clamps a zoom from outside the slider', () => {
+    // Ctrl+wheel multiplies without bound, so the clamp is the only thing
+    // between a fast scroll and an unreadable document.
+    expect(clampZoom(0)).toBe(ZOOM_MIN);
+    expect(clampZoom(100)).toBe(100);
+    expect(clampZoom(1e9)).toBe(ZOOM_MAX);
+    expect(clampZoom(102.6)).toBe(103);
   });
 
   it('defaults match what tokens.css and store.rs declare', () => {
     // Three constants live in three places with no build-time link: this file,
     // `src/styles/tokens.css`, and `store::Settings::default`. Each side has a
     // test naming the numbers so a change to one fails the others.
-    expect(DEFAULT_SETTINGS.accent_hue).toBe(249); // Material Blue 500, in oklch
+    expect(DEFAULT_SETTINGS.accent_hue).toBe(70); // Material Amber 700, in oklch
     expect(DEFAULT_SETTINGS.measure).toBe(100);
-    expect(DEFAULT_SETTINGS.font_size).toBe(100);
+    expect(DEFAULT_SETTINGS.zoom).toBe(100);
   });
 
   it('never sets data-typeface or data-palette in the lite edition', () => {

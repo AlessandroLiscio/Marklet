@@ -50,11 +50,13 @@
   /* Accent generator input. A single hue (0-360); everything accent-shaped
      derives from it below. Default is validated ui-ux-pro-max colors.csv
      row "Knowledge Base/Documentation" (#2563EB, hue ~221) — see receipt. */
-  /* Material Blue 500 (#2196F3) converted to oklch: hue 249, chroma 0.169.
+  /* Material Amber 700 (#FFA000) converted to oklch: hue 70, chroma 0.17.
      The hue and the chroma only — the lightness still comes from the accent
      generator below, so this clears WCAG AA in both themes exactly like any
-     other hue the slider can reach. */
-  --accent-hue: 249;
+     other hue the slider can reach. Amber 500 (#FFC107) is hue 86, a yellow
+     the generator has to darken so far to reach AA that it stops reading as
+     amber; 700 is the brightest one that survives the contrast requirement. */
+  --accent-hue: 70;
   --accent-chroma: 0.17;
 
   /* System font stacks ONLY. Zero @font-face here — that is full/typography.css's
@@ -100,8 +102,14 @@
 
   /* ============================== component =============================== */
   --measure: 100ch; /* user-adjustable 48-100ch */
+  --doc-zoom: 1; /* document-column zoom, 0.5-2.5; see content.css's #doc */
   --density: 1; /* 0.85 | 1 | 1.15 — rescales --space-* only */
-  --motion: 1; /* 0 | 1 — gates every transition/animation duration */
+  /* 0 | 1. Not a setting any more: the toggle that drove it gated four
+     transitions totalling under 200ms and could not be told apart from
+     nothing. What is left is the OS preference, which is the part that
+     actually matters — someone who has asked their system for reduced motion
+     has asked every application, and should not have to ask again here. */
+  --motion: 1;
 
   --space-1: calc(0.25rem * var(--density));
   --space-2: calc(0.5rem * var(--density));
@@ -196,10 +204,6 @@
 }
 :root[data-density="spacious"] {
   --density: 1.15;
-}
-
-:root[data-motion="off"] {
-  --motion: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

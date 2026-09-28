@@ -42,6 +42,13 @@ Unverified at release, and stated here rather than discovered later: nobody has
 reviewed the interface visually, `PrintToPdf` has never produced a file in CI,
 and the binaries are unsigned, so SmartScreen warns on first run.
 
+### Removed
+
+- **The Animation toggle.** It gated four transitions totalling under 200ms, and the honest
+  answer to "what does this do?" was "very little". `prefers-reduced-motion` is still
+  honoured — someone who has asked their system for reduced motion has asked every
+  application, and should not have to ask again here.
+
 ### Fixed during the release itself
 
 - The offline installer's only config difference was passed as an inline JSON
@@ -54,6 +61,10 @@ and the binaries are unsigned, so SmartScreen warns on first run.
 
 ### Added
 
+- **Zoom, scoped to the document.** `Ctrl` and the wheel, or `Ctrl` `+` / `-` / `0`, or the
+  slider in settings. It scales the column being read — text, spacing, images, tables — and
+  leaves the sidebar, the outline and the settings panel alone. For one release it was the
+  root font size, which took the whole interface with it.
 - **The interface, after the first person looked at it.** Links are blue and underline on
   hover rather than riding the themeable accent; tables have rounded corners; the default
   reading face is the platform's own UI sans rather than a bundled serif, with three serif

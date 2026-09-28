@@ -32,7 +32,18 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Zoom scales the DOCUMENT COLUMN and nothing else — its text, its spacing,
+   its images, its tables — leaving the sidebar, the outline and the settings
+   panel at their own size. Browser zoom, scoped to the thing being read.
+
+   `zoom`, not a font size. A font size would move the prose and leave every
+   `rem`-derived length behind, so the type scale would compress and the
+   images would not move at all; `zoom` multiplies the whole subtree's used
+   values, which is the behaviour people already know from their browser.
+   `--measure` is in `ch`, so the column widens with the text rather than
+   staying put and squeezing it. */
 #doc {
+  zoom: var(--doc-zoom, 1);
   display: block;
   max-inline-size: var(--measure);
   margin-inline: auto;

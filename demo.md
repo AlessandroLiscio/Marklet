@@ -423,6 +423,8 @@ document without them.
 |---|---|
 | `Ctrl+P` | `demo.pdf`, beside this file |
 | `Ctrl+Shift+S` | `demo.html`, beside this file |
+| `Ctrl` + wheel | Zoom this column in and out |
+| `Ctrl` `+` / `-` / `0` | Zoom in, out, back to 100% |
 
 Open the HTML in a browser **with the network disabled**. Every image, font and style
 is inlined; it should look the same offline. Open the PDF and check that internal
