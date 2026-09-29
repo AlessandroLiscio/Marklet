@@ -523,6 +523,18 @@ export function openNote(rel: string): Promise<unknown> {
   return invoke<unknown>('open_note', { rel });
 }
 
+/**
+ * Opens a note in a second window — Ctrl+click, the way a browser does it.
+ *
+ * A second window is a second WebView2 instance, which is why the settings
+ * panel deliberately is not one. Two notes side by side is the case that earns
+ * it: it is the thing a single-window reader cannot do at all, and the cost is
+ * paid when asked for rather than at every launch.
+ */
+export function openInNewWindow(rel: string): Promise<void> {
+  return invoke<void>('open_in_new_window', { rel });
+}
+
 /** A batch of tree entries, mid-walk. */
 export interface ScanProgress {
   entries: Entry[];

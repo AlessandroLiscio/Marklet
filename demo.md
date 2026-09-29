@@ -499,7 +499,8 @@ Open the repository folder rather than this file, and you should also get:
 - full-text search across every note, streaming results as it finds them, with no
   index built and nothing cached on disk to go stale,
 - the wiki-links in section 12 resolving,
-- a backlinks panel listing what points at the note you are reading.
+- a **Linked from** panel listing what points at the note you are reading —
+  click a row to go there, Ctrl+click to open it in a second window.
 
 On a synthetic 5,000-note vault this measured: first search result in 1 ms, search
 complete in 31 ms, 622 bytes of index per note, 10 MB of RSS for the whole thing.

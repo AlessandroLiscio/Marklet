@@ -31,7 +31,7 @@ record_reading_position                splice_range
 open_vault         close_vault        scan_vault
 index_vault        search_vault       resolve_wikilink
 backlinks_for      export_pdf         export_html
-save_pasted_image  reveal_in_editor
+save_pasted_image  reveal_in_editor   open_in_new_window
 ```
 
 Frontend wrappers live in `src/lib/ipc.ts`, one typed function per command, and nothing
