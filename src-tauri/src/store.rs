@@ -585,7 +585,10 @@ mod migration_tests {
             json.contains("\"accent_hue\""),
             "the webview reads `accent_hue`: {json}"
         );
-        assert!(!json.contains("accent-hue"), "no kebab-case on the wire: {json}");
+        assert!(
+            !json.contains("accent-hue"),
+            "no kebab-case on the wire: {json}"
+        );
     }
 
     #[test]
