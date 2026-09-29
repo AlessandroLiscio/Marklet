@@ -53,8 +53,11 @@
 </script>
 
 <section class="backlinks" aria-label="Backlinks">
+  <!-- "Linked from", not "Backlinks": the word is jargon and it does not say
+       which way the arrow points. Every row here is a note that points AT the
+       one being read, and the heading is the only place that can say so. -->
   <h2>
-    Backlinks
+    Linked from
     {#if links.length > 0}<span class="count">{links.length}</span>{/if}
   </h2>
 
@@ -68,9 +71,19 @@
     <ul>
       {#each links as link, i (`${link.path}:${link.line}:${i}`)}
         <li>
-          <button type="button" onclick={() => onopen?.(link.path, link.line)}>
-            <span class="title">{link.title}</span>
-            <span class="via">[[{link.target}]] · line {link.line}</span>
+          <!-- The path leads, with its line, laid out exactly like a search
+               hit — same shape, same accent on the line number. It used to
+               lead with the note's H1 over a bare `[[target]] · line 3`, and
+               since the target is always the note you are already reading,
+               every row said the same thing twice and named the source last.
+               The title is still here, as the row's tooltip. -->
+          <button
+            type="button"
+            title={link.title}
+            onclick={() => onopen?.(link.path, link.line)}
+          >
+            <span class="where">{link.path}<span class="line">:{link.line}</span></span>
+            <span class="via">via [[{link.target}]]</span>
           </button>
         </li>
       {/each}
@@ -137,7 +150,7 @@
     outline-offset: -2px;
   }
 
-  .title,
+  .where,
   .via {
     display: block;
     overflow: hidden;
@@ -145,8 +158,17 @@
     white-space: nowrap;
   }
 
+  .where {
+    color: var(--fg);
+  }
+
+  .line {
+    color: var(--accent);
+  }
+
   .via {
     font-family: var(--font-code);
+    font-size: 0.9em;
     color: var(--fg-muted);
   }
 

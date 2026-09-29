@@ -262,9 +262,16 @@
     overflow-wrap: anywhere;
   }
 
+  /* The match, in the palette's own colour.
+     `--accent-muted` alone was the background and nothing else, and in dark
+     mode that token is `oklch(0.24 …)` — a near-black amber sitting on a
+     near-black panel. The highlight was invisible: the excerpt read as one
+     uniform block of text with no indication of what had matched. Colour and
+     weight carry it now; the wash is only there to give the run an edge. */
   mark {
-    color: var(--fg);
-    background: var(--accent-muted);
+    color: var(--accent);
+    background: color-mix(in oklab, var(--accent) 18%, transparent);
     border-radius: 2px;
+    font-weight: 600;
   }
 </style>
