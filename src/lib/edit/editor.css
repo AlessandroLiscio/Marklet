@@ -21,24 +21,42 @@
 
 /* ------------------------------- the shell -------------------------------- */
 
+/* Starts where the chrome ends, never under it.
+   `--chrome-inset` is published to `:root` by `app.svelte` and is the same
+   number `content.css` insets the body by. The editor used to start at the
+   window's left edge, which put the activity bar — and the panel, when one was
+   open — on top of the source text. */
 #editor {
   position: fixed;
   inset-block: 0;
-  inset-inline-start: 0;
-  inline-size: 100vw;
+  inset-inline-start: var(--chrome-inset, var(--activity-bar-size));
+  inline-size: calc(100vw - var(--chrome-inset, var(--activity-bar-size)));
   background: var(--bg);
   z-index: 5;
 }
 
-body.marklet-mode-split #editor {
-  inline-size: 50vw;
-  border-inline-end: 1px solid var(--border);
+/* Reading column moves aside rather than being re-parented: `#doc` keeps its
+   identity, its anchors and its window scrolling.
+
+   `--split-ratio` is how much of the space *after* the chrome the editor gets,
+   0-1, written to `:root` by the drag handle in `app.svelte`. Two rules read
+   it and they must agree exactly, or the divider and the preview's left edge
+   part company — hence one `--split-left` both are derived from. */
+body.marklet-mode-split {
+  --split-inset: var(--chrome-inset, var(--activity-bar-size));
+  --split-left: calc(
+    var(--split-inset) + (100vw - var(--split-inset)) * var(--split-ratio, 0.5)
+  );
+
+  padding-inline-start: var(--split-left);
+  /* No easing while dragging: `content.css` transitions this property for the
+     panel opening, and a 200ms ease on every pointer move reads as lag. */
+  transition: none;
 }
 
-/* Reading column moves aside rather than being re-parented: `#doc` keeps its
-   identity, its anchors and its window scrolling. */
-body.marklet-mode-split {
-  padding-inline-start: 50vw;
+body.marklet-mode-split #editor {
+  inline-size: calc((100vw - var(--split-inset)) * var(--split-ratio, 0.5));
+  border-inline-end: 1px solid var(--border);
 }
 
 /* In live preview the editor *is* the document, so showing both would be two

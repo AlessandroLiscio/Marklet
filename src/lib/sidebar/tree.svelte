@@ -18,6 +18,7 @@
     toggle,
     visibleRows,
     windowOf,
+    type Row,
   } from './tree';
   import type { Entry } from '../ipc';
 
@@ -39,6 +40,8 @@
   let { entries, active = null, listed = null, onexpand, onopen }: Props = $props();
 
   let expanded = $state(new Set<string>());
+  /** The row a single click highlighted. Not the open document — that is `active`. */
+  let selected = $state<string | null>(null);
   let scrollTop = $state(0);
   let viewport = $state(480);
 
@@ -71,22 +74,41 @@
     return () => observer.disconnect();
   }
 
-  function activate(path: string, dir: boolean, depth: number): void {
-    if (!dir) {
-      onopen?.(path);
-      return;
-    }
+  /**
+   * One click: select. A folder also opens or closes — that is what a
+   * disclosure triangle means everywhere — but a file is only highlighted.
+   *
+   * Opening a file takes a **double** click, asked for directly and the
+   * convention every file explorer follows. A single click that swapped the
+   * document made arrowing through a folder re-render it once per row.
+   */
+  function select(row: Row): void {
+    selected = row.path;
+    if (!row.dir) return;
     // Asked on every expand; the sidebar ignores a folder it has already
     // listed. Doing that check here would need this component to know what
     // has been fetched, which is the sidebar's business, not the tree's.
-    if (!expanded.has(path)) onexpand?.(path, depth);
-    expanded = toggle(expanded, path);
+    if (!expanded.has(row.path)) onexpand?.(row.path, row.depth);
+    expanded = toggle(expanded, row.path);
   }
 
-  function onKey(event: KeyboardEvent, path: string, dir: boolean, depth: number): void {
-    if (event.key === 'Enter' || event.key === ' ') {
+  /** Two clicks: open, if it is something Marklet can show. */
+  function open(row: Row): void {
+    if (row.openable) onopen?.(row.path);
+  }
+
+  function onKey(event: KeyboardEvent, row: Row): void {
+    if (event.key === 'Enter') {
       event.preventDefault();
-      activate(path, dir, depth);
+      // Enter is the keyboard's double-click: it opens. A folder has no
+      // "open", so it toggles, which is what Enter does in every tree.
+      if (row.dir) select(row);
+      else open(row);
+      return;
+    }
+    if (event.key === ' ') {
+      event.preventDefault();
+      select(row);
     }
   }
 </script>
@@ -107,15 +129,18 @@
       <div
         class="row"
         class:dir={row.dir}
+        class:other={!row.dir && !row.openable}
         class:active={row.path === active}
+        class:selected={row.path === selected && row.path !== active}
         style:height="{ROW_HEIGHT}px"
         style:padding-inline-start="{4 + row.depth * 14}px"
         role="treeitem"
-        aria-selected={row.path === active}
+        aria-selected={row.path === active || row.path === selected}
         aria-expanded={row.expandable ? row.expanded : undefined}
         tabindex="0"
-        onclick={() => activate(row.path, row.dir, row.depth)}
-        onkeydown={(e) => onKey(e, row.path, row.dir, row.depth)}
+        onclick={() => select(row)}
+        ondblclick={() => open(row)}
+        onkeydown={(e) => onKey(e, row)}
       >
         <span class="twist" aria-hidden="true">
           {#if row.expandable}
@@ -170,6 +195,18 @@
   .row.active {
     background: var(--accent-muted);
     color: var(--fg);
+  }
+
+  .row.selected {
+    background: color-mix(in oklab, var(--fg) 10%, transparent);
+  }
+
+  /* Listed, not offered. A `.png` belongs in the folder it is in — hiding it
+     makes the folder look wrong — but double-clicking it does nothing, and
+     that has to be visible before the click, not after. */
+  .row.other {
+    color: var(--fg-muted);
+    opacity: 0.7;
   }
 
   .twist {

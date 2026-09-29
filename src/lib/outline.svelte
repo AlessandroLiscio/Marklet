@@ -47,10 +47,16 @@
     });
   }
 
+  /**
+   * Jumps, and leaves the panel open.
+   *
+   * It used to close itself on every click, which made "skim three sections"
+   * three round trips through the activity bar. A docked panel is not a menu;
+   * closing it is the button's job, not the link's.
+   */
   function jump(slug: string): void {
     if (!docRoot) return;
     scrollToSlug(docRoot, slug);
-    open = false;
   }
 
   onMount(() => {
@@ -96,24 +102,24 @@
 
 
 
+  /* Flush with the panel: no card, no inset. The rows are the panel's
+     contents, and a row whose hit area stops short of the edge reads as a
+     misaligned list — which is exactly how it read. */
   .list {
     list-style: none;
-    margin: var(--space-2) 0 0;
-    padding: var(--space-2);
-    max-block-size: min(70vh, 32rem);
-    overflow-y: auto;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
+    margin: 0;
+    padding: 0;
   }
 
   .entry button {
     display: block;
-    width: 100%;
-    padding: var(--space-1) var(--space-2);
+    inline-size: 100%;
+    /* The hit area spans the full width of the panel; the indent is padding
+       INSIDE it, applied inline from the heading level. */
+    padding-block: var(--space-2);
+    padding-inline-end: var(--space-2);
     background: none;
     border: none;
-    border-radius: var(--radius-sm);
     color: var(--fg-muted);
     font-family: inherit;
     font-size: var(--text-small);
@@ -130,5 +136,6 @@
   .entry.active button {
     color: var(--accent);
     font-weight: 600;
+    background: var(--accent-muted);
   }
 </style>
