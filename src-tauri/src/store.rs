@@ -95,12 +95,22 @@ pub enum Density {
 /// happened to `motion` and `font_size`. Per-field defaults mean an old file
 /// keeps the values it does have and picks up defaults only for what it is
 /// missing.
+///
+/// **Field names cross the IPC boundary as they are spelled here.** They were
+/// `kebab-case` for one release, which renamed `accent_hue` to `accent-hue` on
+/// the wire; `src/lib/ipc.ts` reads `accent_hue`, so the hue arrived at the
+/// webview as `undefined`, `--accent-hue` was set to the string "undefined",
+/// and every `oklch()` derived from it became invalid — accent backgrounds
+/// went transparent, range inputs fell back to the browser's blue, and the
+/// panel showed "Accent hue — °". The alias below keeps a settings file
+/// written by that release readable.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case", default)]
+#[serde(default)]
 pub struct Settings {
     pub theme: Theme,
     /// Degrees, 0-360. Ignored while `palette` is anything but `Default` —
     /// see that variant's doc comment.
+    #[serde(alias = "accent-hue")]
     pub accent_hue: u16,
     pub typeface: Typeface,
     pub palette: Palette,
@@ -558,6 +568,26 @@ mod migration_tests {
         assert_eq!(
             read.zoom, 100,
             "a field the old file never had takes the default"
+        );
+    }
+
+    /// The wire format is what `src/lib/ipc.ts` declares, field for field.
+    ///
+    /// `read_settings` crosses the IPC boundary as JSON, so a rename here is a
+    /// rename in the webview. `kebab-case` spelled this field `accent-hue`,
+    /// TypeScript read `accent_hue`, and the whole accent system collapsed into
+    /// an invalid `oklch()` — see `Settings`' own doc comment. This test is the
+    /// tripwire for that, not a test of serde.
+    #[test]
+    fn settings_serialize_with_the_names_typescript_reads() {
+        let json = serde_json::to_string(&Settings::default()).unwrap();
+        assert!(
+            json.contains("\"accent_hue\""),
+            "the webview reads `accent_hue`: {json}"
+        );
+        assert!(
+            !json.contains("accent-hue"),
+            "no kebab-case on the wire: {json}"
         );
     }
 

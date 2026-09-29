@@ -105,12 +105,23 @@
     const root = document.getElementById('doc');
     if (!root) return;
 
+    // A different file while an editor is open: the session was constructed
+    // with the old file's text and splices into the old file's path, so
+    // leaving it in place would edit the document nobody is looking at. The
+    // round trip through `read` flushes what is pending and re-reads the new
+    // source; same file — a save, a watcher event — rebuilds nothing.
+    const switched = doc !== null && doc.path !== next.path;
+    const resume = switched && mode !== 'read' ? mode : null;
+    if (resume) await edit?.setMode('read');
+
     setDocument(root, next);
     doc = next;
     document.title = `${next.title} — Marklet`;
 
     const { enrich } = await import('./lib/rich');
     await enrich(root);
+
+    if (resume) await edit?.setMode(resume);
   }
 
   /**
@@ -263,10 +274,69 @@
     panel = 'explorer';
   }
 
-  /** The activity bar's split button. `F3` does the same thing. */
+  /** The top-right split toggle. `F3` does the same thing. */
   function toggleSplit(): void {
     void edit?.setMode(mode === 'split' ? 'read' : 'split');
   }
+
+  /**
+   * Where the divider sits, as a fraction of the space left of the chrome.
+   *
+   * Published to `:root` rather than held as a style on one element, because
+   * `editor.css` derives two lengths from it — the editor's width and the
+   * body's start padding — and those two must agree exactly or the divider
+   * stops lining up with the preview's edge.
+   */
+  const SPLIT_MIN = 0.2;
+  const SPLIT_MAX = 0.8;
+  let splitRatio = $state(0.5);
+
+  function setSplitRatio(next: number): void {
+    splitRatio = Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, next));
+    document.documentElement.style.setProperty('--split-ratio', String(splitRatio));
+  }
+
+  /**
+   * Drags the divider.
+   *
+   * The offset the ratio is measured from is read once, at pointer-down, off
+   * the editor's own box — it is the one element that already knows where the
+   * chrome ends, whatever `--chrome-inset` currently resolves to.
+   */
+  function onDividerDown(event: PointerEvent): void {
+    const editor = document.getElementById('editor');
+    if (!editor) return;
+    const inset = editor.getBoundingClientRect().left;
+    const span = window.innerWidth - inset;
+    if (span <= 0) return;
+
+    const handle = event.currentTarget as HTMLElement;
+    handle.setPointerCapture(event.pointerId);
+    dragging = true;
+
+    const move = (e: PointerEvent): void => setSplitRatio((e.clientX - inset) / span);
+    const up = (): void => {
+      dragging = false;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  }
+
+  /** Arrow keys move the divider too: a mouse must not be the only way. */
+  function onDividerKey(event: KeyboardEvent): void {
+    const step = event.shiftKey ? 0.1 : 0.02;
+    if (event.key === 'ArrowLeft') setSplitRatio(splitRatio - step);
+    else if (event.key === 'ArrowRight') setSplitRatio(splitRatio + step);
+    else if (event.key === 'Home' || event.key === 'Enter') setSplitRatio(0.5);
+    else return;
+    event.preventDefault();
+  }
+
+  let dragging = $state(false);
 
   /** Nothing was opened: ask the OS for a file, or for a folder to browse. */
   async function openFromDialog(kind: 'file' | 'folder'): Promise<void> {
@@ -300,6 +370,28 @@
           say(`Opened in ${await revealInEditor(doc?.path ?? '', line, column)}`);
         },
         savePastedImage: (bytes, ext) => savePastedImage(doc?.path ?? '', bytes, ext),
+        // The preview is re-rendered from the file the splice just wrote.
+        //
+        // Split mode is two views of one document, and the right-hand one was
+        // static: the watcher in `lib.rs` only ever watches the path the app
+        // was *launched* with, so a file reached through the explorer or the
+        // picker produced no `file-changed` at all, and even the launched one
+        // re-rendered only by luck of ordering. This is the deterministic
+        // path — the save has returned, so the bytes are on disk.
+        onSaved: () => {
+          if (!doc || mode === 'read') return;
+          void openDocument(doc.path)
+            .then(async (next) => {
+              await show(next);
+              // New DOM, so the split columns' line map is stale until it is
+              // measured again.
+              edit?.resync();
+            })
+            .catch(() => {
+              // The editor still holds the text and the file is already
+              // written; a stale preview is not worth a dialog over it.
+            });
+        },
         onMode: (next) => {
           mode = next;
         },
@@ -359,9 +451,7 @@
 <div class="chrome-layer">
   <ActivityBar
     {panel}
-    split={mode === 'split'}
     onpanel={(next) => (next === 'explorer' ? showExplorer() : (panel = next))}
-    onsplit={toggleSplit}
   />
 
   {#if panel !== null}
@@ -389,6 +479,55 @@
     </div>
   {/if}
 </div>
+
+{#if doc}
+  <!-- The split toggle sits in the document's own top-right corner, not in
+       the activity bar: it changes how the document is shown rather than what
+       is beside it, which is where every editor puts its view controls. It
+       reads as pressed by fill, not by colour alone — the same rule the
+       activity bar follows. -->
+  <button
+    type="button"
+    class="split-toggle"
+    class:on={mode === 'split'}
+    aria-pressed={mode === 'split'}
+    title="Split editor (F3)"
+    onclick={toggleSplit}
+  >
+    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <rect x="3" y="4" width="14" height="12" rx="1" stroke="currentColor" stroke-width="1.4" />
+      <path d="M10 4v12" stroke="currentColor" stroke-width="1.4" />
+    </svg>
+    <span>Split</span>
+  </button>
+{/if}
+
+{#if mode === 'split'}
+  <!-- Drag to re-balance the two columns; double-click, Home or Enter to put
+       it back in the middle. A `separator` that takes focus is the ARIA role
+       for exactly this, and arrow keys move it, because a window split is not
+       something only a mouse should be able to do. -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <!-- Both silenced deliberately: ARIA 1.2 makes `separator` a *widget* role
+       once it is focusable, with `aria-valuenow` and arrow keys, which is
+       exactly what this is. Svelte's rule classifies the role by its
+       non-focusable form. -->
+  <div
+    class="divider"
+    class:dragging
+    role="separator"
+    aria-orientation="vertical"
+    aria-label="Resize the editor"
+    aria-valuemin={Math.round(SPLIT_MIN * 100)}
+    aria-valuemax={Math.round(SPLIT_MAX * 100)}
+    aria-valuenow={Math.round(splitRatio * 100)}
+    tabindex="0"
+    onpointerdown={onDividerDown}
+    onkeydown={onDividerKey}
+    ondblclick={() => setSplitRatio(0.5)}
+  ></div>
+{/if}
 
 {#if !doc}
   <!-- Launched with nothing. An empty window with no explanation is the worst
@@ -507,6 +646,77 @@
   .welcome button.secondary {
     background: transparent;
     color: var(--accent);
+  }
+
+  .split-toggle {
+    position: fixed;
+    inset-block-start: var(--space-3);
+    inset-inline-end: var(--space-3);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-small);
+    color: var(--fg-muted);
+    background: color-mix(in oklab, var(--bg) 88%, transparent);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    backdrop-filter: blur(6px);
+    cursor: pointer;
+    z-index: 30;
+  }
+
+  .split-toggle:hover {
+    color: var(--fg);
+    border-color: var(--fg-muted);
+  }
+
+  .split-toggle.on {
+    color: var(--on-accent);
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .split-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Centred on the boundary `editor.css` computed, so the grab area straddles
+     the seam rather than sitting beside it. */
+  .divider {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: var(--split-left, 50vw);
+    inline-size: 9px;
+    translate: -50% 0;
+    cursor: col-resize;
+    /* Without this a touch drag scrolls the page instead of moving the
+       divider, and the pointer events stop arriving mid-gesture. */
+    touch-action: none;
+    z-index: 25;
+  }
+
+  .divider::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 50%;
+    inline-size: 2px;
+    translate: -50% 0;
+    background: transparent;
+    transition: background var(--duration-fast) ease;
+  }
+
+  .divider:hover::after,
+  .divider.dragging::after {
+    background: var(--accent);
+  }
+
+  .divider:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
   }
 
   .status {

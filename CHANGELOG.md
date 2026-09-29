@@ -10,7 +10,53 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- **The accent colour, everywhere.** Settings crossed the IPC boundary in
+  `kebab-case`, so the hue arrived at the webview as `accent-hue` while the
+  webview read `accent_hue`. `--accent-hue` was set to the string `undefined`,
+  every `oklch()` derived from it became invalid, and the consequences looked
+  unrelated to each other: selected buttons lost their background, sliders fell
+  back to the browser's blue whatever palette was chosen, and the settings panel
+  showed "Accent hue — °" with no number. A settings file written by 0.1.0 is
+  still read.
+- **The settings panel no longer scrolls sideways.** Five palette names do not
+  fit across a 260px column; they are a wrapping grid now, and every segmented
+  control truncates rather than widening the panel.
+- **The Contents panel stays open** when you click a heading, so skimming three
+  sections is three clicks instead of three round trips through the activity
+  bar. Its rows also span the panel's full width — the hit area used to stop
+  short of both edges.
+- **Search no longer wipes the file tree.** Opening the Search tab ran the full
+  walk *into* the tree's own array, which replaced the lazily-listed tree;
+  coming back to Files showed the walk's output instead of the folders you had
+  open. The walk now builds only the index it exists for.
+- **The split editor starts at the activity bar**, not at the window edge
+  underneath it. With a panel open it starts after the panel.
+- **The preview updates as you type in split view.** Only the file Marklet was
+  *launched* with was watched, so a document opened from the explorer or the
+  picker had a preview that never changed. It now re-renders when the save
+  returns, about a tenth of a second after you stop typing.
+- **Opening a different file while editing** rebuilds the editor for it.
+  Previously the session kept the old file's text and spliced its edits into the
+  old file's path.
+
+### Changed
+
+- **Double-click to open** in the explorer, and one click to select — the
+  gesture every file explorer uses. `Enter` opens from the keyboard.
+- **Non-Markdown files are listed**, dimmed and not openable. A folder shown
+  with its other files stripped out looks empty or wrong to whoever put them
+  there. Dotfiles stay hidden, as ignored directories already were.
+- **The split-view toggle moved to the document's top-right corner** and is
+  filled when it is on. It changes how the document is shown rather than what is
+  beside it, which is not what the activity bar is for.
+
+### Added
+
+- **A draggable divider between the split columns.** Double-click, `Home` or
+  `Enter` re-centres it; with it focused the arrow keys move it (`Shift` for
+  larger steps).
 
 ## [0.1.0] — 2026-09-25
 

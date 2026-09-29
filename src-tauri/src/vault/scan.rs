@@ -563,7 +563,12 @@ pub fn list_dir(root: &Path, rel: &str, depth: usize) -> Result<Vec<Entry>, IpcE
         if is_dir && is_ignored_dir(&name) {
             continue;
         }
-        if !is_dir && !is_note(Path::new(&name)) {
+        // Files that are not notes are listed, not hidden. A folder shown with
+        // its notes removed looks empty or wrong — the reader knows what is in
+        // there. Only a note can be opened; `open_note` refuses the rest, and
+        // the tree dims them so it is visible before the click. Dotfiles stay
+        // out, on the same reasoning `is_ignored_dir` keeps `.git` out.
+        if !is_dir && name.starts_with('.') {
             continue;
         }
 
@@ -609,6 +614,7 @@ mod list_dir_tests {
         std::fs::write(dir.join("Alpha.md"), b"# a").unwrap();
         std::fs::write(dir.join("notes/deep.md"), b"# d").unwrap();
         std::fs::write(dir.join("photo.png"), b"x").unwrap();
+        std::fs::write(dir.join(".env"), b"x").unwrap();
         dir
     }
 
@@ -618,16 +624,24 @@ mod list_dir_tests {
         let rows = list_dir(&root, "", 0).unwrap();
         let names: Vec<&str> = rows.iter().map(|e| e.name.as_str()).collect();
 
-        // Folders before notes; each group sorted ignoring case. `deep.md` is
+        // Folders before files; each group sorted ignoring case. `deep.md` is
         // absent because it is a level down — that is the whole point.
-        assert_eq!(names, ["Assets", "notes", "Alpha.md", "readme.md"]);
+        //
+        // `photo.png` is present: a folder shown with its non-notes stripped
+        // out looks empty or wrong to the person who knows what is in it. The
+        // tree dims what cannot be opened rather than pretending it is not
+        // there, and `open_note` refuses it regardless.
+        assert_eq!(
+            names,
+            ["Assets", "notes", "Alpha.md", "photo.png", "readme.md"]
+        );
         assert!(
             !rows.iter().any(|e| e.name == ".git"),
             "ignored dirs stay out"
         );
         assert!(
-            !rows.iter().any(|e| e.name == "photo.png"),
-            "non-notes stay out"
+            !rows.iter().any(|e| e.name == ".env"),
+            "dotfiles stay out, same reasoning as ignored dirs"
         );
     }
 

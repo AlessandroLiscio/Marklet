@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ancestorsOf,
   displayName,
+  isNote,
   OVERSCAN,
   ROW_HEIGHT,
   toggle,
@@ -206,5 +207,37 @@ describe('lazy listing', () => {
   it('appends when the parent is not in the array at all', () => {
     const out = spliceChildren([], '', [note('x.md', 0)]);
     expect(out.map((e) => e.path)).toEqual(['x.md']);
+  });
+});
+
+describe('isNote', () => {
+  it('accepts every extension `vault::scan::NOTE_EXTENSIONS` lists', () => {
+    for (const name of ['a.md', 'a.markdown', 'a.mdown', 'a.mkd']) {
+      expect(isNote(name), name).toBe(true);
+    }
+  });
+
+  it('is case-insensitive, like the Rust side', () => {
+    expect(isNote('README.MD')).toBe(true);
+  });
+
+  it('rejects the files that are now listed but not openable', () => {
+    // These appear in the tree — a folder with its non-notes stripped out
+    // looks wrong to whoever put them there — but dimmed, and a double-click
+    // does nothing. `open_note` refuses them regardless of what this says.
+    for (const name of ['photo.png', 'notes.txt', 'Makefile', '.env', 'a.md.bak']) {
+      expect(isNote(name), name).toBe(false);
+    }
+  });
+});
+
+describe('openable', () => {
+  it('is true for notes, false for folders and for everything else', () => {
+    const rows = visibleRows([entry('a.md'), entry('img.png'), entry('dir', true)], new Set());
+    expect(rows.map((r) => [r.name, r.openable])).toEqual([
+      ['a.md', true],
+      ['img.png', false],
+      ['dir', false],
+    ]);
   });
 });

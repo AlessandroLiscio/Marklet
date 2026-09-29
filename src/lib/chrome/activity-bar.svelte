@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * The left edge: one button per panel, plus the split-view toggle.
+   * The left edge: one button per panel.
    *
    * Why a bar rather than more floating buttons. Before this there were two
    * controls in two corners, each owning its own open state, and adding a
@@ -8,23 +8,20 @@
    * fifth. A bar is one place to look, one place to add to, and the shape
    * every editor has trained people on.
    *
-   * It holds no state. Which panel is open and whether split is on both belong
-   * to `app.svelte`, because both are read by things outside this component —
-   * the document's inset, the edit controller — and a toggle that owns the
-   * truth about a layout it does not lay out is how the two drift apart.
+   * It holds no state. Which panel is open belongs to `app.svelte`, because it
+   * is read by things outside this component — the document's inset, the edit
+   * controller — and a toggle that owns the truth about a layout it does not
+   * lay out is how the two drift apart.
    */
   export type PanelId = 'explorer' | 'outline' | 'settings';
 
   interface Props {
     /** The open panel, or `null` when the document has the full width. */
     panel: PanelId | null;
-    /** Whether the split editor is showing. */
-    split: boolean;
     onpanel: (panel: PanelId | null) => void;
-    onsplit: () => void;
   }
 
-  let { panel, split, onpanel, onsplit }: Props = $props();
+  let { panel, onpanel }: Props = $props();
 
   /** Clicking the open panel closes it — the same affordance as VS Code. */
   function choose(id: PanelId): void {
@@ -72,28 +69,9 @@
     </svg>
   </button>
 
-  <button
-    type="button"
-    class="item"
-    class:active={split}
-    aria-pressed={split}
-    title="Split editor (F3)"
-    aria-label="Split editor"
-    onclick={onsplit}
-  >
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <rect
-        x="3"
-        y="4"
-        width="14"
-        height="12"
-        rx="1"
-        stroke="currentColor"
-        stroke-width="1.4"
-      />
-      <path d="M10 4v12" stroke="currentColor" stroke-width="1.4" />
-    </svg>
-  </button>
+  <!-- The split-editor toggle is NOT here. It switches how the document is
+       shown rather than which panel is beside it, and it lives in the
+       document's own top-right corner where an editor's view controls sit. -->
 
   <button
     type="button"

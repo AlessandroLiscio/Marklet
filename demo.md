@@ -442,6 +442,10 @@ and diagrams rendered.
 | `F4` / `Ctrl+E` | Open this file in your own editor at the cursor |
 | `Esc` | Back to reading |
 
+Split view also has a button, in the document's **top-right** corner: filled when it is
+on, outlined when it is off. It is not in the activity bar, because it changes how the
+document is shown rather than what sits beside it.
+
 Things to try, in order:
 
 1. Press `F2` and put the cursor on this **bold** word. The asterisks should appear.
@@ -449,15 +453,19 @@ Things to try, in order:
 2. Type a few words. They save automatically. Check `git status`.
 3. Press `F3`. The same editor instance moves to the left column — your cursor and
    undo history survive the switch.
-4. Type on the left and watch the right redraw. Both panes should stay aligned.
-5. Copy any image to your clipboard and press `Ctrl+V`. It should be written to
+4. Type on the left and watch the right redraw. Both panes should stay aligned. The
+   redraw follows the save, so it lands about a tenth of a second after you stop typing.
+5. Drag the line between the two columns. Double-click it to put it back in the middle;
+   with it focused, the arrow keys move it too. The left column starts at the activity
+   bar, never underneath it — open a panel and it should move over, not be covered.
+6. Copy any image to your clipboard and press `Ctrl+V`. It should be written to
    `assets/demo-1.png` and linked here at the cursor.
-6. Press `F4`. Your editor should open at the line you were on. Set `MD_EDITOR` first
+7. Press `F4`. Your editor should open at the line you were on. Set `MD_EDITOR` first
    if you want a specific one — unset, Marklet tries `code`, `subl`, `notepad++`,
    `gedit`, `notepad` in that order.
 
 > [!WARNING]
-> Steps 2 and 5 **modify this file**. It is in version control precisely so you can
+> Steps 2 and 6 **modify this file**. It is in version control precisely so you can
 > `git checkout demo.md` afterwards.
 
 ---
@@ -469,8 +477,17 @@ file's own folder — no need to have launched on a directory. Folders list thei
 when you expand them, one level at a time, so opening a note inside a large folder does not
 read everything underneath it.
 
+One click selects; one click on a folder also opens or closes it. **Double-click** a
+Markdown file to open it — the same gesture every file explorer uses, and the reason
+arrowing through a folder no longer re-renders the document once per row. `Enter` does the
+same from the keyboard.
+
+Files that are not Markdown are listed, dimmed. They are there so a folder looks like
+itself; double-clicking one does nothing, and the Rust side refuses to open it regardless.
+
 The **Search** tab is the exception: it runs the full walk, because a directory listing
-cannot answer a search. That is the one place you should expect to wait on a big folder.
+cannot answer a search. Switching to it and back leaves the tree exactly as you left it —
+expanded folders included.
 
 Open the repository folder rather than this file, and you should also get:
 

@@ -26,6 +26,23 @@ export const ROW_HEIGHT = 26;
 /** Rows rendered above and below the viewport, so a fast scroll is not blank. */
 export const OVERSCAN = 6;
 
+/**
+ * The extensions the vault treats as notes.
+ *
+ * Mirrors `vault::scan::NOTE_EXTENSIONS`, by eye — there is no build-time link
+ * between the two, and the Rust side is the one that decides: `open_note`
+ * refuses anything else whatever this array says. What this copy buys is
+ * saying so *before* the double-click, by dimming the row.
+ */
+export const NOTE_EXTENSIONS = ['md', 'markdown', 'mdown', 'mkd'] as const;
+
+/** Whether a file name is a note, and therefore openable. */
+export function isNote(name: string): boolean {
+  const dot = name.lastIndexOf('.');
+  if (dot <= 0) return false;
+  return (NOTE_EXTENSIONS as readonly string[]).includes(name.slice(dot + 1).toLowerCase());
+}
+
 /** One rendered line of the tree. */
 export interface Row {
   path: string;
@@ -35,6 +52,14 @@ export interface Row {
   /** A folder with at least one child in the scan. */
   expandable: boolean;
   expanded: boolean;
+  /**
+   * A note, so double-clicking it opens it.
+   *
+   * Folders and non-note files are both `false`: the folder has its own
+   * affordance (the disclosure arrow), and a `.png` is listed so the folder
+   * looks like itself rather than because Marklet can show it.
+   */
+  openable: boolean;
 }
 
 /**
@@ -80,6 +105,7 @@ export function visibleRows(
       depth: entry.depth,
       expandable: entry.dir && ((listed !== null && !listed.has(entry.path)) || hasChildren(entries, i)),
       expanded: isExpanded,
+      openable: !entry.dir && isNote(entry.name),
     });
 
     if (entry.dir && !isExpanded) skip = `${entry.path}/`;

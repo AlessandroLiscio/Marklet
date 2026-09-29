@@ -18,7 +18,6 @@
   import {
     listDir,
     onScanDone,
-    onScanProgress,
     openVault,
     scanVault,
     subscribeAll,
@@ -53,30 +52,20 @@
   let listed = $state<Set<string>>(new Set());
 
   /**
-   * The full walk has run, so every folder is known.
+   * The full walk has run, so the Rust-side index Search queries is built.
    *
-   * Searching needs the walk — a directory listing cannot answer it — and once
-   * it has run the lazy bookkeeping is not just unnecessary but wrong: the
-   * array holds every folder's children, so an empty folder really is empty.
-   * Passing `null` for `listed` is how the tree is told that.
+   * It says nothing about this component's `entries`, and must not: the walk
+   * used to be streamed into that array, which wiped the lazily-listed tree
+   * the moment the Search tab was opened and left the Files tab showing the
+   * walk's own flat output when the user came back to it. The tree is lazy
+   * now; the walk exists for the index and for nothing on this side.
    */
   let walked = $state(false);
 
-  // One subscription for the component's life. Batches that arrive between
-  // `openVault` and `scanVault` belong to this vault too, so the listener is
-  // installed before either runs rather than per scan.
-  $effect(() =>
-    subscribeAll([
-      onScanProgress(({ entries: batch }) => {
-        // Append, never re-sort: the walk yields parents before children and
-        // siblings in name order, which is exactly the order the tree wants.
-        entries = entries.concat(batch);
-      }),
-      onScanDone(() => {
-        scanning = false;
-      }),
-    ])
-  );
+  // One subscription for the component's life. `vault-scan-progress` batches
+  // are deliberately NOT consumed — see `walked`. What is still worth knowing
+  // is when the walk stops, because the header says it is running.
+  $effect(() => subscribeAll([onScanDone(() => (scanning = false))]));
 
   $effect(() => {
     const path = vaultPath;
@@ -121,7 +110,7 @@
   });
   /** Fetches a folder's children the first time it is opened. */
   async function expand(path: string, depth: number): Promise<void> {
-    if (walked || listed.has(path)) return;
+    if (listed.has(path)) return;
     try {
       const children = await listDir(path, depth + 1);
       entries = spliceChildren(entries, path, children);
@@ -142,8 +131,6 @@
     if (walked || info === null) return;
     scanning = true;
     try {
-      entries = [];
-      listed = new Set();
       await scanVault();
       walked = true;
     } catch {
@@ -157,7 +144,9 @@
 <aside class="sidebar" aria-label="Vault">
   <header>
     <span class="name" title={info?.root ?? ''}>{info?.name ?? 'No vault'}</span>
-    {#if scanning}<span class="counting">{entries.length}</span>{/if}
+    <!-- The walk's progress, not a row count: the tree is listed lazily and
+         its size is not what is being waited for. -->
+    {#if scanning}<span class="counting" title="Indexing for search">&hellip;</span>{/if}
   </header>
 
   <nav class="tabs">
@@ -182,7 +171,7 @@
     <Tree
       {entries}
       {active}
-      listed={walked ? null : listed}
+      {listed}
       onexpand={(path, depth) => void expand(path, depth)}
       onopen={(path) => onopen?.(path)}
     />

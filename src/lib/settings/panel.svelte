@@ -251,7 +251,10 @@
 
         <fieldset>
           <legend>Palette</legend>
-          <div class="segmented" role="radiogroup" aria-label="Palette">
+          <!-- A grid, not the segmented strip the other two use: five labels
+               do not fit across a 260px panel, and forcing them to produced a
+               horizontal scrollbar across the whole settings column. -->
+          <div class="chips" role="radiogroup" aria-label="Palette">
             {#each PALETTES as p (p.value)}
               <button
                 type="button"
@@ -287,6 +290,9 @@
   .settings {
     block-size: 100%;
     overflow-y: auto;
+    /* The panel is a fixed 260px. Nothing inside it is allowed to widen it
+       into a horizontal scrollbar — controls wrap or truncate instead. */
+    overflow-x: hidden;
     font-family: var(--font-ui);
   }
 
@@ -325,7 +331,11 @@
   }
 
   .segmented button {
-    flex: 1;
+    flex: 1 1 0;
+    /* `min-inline-size: 0` is what lets a flex item be narrower than its text.
+       Without it the widest label sets the strip's floor and the panel grows a
+       scrollbar rather than the label truncating. */
+    min-inline-size: 0;
     padding: var(--space-1) var(--space-2);
     background: none;
     border: none;
@@ -333,6 +343,9 @@
     color: var(--fg-muted);
     font-family: inherit;
     font-size: var(--text-small);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     cursor: pointer;
     transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
   }
@@ -349,6 +362,45 @@
   .segmented button.active {
     color: var(--on-accent);
     background: var(--accent);
+  }
+
+  .chips {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-1);
+  }
+
+  .chips button {
+    min-inline-size: 0;
+    padding: var(--space-1);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--fg-muted);
+    font-family: inherit;
+    font-size: var(--text-small);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: color var(--duration-fast) ease, background var(--duration-fast) ease;
+  }
+
+  .chips button:hover {
+    color: var(--fg);
+    background: var(--bg-subtle);
+  }
+
+  .chips button.active {
+    color: var(--on-accent);
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .chips button:focus-visible,
+  .segmented button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
   }
 
   input[type='range'] {
