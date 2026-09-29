@@ -501,8 +501,9 @@ Open the `demo/` folder rather than this file, and you should also get:
   index built and nothing cached on disk to go stale,
 - the wiki-links in section 12 resolving,
 - a **Links** panel listing what the note you are reading points at — notes and web
-  links together, each with its line. Click a note row to follow it, Ctrl+click to open
-  it in a second window; a web link goes to your browser.
+  links together, each with its line. Clicking a row scrolls to where the link is
+  written; the button on the right follows it, Ctrl+click for a second window, and a web
+  link goes to your browser.
 
 On a synthetic 5,000-note vault this measured: first search result in 1 ms, search
 complete in 31 ms, 622 bytes of index per note, 10 MB of RSS for the whole thing.

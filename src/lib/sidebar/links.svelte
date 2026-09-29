@@ -11,6 +11,7 @@
    * `backlinks_for` is still a command and still correct — the panel that
    * consumed it is what changed.
    */
+  import { scrollToLine } from '../doc';
   import { openExternal, openInNewWindow } from '../ipc';
   import { collectLinks, type DocLink } from './links';
 
@@ -39,13 +40,25 @@
   });
 
   /**
-   * Click follows the link; Ctrl+click (Cmd on macOS) opens it in a second
-   * window — the two gestures a browser has, for the two kinds of link.
+   * The row takes you to where the link is **written**; only the button
+   * follows it.
    *
-   * A web link goes to the OS browser either way: it already lands in a
-   * separate window, and Rust re-checks the scheme before handing it over.
+   * Two different destinations were behind one gesture, and the row is the
+   * easier of the two to hit by accident: a panel listing a document's links
+   * is a way of navigating the document, and a stray click that replaced the
+   * document — or opened a browser — lost the reader's place to answer a
+   * question they had not asked. Following a link is now something you aim at.
    */
-  function go(event: MouseEvent, link: DocLink): void {
+  function jump(link: DocLink): void {
+    if (link.line > 0) scrollToLine(link.line);
+  }
+
+  /**
+   * Follows the link: a note here, or in a second window with Ctrl (Cmd on
+   * macOS), and a web link to the OS browser — which is already a separate
+   * window, and where Rust re-checks the scheme before handing it over.
+   */
+  function open(event: MouseEvent, link: DocLink): void {
     if (link.kind === 'unresolved') return;
 
     if (link.kind === 'web') {
@@ -66,10 +79,9 @@
     onopen?.(link.target, link.line);
   }
 
-  function hint(link: DocLink): string {
-    if (link.kind === 'unresolved') return `Nothing in this vault answers to “${link.target}”`;
-    if (link.kind === 'web') return `${link.target} — opens in your browser`;
-    return `${link.target} — Ctrl+click to open in a new window`;
+  function openHint(link: DocLink): string {
+    if (link.kind === 'web') return `Open ${link.target} in your browser`;
+    return `Open ${link.target} — Ctrl+click for a new window`;
   }
 </script>
 
@@ -86,18 +98,21 @@
   {:else}
     <ul>
       {#each links as link, i (`${link.kind}:${link.target}:${link.line}:${i}`)}
-        <li>
+        <li class={link.kind}>
           <button
             type="button"
-            class={link.kind}
-            disabled={link.kind === 'unresolved'}
-            title={hint(link)}
-            onclick={(event) => go(event, link)}
+            class="jump"
+            disabled={link.line === 0}
+            title={link.line > 0
+              ? `Go to line ${link.line}, where this link is written`
+              : 'This link is not inside a numbered block'}
+            onclick={() => jump(link)}
           >
             <!-- Inline SVG per the icon rule: no icon font, no icon package.
                  The leading glyph is the one thing that has to be readable at
                  a glance — a note and a web page are followed in different
-                 places and a reader should know which before clicking. -->
+                 places and a reader should know which before aiming at the
+                 button. -->
             {#if link.kind === 'web'}
               <svg class="kind" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
                 <circle cx="8" cy="8" r="5.75" fill="none" stroke="currentColor" stroke-width="1.3" />
@@ -119,9 +134,19 @@
 
             <span class="label">{link.label}</span>
             {#if link.line > 0}<span class="line">:{link.line}</span>{/if}
+          </button>
 
-            {#if link.kind !== 'unresolved'}
-              <svg class="go" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+          <!-- A button of its own, not a glyph inside the row: it is a second
+               destination, and a nested <button> is not valid HTML anyway. -->
+          {#if link.kind !== 'unresolved'}
+            <button
+              type="button"
+              class="open"
+              title={openHint(link)}
+              aria-label={openHint(link)}
+              onclick={(event) => open(event, link)}
+            >
+              <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
                 <path
                   d="M9.5 2.5H13v3.5M13 2.5 7.75 7.75"
                   fill="none"
@@ -139,8 +164,8 @@
                   stroke-linejoin="round"
                 />
               </svg>
-            {/if}
-          </button>
+            </button>
+          {/if}
         </li>
       {/each}
     </ul>
@@ -190,23 +215,21 @@
     border-block-start: 1px solid var(--border);
   }
 
-  button {
+  /* Two targets on one row, so the row is the flex container and each button
+     is its own hit area — a nested <button> is not valid HTML, and these are
+     genuinely two destinations. */
+  li {
     display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    inline-size: 100%;
-    padding: var(--space-2);
+    align-items: stretch;
+  }
+
+  button {
     font-family: var(--font-ui);
     font-size: var(--text-small);
-    text-align: start;
     color: var(--fg);
     background: none;
     border: 0;
     cursor: default;
-  }
-
-  button:hover:not(:disabled) {
-    background: var(--bg-subtle);
   }
 
   button:focus-visible {
@@ -214,17 +237,53 @@
     outline-offset: -2px;
   }
 
-  /* A wiki-link to a note nobody has written yet. Struck through and dimmed,
-     the same answer the document itself gives it — and inert, because
-     navigating to a note that does not exist is not an improvement on doing
-     nothing. */
-  button:disabled {
+  .jump {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+    min-inline-size: 0;
+    padding: var(--space-2);
+    text-align: start;
+  }
+
+  .jump:hover:not(:disabled) {
+    background: var(--bg-subtle);
+  }
+
+  .open {
+    display: grid;
+    place-items: center;
+    flex: none;
+    padding-inline: var(--space-2);
     color: var(--fg-muted);
+    opacity: 0.55;
+    transition: color var(--duration-fast) ease, opacity var(--duration-fast) ease,
+      background var(--duration-fast) ease;
+  }
+
+  .open:hover,
+  .open:focus-visible {
+    color: var(--accent);
+    opacity: 1;
+    background: var(--bg-subtle);
+  }
+
+  /* A wiki-link to a note nobody has written yet. Struck through and dimmed,
+     the same answer the document itself gives it — and with no open button,
+     because navigating to a note that does not exist is not an improvement on
+     doing nothing. The row still jumps to where it is written. */
+  li.unresolved .label {
+    color: var(--fg-muted);
+    text-decoration: line-through;
+  }
+
+  li.unresolved .kind {
     opacity: 0.6;
   }
 
-  button:disabled .label {
-    text-decoration: line-through;
+  .jump:disabled {
+    color: var(--fg-muted);
   }
 
   .label {
@@ -240,7 +299,7 @@
     color: var(--fg-muted);
   }
 
-  button.web .kind {
+  li.web .kind {
     color: var(--accent);
   }
 
@@ -248,21 +307,6 @@
     flex: none;
     color: var(--accent);
     font-variant-numeric: tabular-nums;
-  }
-
-  /* Dim at rest, accent under the pointer: present enough to say the row goes
-     somewhere, quiet enough not to compete with the labels above it. */
-  .go {
-    flex: none;
-    color: var(--fg-muted);
-    opacity: 0.55;
-    transition: color var(--duration-fast) ease, opacity var(--duration-fast) ease;
-  }
-
-  button:hover .go,
-  button:focus-visible .go {
-    color: var(--accent);
-    opacity: 1;
   }
 
   .empty {

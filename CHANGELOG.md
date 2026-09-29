@@ -12,6 +12,11 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Changed
 
+- **Clicking a row in "Links" scrolls to where the link is written**; following
+  it is the button on the right. Two destinations were behind one gesture, and
+  the row is the easier of the two to hit by accident — a panel listing a
+  document's links is a way of navigating that document, and a stray click
+  should not replace it.
 - **The sidebar's bottom panel is "Links" and points outward.** It listed
   *backlinks* — the notes pointing at the one being read — and now lists what
   the open note points at: wiki-links and `https://` links together, in the
@@ -21,9 +26,22 @@ lightweight care about that number, and publishing it keeps us honest.
   opinion about. A wiki-link that resolves to nothing is struck through and
   inert. `backlinks_for` is still a command; only its caller changed.
 
+### Fixed
+
+- **Wiki-links resolve after the vault opens.** Resolution happens in Rust when
+  the HTML is built, not when a link is clicked, so a document rendered before
+  there was an index had every `[[link]]` struck through for good — and *every*
+  document opened at launch is in that state, because `lib.rs` renders it
+  before a vault exists. Opening the explorer on a file therefore showed a
+  panel of dead links pointing at notes sitting right beside it. The document
+  is rendered again once the index is built, keeping the reading position, and
+  only when it actually holds an unresolved link.
+- **The welcome screen goes when a folder is chosen**, rather than staying
+  behind the explorer until a note is opened.
+
 ### Added
 
-- **Ctrl+click a row in "Links" opens that note in a second window**, the
+- **Ctrl+click the open button in "Links" opens that note in a second window**, the
   way a browser does it. A second window is a second WebView2 instance, which
   is why the settings panel deliberately is not one — but two notes side by
   side is the thing a single-window reader cannot do at all, and the cost is
