@@ -455,17 +455,20 @@ Things to try, in order:
    undo history survive the switch.
 4. Type on the left and watch the right redraw. Both panes should stay aligned. The
    redraw follows the save, so it lands about a tenth of a second after you stop typing.
-5. Drag the line between the two columns. Double-click it to put it back in the middle;
+5. Scroll the preview with the wheel: the source follows, and the source
+   follows the preview as well as the other way round. There is one scrollbar,
+   at the window's right edge, for both columns.
+6. Drag the line between the two columns. Double-click it to put it back in the middle;
    with it focused, the arrow keys move it too. The left column starts at the activity
    bar, never underneath it — open a panel and it should move over, not be covered.
-6. Copy any image to your clipboard and press `Ctrl+V`. It should be written to
+7. Copy any image to your clipboard and press `Ctrl+V`. It should be written to
    `assets/demo-1.png` and linked here at the cursor.
-7. Press `F4`. Your editor should open at the line you were on. Set `MD_EDITOR` first
+8. Press `F4`. Your editor should open at the line you were on. Set `MD_EDITOR` first
    if you want a specific one — unset, Marklet tries `code`, `subl`, `notepad++`,
    `gedit`, `notepad` in that order.
 
 > [!WARNING]
-> Steps 2 and 6 **modify this file**. It is in version control precisely so you can
+> Steps 2 and 7 **modify this file**. It is in version control precisely so you can
 > `git checkout demo.md` afterwards.
 
 ---

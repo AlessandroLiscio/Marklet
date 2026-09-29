@@ -16,6 +16,7 @@
   import SearchPanel from './search.svelte';
   import Tree from './tree.svelte';
   import {
+    indexVault,
     listDir,
     onScanDone,
     openVault,
@@ -50,6 +51,14 @@
    * second expand from re-listing a folder that has not changed.
    */
   let listed = $state<Set<string>>(new Set());
+
+  /**
+   * Bumped when the wiki-link index finishes, to re-ask for backlinks.
+   *
+   * A note opened before the index was ready got an honest empty answer, and
+   * nothing would have asked again.
+   */
+  let indexed = $state(0);
 
   /**
    * The full walk has run, so the Rust-side index Search queries is built.
@@ -95,6 +104,24 @@
         if (!current) return;
         entries = top;
         listed = new Set(['']);
+
+        // The wiki-link index, in the background.
+        //
+        // Nothing built it before, which is the whole reason the backlinks
+        // panel said "Nothing links here yet." for every note in every vault
+        // and every `[[link]]` rendered unresolved: the index exists, the
+        // command exists, and no code path ever called it.
+        //
+        // Not awaited — the tree is already on screen and this is reading and
+        // parsing every note. The panel fills in when it finishes.
+        void indexVault()
+          .then(() => {
+            if (current) indexed += 1;
+          })
+          .catch(() => {
+            // An unreadable note, a folder that vanished. Backlinks stay empty,
+            // which is what they were before this ran.
+          });
       } catch (e) {
         if (!current) return;
         error = e instanceof Object && 'message' in e ? String(e.message) : 'Could not open that folder';
@@ -182,7 +209,9 @@
     />
   {/if}
 
-  <Backlinks path={active} onopen={(path, line) => onopen?.(path, line)} />
+  {#key indexed}
+    <Backlinks path={active} onopen={(path, line) => onopen?.(path, line)} />
+  {/key}
 </aside>
 
 <style>

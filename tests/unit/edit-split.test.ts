@@ -18,7 +18,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const scrollToLine = vi.fn<(line: number, behavior?: ScrollBehavior) => void>();
-const visibleLine = vi.fn<(root: HTMLElement) => number>(() => 0);
+const visibleLine = vi.fn<() => number>(() => 0);
 
 vi.mock('../../src/lib/doc', () => ({
   JUMP_EVENT: 'marklet-jump',
@@ -26,7 +26,7 @@ vi.mock('../../src/lib/doc', () => ({
   // is hoisted above the `const`s it closes over, and forwarding a named
   // `behavior` would record an extra `undefined` argument on every call.
   scrollToLine: (...args: [number, ScrollBehavior?]) => scrollToLine(...args),
-  visibleLine: (...args: [HTMLElement]) => visibleLine(...args),
+  visibleLine: () => visibleLine(),
 }));
 
 import { ECHO_MS, JUMP_MS, linkScroll } from '../../src/lib/edit/split';
@@ -46,14 +46,13 @@ function jump(line: number): void {
 
 let link: ReturnType<typeof linkScroll>;
 let session: ReturnType<typeof fakeSession>;
-const root = {} as HTMLElement;
 
 beforeEach(() => {
   vi.useFakeTimers();
   scrollToLine.mockClear();
   visibleLine.mockClear();
   session = fakeSession();
-  link = linkScroll(root);
+  link = linkScroll();
   link.attach(session);
 });
 

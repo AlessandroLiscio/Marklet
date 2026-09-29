@@ -41,13 +41,30 @@ export function setDocument(root: HTMLElement, doc: OpenedDocument): void {
   anchors = Array.from(root.querySelectorAll<HTMLElement>('[data-l]'));
 }
 
-/** The source line of the block nearest the top of the viewport. */
-export function visibleLine(root: HTMLElement): number {
-  const top = root.getBoundingClientRect().top;
+/**
+ * The source line of the block nearest the top of the viewport.
+ *
+ * **Client coordinates: the viewport's top edge is 0.** This used to measure
+ * each anchor against `#doc`'s own box, which scrolls with the document — so
+ * what it computed was the anchor's offset *inside* the document, a number
+ * that does not change when you scroll. The first anchor always cleared the
+ * test, the loop always broke on it, and the answer was always 0.
+ *
+ * Everything reading a position paid for that: split view told the editor to
+ * go to line 0 on every preview scroll and then dragged the preview back to
+ * the top to match, so scrolling the preview appeared to do nothing and then
+ * undo itself. Scroll restore across a reflow restored to the top. The
+ * outline's scroll-spy highlighted the first heading forever.
+ *
+ * Takes no argument now. The old one was the mistake: `anchors` is module
+ * state, the caller's element was never needed, and passing it is what made
+ * measuring against it look reasonable.
+ */
+export function visibleLine(): number {
   let best = 0;
   for (const el of anchors) {
-    // The first anchor whose top edge has not yet passed the viewport top.
-    if (el.getBoundingClientRect().top - top >= -1) break;
+    // The last anchor whose top edge has passed the viewport's.
+    if (el.getBoundingClientRect().top > 1) break;
     best = lineOf(el);
   }
   return best;

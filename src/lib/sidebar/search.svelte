@@ -34,8 +34,20 @@
   let stats = $state<SearchStats | null>(null);
   let running = $state(false);
 
-  /** The search whose results are still wanted. */
+  /** The search whose results are still wanted, as this side counts them. */
   let generation = 0;
+  /**
+   * The search whose results are still wanted, as **Rust** counts them.
+   *
+   * Hits are tagged with `vault.begin_search()`'s id, which is monotonic, so a
+   * larger id is a newer search and anything smaller is stale. This used to be
+   * a `running` flag instead, and it lost: `search_vault` returns its summary
+   * through the command's own response while the hits come through the event
+   * channel, and the response arrived first — `running` was already `false`
+   * when the hits landed, so every one of them was dropped. The panel said
+   * "5 in 3 of 3 notes" above an empty list.
+   */
+  let liveId = -1;
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   // Subscribing once for the component's life, not once per query: `listen`
@@ -43,8 +55,13 @@
   // every search to a race it cannot win.
   $effect(() =>
     subscribeAll([
-      onSearchResult(({ hit }) => {
-        if (running) hits = [...hits, hit];
+      onSearchResult(({ id, hit }) => {
+        if (id < liveId) return; // a search the user has already replaced
+        if (id > liveId) {
+          liveId = id;
+          hits = [];
+        }
+        hits = [...hits, hit];
       }),
       onSearchDone((s) => {
         stats = s;

@@ -54,6 +54,20 @@ body.marklet-mode-split {
   transition: none;
 }
 
+/* One scrollbar for the pair, at the window's right edge.
+   The editor still scrolls — by wheel, by keyboard, and by the line link — it
+   just does not draw a second bar down the middle of the window for a view
+   that is showing the same document as the one beside it. The columns are
+   divided by the border and the drag handle, which is the division that
+   carries meaning. */
+body.marklet-mode-split .marklet-editor .cm-scroller {
+  scrollbar-width: none;
+}
+
+body.marklet-mode-split .marklet-editor .cm-scroller::-webkit-scrollbar {
+  display: none;
+}
+
 body.marklet-mode-split #editor {
   inline-size: calc((100vw - var(--split-inset)) * var(--split-ratio, 0.5));
   border-inline-end: 1px solid var(--border);

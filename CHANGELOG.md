@@ -12,6 +12,37 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Fixed
 
+- **Scrolling the preview in split view now moves the editor with it**, and
+  stops undoing itself. `visibleLine()` — the one number scroll sync, scroll
+  restore and the outline's scroll-spy all read — measured each block against
+  `#doc`'s own box. `#doc` scrolls with the document, so what it computed was
+  the block's offset *inside* the document, which does not change when you
+  scroll: it returned 0 at every position. Split view therefore told the editor
+  to go to line 0 on every preview scroll and then pulled the preview to the top
+  to match. Scroll restore across a reflow restored to the top for the same
+  reason, and the outline highlighted the first heading forever.
+- **Search results appear again.** Rust emitted each hit as a `(id, hit)`
+  *tuple*, which is a JSON array, while the webview destructured `{ id, hit }`
+  from it — so every hit arrived as `undefined`. A second fault sat behind it:
+  the panel only accepted hits while a `running` flag was set, and the command's
+  own response (which clears it) arrives before the hit events do, so even a
+  correct payload would have been dropped. Hits are now matched on the search id
+  Rust already tags them with.
+- **Backlinks and wiki-links work at all.** Two independent reasons they could
+  not: nothing in the application ever called `index_vault`, so the wiki-link
+  index was never built; and `OpenedDocument` had no vault-relative path, so the
+  webview passed the absolute one to a lookup keyed on the relative one. The
+  index is now built in the background when a folder is opened, and the document
+  carries its `rel`. The open note is also highlighted in the tree now, which
+  failed on the same mismatch.
+
+### Changed
+
+- **One scrollbar in split view**, at the window's right edge. The editor still
+  scrolls by wheel, keyboard and the line link; it no longer draws a second bar
+  down the middle of the window for a second view of the same document. The
+  border and the drag handle are the division that carries meaning.
+
 - **Clicking a heading in Contents while split view is open** now moves both
   columns to it. It used to move the preview back to wherever the editor still
   was: the outline scrolls *smoothly*, a smooth scroll runs for several hundred

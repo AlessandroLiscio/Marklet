@@ -460,9 +460,12 @@
     <div class="panel-dock">
       {#if panel === 'explorer'}
         {#if vaultPath}
+          <!-- `active` is the VAULT-RELATIVE path, not the absolute one: the
+               tree's rows and the backlinks index are both keyed on that
+               spelling, and the absolute path matched neither. -->
           <Sidebar
             {vaultPath}
-            active={doc?.path ?? null}
+            active={doc?.rel ?? null}
             onopen={(path) =>
               void openNote(path)
                 .then((d) => show(d as OpenedDocument))

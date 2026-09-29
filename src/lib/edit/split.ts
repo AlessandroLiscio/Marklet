@@ -60,15 +60,16 @@ function stamp(): number {
 /**
  * Ties the editor's scroll position to the preview's, both ways.
  *
- * `docRoot` is the `<article id="doc">` the render pipeline fills; the window
- * is what scrolls it, which is why the listener goes on the window rather than
- * on the element.
+ * The preview is the ordinary document and the *window* is what scrolls it,
+ * which is why the listener goes on the window. It took the `<article id="doc">`
+ * as an argument until `visibleLine` stopped needing one — measuring a position
+ * against an element that scrolls with the document is what made it wrong.
  *
  * Built before the session and completed with `attach`, because the session
  * has to be constructed with its `onScroll` already in place: one of the two
  * must learn about the other late, and a setter is the smaller knot.
  */
-export function linkScroll(docRoot: HTMLElement): ScrollLink {
+export function linkScroll(): ScrollLink {
   let session: Session | null = null;
   let quietUntil = 0;
   let alive = true;
@@ -78,7 +79,7 @@ export function linkScroll(docRoot: HTMLElement): ScrollLink {
     const at = stamp();
     if (at < quietUntil) return;
     quietUntil = at + ECHO_MS;
-    session.goToLine(visibleLine(docRoot));
+    session.goToLine(visibleLine());
   }
 
   /**

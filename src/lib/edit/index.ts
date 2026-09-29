@@ -141,7 +141,7 @@ export function createEditController(wiring: EditWiring): EditController {
       applyBodyClass();
       if (next === 'split') {
         const { linkScroll } = await import('./split');
-        link ??= linkScroll(wiring.docRoot);
+        link ??= linkScroll();
         link.attach(session);
         link.resync();
       } else {
@@ -155,7 +155,7 @@ export function createEditController(wiring: EditWiring): EditController {
     // Anchored to the nearest `data-l`, never a pixel offset — the same rule
     // `settings/model.ts` follows across a reflow, and for the same reason:
     // the metrics on either side of this toggle are not the same metrics.
-    const line = visibleLine(wiring.docRoot);
+    const line = visibleLine();
     const source = await wiring.readSource();
 
     const [{ createSession }, { linkScroll }] = await Promise.all([
@@ -167,7 +167,7 @@ export function createEditController(wiring: EditWiring): EditController {
     host.id = 'editor';
     document.body.append(host);
 
-    const scrollLink = next === 'split' ? linkScroll(wiring.docRoot) : null;
+    const scrollLink = next === 'split' ? linkScroll() : null;
 
     const created = await createSession({
       host,
@@ -223,7 +223,7 @@ export function createEditController(wiring: EditWiring): EditController {
     const path = wiring.path();
     if (path === null || !wiring.revealInEditor) return;
 
-    const at = session?.cursor() ?? { line: visibleLine(wiring.docRoot) || 1, column: 1 };
+    const at = session?.cursor() ?? { line: visibleLine() || 1, column: 1 };
     await session?.flush();
     await wiring.revealInEditor(at.line, at.column);
   }
