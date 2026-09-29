@@ -12,6 +12,19 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Fixed
 
+- **The search match is visible in the excerpt again.** It was marked with
+  `--accent-muted` as a background and nothing else, and in dark mode that
+  token is `oklch(0.24 …)` — a near-black amber on a near-black panel. The
+  excerpt read as one uniform block with no sign of what had matched. The match
+  now takes the accent colour and a heavier weight, with the wash only giving
+  the run an edge.
+- **The backlinks rows say what points where.** Every row led with the note's
+  H1 over a bare `[[target]] · line 3` — and the target is always the note you
+  are already reading, so each row repeated the same thing and named the source
+  it came from last, or not at all. The path leads now, with its line, laid out
+  exactly like a search hit; the heading reads "Linked from" rather than
+  "Backlinks", which is jargon that does not say which way the arrow points.
+
 - **Scrolling the preview in split view now moves the editor with it**, and
   stops undoing itself. `visibleLine()` — the one number scroll sync, scroll
   restore and the outline's scroll-spy all read — measured each block against
