@@ -56,6 +56,34 @@ name. It runs in `code-quality`. Run it after adding or renaming any command par
 Tauri v2 exposes a `snake_case` Rust parameter to JavaScript as `camelCase` unless the
 command declares `rename_all = "snake_case"`; the check accepts either spelling.
 
+## A slow command must be `async`, and must not block the runtime either
+
+**A synchronous Tauri command runs on the main thread** — the one that draws the window.
+Anything that touches the filesystem in bulk therefore freezes the application while it
+runs. `export_pdf` and the file pickers are `async` for exactly this reason.
+
+`scan_vault` and `index_vault` were not, and both walk the whole folder. Measured on a
+tree of 1 976 notes (`~/GitHub`, with `node_modules`, `target` and dot directories already
+skipped):
+
+| | Cost |
+|---|---|
+| walk | 1 358 ms |
+| parse every note, no cache | 865 ms |
+| parse with a cold cache | 491 ms |
+| parse with a warm cache | 126 ms |
+
+All of the first two, on the main thread, on every folder open. On NTFS with a scanner in
+the path it is several times that.
+
+`async` alone is not the fix: an `async fn` whose body blocks holds a runtime worker for
+the duration. The work goes to `tauri::async_runtime::spawn_blocking` through the
+`blocking()` helper in `ipc.rs`, which also flattens the join error — a join failure is a
+panic inside the job, not a failure of the job.
+
+A `State<'_, T>` cannot cross into the closure, because it borrows. Take an
+`AppHandle` — it is `'static` and `Clone` — and call `app.state::<T>()` inside.
+
 ## The webview describes intent; Rust decides the action
 
 Validating an argument is not the same as receiving a *decision* and carrying it out. Where

@@ -10,6 +10,22 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Opening a folder no longer freezes the window.** The directory listing was
+  lazy, but two other things were not: opening a vault built the wiki-link
+  index, and the Search tab walked the whole tree — both as *synchronous*
+  Tauri commands, which run on the thread that draws the window. On a tree of
+  1 976 notes that is 1 358 ms of walking plus 865 ms of parsing with the
+  application unresponsive, and several times that on NTFS with a scanner in
+  the path. Both now run off the main thread.
+- **The index cache is actually used.** `index_vault` computed the cache
+  directory and then passed `None`, so every open re-read and re-parsed every
+  note: 865 ms where a warm cache costs 126 ms.
+- **The sidebar says when it is busy**, and which of the two things it is
+  doing — an application that looks idle while it is working is one you assume
+  is broken.
+
 ### Added
 
 - **Frontmatter is rendered, as a table at the top of the document.** It was
