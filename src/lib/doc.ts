@@ -47,6 +47,43 @@ export function setDocument(root: HTMLElement, doc: OpenedDocument): void {
   document.dispatchEvent(new CustomEvent(DOCUMENT_EVENT));
 }
 
+/**
+ * The vault-relative path out of a resolved wiki-link's href.
+ *
+ * **Never matched against a fixed prefix.** The href is built from
+ * `AssetRoot::url_prefix()`, which is `marklet://localhost/` on Linux and
+ * `http://marklet.localhost/` on Windows — WebView2 refuses a genuinely custom
+ * scheme, so Tauri serves one over http there. This function matched
+ * `marklet://vault/` for one release, which is neither: it is the string an
+ * *arbitrary test resolver* returns in `render/wikilink.rs`'s unit tests, and
+ * it was read as if it were the format. Every resolved wiki-link failed the
+ * test and the Links panel struck all of them through, while the document
+ * beside it showed them live.
+ *
+ * So: everything after the authority, percent-decoded. The authority is not
+ * inspected at all — what says a link resolved is the renderer's own
+ * `unresolved` class, not the shape of the URL.
+ */
+export function relOfAssetHref(href: string): string | null {
+  const scheme = href.indexOf('://');
+  if (scheme === -1) return null;
+  const slash = href.indexOf('/', scheme + 3);
+  if (slash === -1) return null;
+
+  let rel = href.slice(slash + 1);
+  const cut = rel.search(/[?#]/);
+  if (cut !== -1) rel = rel.slice(0, cut);
+  if (rel === '') return null;
+
+  try {
+    return decodeURIComponent(rel);
+  } catch {
+    // A stray `%` that is not an escape. The raw form is still better than
+    // calling the link unresolved.
+    return rel;
+  }
+}
+
 /** Raised on `document` after {@link setDocument} has replaced the markup. */
 export const DOCUMENT_EVENT = 'marklet-document';
 

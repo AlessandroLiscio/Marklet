@@ -23,6 +23,21 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Fixed
 
+- **Wiki-links are no longer all struck through in the "Links" panel, and
+  clicking one in the document works.** Two faults, one cause: the webview was
+  reading a URL prefix that does not exist. `AssetRoot::url_prefix()` is
+  `marklet://localhost/` on Linux and `http://marklet.localhost/` on Windows —
+  WebView2 refuses a genuinely custom scheme — while the panel matched
+  `marklet://vault/`, which is what an *arbitrary test resolver* returns in
+  `render/wikilink.rs`'s unit tests. It matched on neither platform, so every
+  resolved link was reported as unresolved. Nothing is matched against a prefix
+  now: the renderer's own `unresolved` class says whether a link resolved, and
+  the path is everything after the authority.
+- **Clicking a wiki-link in the document** passed `data-target` — the name as
+  written, `[[demo]]` — to `open_note`, which canonicalizes what it is given
+  against the vault root. A name with no extension resolves to nothing, so
+  every wiki-link click failed. It uses the href the renderer already resolved.
+
 - **Opening a folder no longer freezes the window.** The directory listing was
   lazy, but two other things were not: opening a vault built the wiki-link
   index, and the Search tab walked the whole tree — both as *synchronous*

@@ -20,24 +20,50 @@ function render(html: string): HTMLElement {
 }
 
 describe('collectLinks', () => {
+  /** Exactly what the renderer emits, copied from a real render of `demo/`. */
+  const RESOLVED =
+    '<a class="wikilink" href="marklet://localhost/docs/architecture.md" data-target="docs/architecture">Architecture</a>';
+
   it('reads a resolved wiki-link as its vault-relative path, not its name', () => {
     // The renderer resolved the name when it built the document and put the
     // answer in the href; `open_note` and `open_in_new_window` both take that
-    // path, so reading `data-target` instead would mean resolving it twice.
-    const root = render(
-      '<p data-l="7"><a class="wikilink" href="marklet://vault/docs/architecture.md" data-target="docs/architecture">Architecture</a></p>',
-    );
+    // path, so reading `data-target` instead would mean resolving it twice —
+    // and `data-target` has no extension, which `resolve_path` needs.
+    const root = render(`<p data-l="7">${RESOLVED}</p>`);
     expect(collectLinks(root)).toEqual([
       { kind: 'note', label: 'Architecture', target: 'docs/architecture.md', line: 7 },
     ]);
   });
 
+  it('reads both spellings of the asset scheme', () => {
+    // `AssetRoot::url_prefix()` is `marklet://localhost/` on Linux and
+    // `http://marklet.localhost/` on Windows, because WebView2 refuses a
+    // genuinely custom scheme. Matching a fixed prefix is what broke this:
+    // the string that was matched, `marklet://vault/`, is neither — it is what
+    // an arbitrary *test* resolver returns in `render/wikilink.rs`, read as if
+    // it were the format. Every resolved link was struck through.
+    for (const href of [
+      'marklet://localhost/docs/architecture.md',
+      'http://marklet.localhost/docs/architecture.md',
+    ]) {
+      const root = render(`<p data-l="7"><a class="wikilink" href="${href}">A</a></p>`);
+      expect(collectLinks(root)[0], href).toMatchObject({
+        kind: 'note',
+        target: 'docs/architecture.md',
+      });
+    }
+  });
+
+  it('treats an href with no path as unresolved rather than as a note', () => {
+    const root = render('<p data-l="1"><a class="wikilink" href="marklet://localhost/">X</a></p>');
+    expect(collectLinks(root)[0]?.kind).toBe('unresolved');
+  });
+
   it('percent-decodes the path out of the href', () => {
-    // `index.rs` percent-encodes the path into the `marklet://` URL, so a note
-    // with a space in its name arrives as `%20` — and `open_note` takes the
-    // real path, not the encoded one.
+    // `index.rs` percent-encodes the path into the URL, so a note with a space
+    // in its name arrives as `%20` — and `open_note` takes the real path.
     const root = render(
-      '<p data-l="5"><a class="wikilink" href="marklet://vault/my%20notes/a%20b.md">A B</a></p>',
+      '<p data-l="5"><a class="wikilink" href="marklet://localhost/my%20notes/a%20b.md">A B</a></p>',
     );
     expect(collectLinks(root)[0]?.target).toBe('my notes/a b.md');
   });

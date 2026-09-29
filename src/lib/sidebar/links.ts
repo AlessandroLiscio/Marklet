@@ -11,6 +11,8 @@
  * Pure, and therefore tested: `tests/unit/sidebar-links.test.ts`.
  */
 
+import { relOfAssetHref } from '../doc';
+
 /** What a link points at, which decides both the icon and what a click does. */
 export type LinkKind = 'note' | 'unresolved' | 'web';
 
@@ -30,9 +32,6 @@ export interface DocLink {
   /** The source line of the block the link sits in; 0 when there is none. */
   line: number;
 }
-
-/** What `wikilink::open_tag` writes for a link it resolved. */
-const VAULT_PREFIX = 'marklet://vault/';
 
 function lineOf(el: Element): number {
   const raw = el.closest<HTMLElement>('[data-l]')?.dataset['l'];
@@ -64,12 +63,14 @@ export function collectLinkRows(root: HTMLElement): LinkRow[] {
     const line = lineOf(el);
 
     if (el.classList.contains('wikilink')) {
-      if (el.classList.contains('unresolved') || !href.startsWith(VAULT_PREFIX)) {
+      // The renderer decides: it writes `unresolved` on a link nothing
+      // answered to, and an href on one it resolved.
+      const rel = el.classList.contains('unresolved') ? null : relOfAssetHref(href);
+      if (rel === null) {
         const target = el.dataset['target'] ?? label;
         rows.push({ link: { kind: 'unresolved', label: label || target, target, line }, el });
       } else {
-        const target = decodeURIComponent(href.slice(VAULT_PREFIX.length));
-        rows.push({ link: { kind: 'note', label: label || target, target, line }, el });
+        rows.push({ link: { kind: 'note', label: label || rel, target: rel, line }, el });
       }
       continue;
     }
