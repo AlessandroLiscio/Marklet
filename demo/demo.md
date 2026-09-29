@@ -386,8 +386,9 @@ These resolve only when a vault is open (open the folder, not the file):
 - [[A note that does not exist]] — should render in the *unresolved* style, and
   clicking it should do nothing rather than navigate to a 404
 
-With a vault open, the backlinks panel on any note should list every note pointing at
-it, this one included.
+With a vault open, the **Links** panel at the bottom of the explorer lists all three of
+the links above — two notes and one that resolves to nothing — plus every `https://` link
+elsewhere in this file.
 
 ---
 
@@ -499,8 +500,9 @@ Open the `demo/` folder rather than this file, and you should also get:
 - full-text search across every note, streaming results as it finds them, with no
   index built and nothing cached on disk to go stale,
 - the wiki-links in section 12 resolving,
-- a **Linked from** panel listing what points at the note you are reading —
-  click a row to go there, Ctrl+click to open it in a second window.
+- a **Links** panel listing what the note you are reading points at — notes and web
+  links together, each with its line. Click a note row to follow it, Ctrl+click to open
+  it in a second window; a web link goes to your browser.
 
 On a synthetic 5,000-note vault this measured: first search result in 1 ms, search
 complete in 31 ms, 622 bytes of index per note, 10 MB of RSS for the whole thing.

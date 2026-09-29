@@ -10,9 +10,20 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+### Changed
+
+- **The sidebar's bottom panel is "Links" and points outward.** It listed
+  *backlinks* — the notes pointing at the one being read — and now lists what
+  the open note points at: wiki-links and `https://` links together, in the
+  order they appear, each with its source line. Read out of the rendered
+  document rather than the vault index, which means no round trip, no waiting
+  for the index, and web links included — something a vault graph has no
+  opinion about. A wiki-link that resolves to nothing is struck through and
+  inert. `backlinks_for` is still a command; only its caller changed.
+
 ### Added
 
-- **Ctrl+click a row in "Linked from" opens the note in a second window**, the
+- **Ctrl+click a row in "Links" opens that note in a second window**, the
   way a browser does it. A second window is a second WebView2 instance, which
   is why the settings panel deliberately is not one — but two notes side by
   side is the thing a single-window reader cannot do at all, and the cost is
@@ -22,9 +33,7 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Changed
 
-- **"Linked from" rows are one line with an open glyph**, separated by a rule.
-  The `via [[target]]` line is gone: the target is always the note being read,
-  so it said the same thing on every row.
+- **Rows are one line with an open glyph**, separated by a rule.
 
 ### Fixed
 
@@ -34,13 +43,6 @@ lightweight care about that number, and publishing it keeps us honest.
   excerpt read as one uniform block with no sign of what had matched. The match
   now takes the accent colour and a heavier weight, with the wash only giving
   the run an edge.
-- **The backlinks rows say what points where.** Every row led with the note's
-  H1 over a bare `[[target]] · line 3` — and the target is always the note you
-  are already reading, so each row repeated the same thing and named the source
-  it came from last, or not at all. The path leads now, with its line, laid out
-  exactly like a search hit; the heading reads "Linked from" rather than
-  "Backlinks", which is jargon that does not say which way the arrow points.
-
 - **Scrolling the preview in split view now moves the editor with it**, and
   stops undoing itself. `visibleLine()` — the one number scroll sync, scroll
   restore and the outline's scroll-spy all read — measured each block against

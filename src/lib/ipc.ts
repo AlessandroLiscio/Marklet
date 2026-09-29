@@ -502,6 +502,13 @@ export function resolveWikilink(target: string): Promise<NoteMeta | null> {
 /**
  * Every note linking to `path`.
  *
+ * **No panel consumes this right now.** The sidebar's bottom panel showed
+ * backlinks for one release and was turned around: what a reader wants while
+ * reading is the list they can act on — what *this* note points at, web links
+ * included, which a vault graph has no opinion about. The command is still
+ * correct and still the only way to ask the question; see
+ * `src/lib/sidebar/links.ts` for what replaced its caller.
+ *
  * The key is `note`, because that is what `ipc.rs` calls the parameter. It
  * said `path` here for five months and every backlinks lookup was rejected
  * before it ran — `scripts/check-ipc-args.mjs` exists so that cannot happen
