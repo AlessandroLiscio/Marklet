@@ -762,6 +762,36 @@ mod tests {
         assert!(index.backlinks_for("Target.md").is_empty());
     }
 
+    /// The href a wiki-link carries is `<scheme>://<authority>/<vault path>`.
+    ///
+    /// `src/lib/doc.ts`'s `relOfAssetHref` takes everything after the
+    /// authority and hands it to `open_note`, so the shape is a contract
+    /// across the boundary — and the *prefix itself* is not, because it
+    /// differs by platform: WebView2 refuses a custom scheme, so Windows gets
+    /// `http://marklet.localhost/` where Linux gets `marklet://localhost/`.
+    /// The webview matched a third string, `marklet://vault/`, which is what
+    /// an arbitrary test resolver in `render/wikilink.rs` returns; every
+    /// resolved wiki-link was therefore reported as unresolved.
+    #[test]
+    fn a_resolved_href_is_the_asset_prefix_plus_the_vault_path() {
+        let s = Sandbox::new("index-href-shape");
+        s.note("sub/note.md", "# Note\n");
+        let index = build(&s);
+
+        let href = index.resolve_href("note").expect("resolved");
+        let prefix = AssetRoot::url_prefix();
+        assert!(
+            href.starts_with(prefix),
+            "{href} does not start with {prefix}"
+        );
+        assert!(prefix.contains("://") && prefix.ends_with('/'), "{prefix}");
+        assert_eq!(
+            &href[prefix.len()..],
+            "sub/note.md",
+            "everything after the authority is the vault-relative path"
+        );
+    }
+
     #[test]
     fn titles_prefer_frontmatter_then_h1_then_the_filename() {
         let s = Sandbox::new("index-titles");

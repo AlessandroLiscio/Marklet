@@ -11,7 +11,14 @@
   import { onDestroy, onMount } from 'svelte';
 
   import ActivityBar, { type PanelId } from './lib/chrome/activity-bar.svelte';
-  import { currentDocument, revealLine, scrollToLine, setDocument, visibleLine } from './lib/doc';
+  import {
+    currentDocument,
+    relOfAssetHref,
+    revealLine,
+    scrollToLine,
+    setDocument,
+    visibleLine,
+  } from './lib/doc';
   import { createEditController, type EditController, type EditMode } from './lib/edit';
   import Outline from './lib/outline.svelte';
   import SettingsPanel from './lib/settings/panel.svelte';
@@ -157,10 +164,20 @@
     const target = anchor?.classList.contains('wikilink') ? anchor : null;
     if (!target) return;
 
-    const note = target.dataset['target'];
-    if (!note || target.classList.contains('unresolved')) {
+    if (target.classList.contains('unresolved')) {
       // An unresolved wiki-link points at a note nobody has written yet. Doing
       // nothing is the honest response; navigating to a 404 is not.
+      event.preventDefault();
+      return;
+    }
+
+    // The **href**, not `data-target`. `data-target` is the name as the author
+    // wrote it — `[[demo]]` — and `open_note` canonicalizes what it is given
+    // against the vault root, so a name without an extension resolved to
+    // nothing and every wiki-link click failed. The renderer already did the
+    // resolution and put the answer in the href.
+    const note = relOfAssetHref(target.getAttribute('href') ?? '');
+    if (note === null) {
       event.preventDefault();
       return;
     }
