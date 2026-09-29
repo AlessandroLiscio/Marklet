@@ -12,7 +12,7 @@
    * `innerHTML`. `onopen` is how this panel asks for a note, not how it renders
    * one.
    */
-  import Backlinks from './backlinks.svelte';
+  import Links from './links.svelte';
   import SearchPanel from './search.svelte';
   import Tree from './tree.svelte';
   import {
@@ -209,8 +209,11 @@
     />
   {/if}
 
+  <!-- Keyed on the index build: a wiki-link that could not resolve when the
+       document was rendered resolves once the index exists, and the row has to
+       be read again to see it. -->
   {#key indexed}
-    <Backlinks path={active} onopen={(path, line) => onopen?.(path, line)} />
+    <Links path={active} onopen={(path, line) => onopen?.(path, line)} />
   {/key}
 </aside>
 

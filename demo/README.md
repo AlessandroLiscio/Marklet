@@ -19,11 +19,14 @@ linking to it; a hundred would show the same behaviour and hide it in scrolling.
 
 ## What to look at here specifically
 
-Open `demo.md` and look at the **Linked from** panel at the bottom of the explorer: this
-note and `docs/architecture.md` both point at it, so both should be listed, each with the
-line the link is on. Ctrl+click a row to open it in a second window.
+Open this note and look at the **Links** panel at the bottom of the explorer. It lists
+what *this* file points at, in the order the links appear:
 
-Then open this note. Its own **Linked from** should list `demo.md`, which links to
-[[README]] in section 12 — the other direction of the same edge.
+- [[demo]] and [[docs/architecture]], as notes, with the line each one is on,
+- [the repository](https://github.com/AlessandroLiscio/Marklet), as a web link — a globe
+  rather than a page, and clicking it opens your browser rather than replacing the
+  document,
+- [[A note nobody has written]], struck through and inert, because nothing in this folder
+  answers to that name.
 
-See also [[docs/architecture]].
+Click a note row to follow it; Ctrl+click to open it in a second window.
