@@ -10,48 +10,6 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
-### Changed
-
-- **Opening a folder walks nothing.** It listed the top level lazily and then
-  did two things that were not lazy at all: it built the wiki-link index, and
-  the Search tab ran a full walk before its first query. Neither is needed when
-  a folder is opened. The index is built when a document on screen turns out to
-  contain a wiki-link that did not resolve — once per vault, and never for a
-  note that has no `[[link]]` in it. The Search tab's walk is gone outright:
-  nothing consumed it, because `vault::search::search` takes the root and walks
-  it itself, per query. Opening a folder is now one directory listing.
-
-### Fixed
-
-- **Wiki-links are no longer all struck through in the "Links" panel, and
-  clicking one in the document works.** Two faults, one cause: the webview was
-  reading a URL prefix that does not exist. `AssetRoot::url_prefix()` is
-  `marklet://localhost/` on Linux and `http://marklet.localhost/` on Windows —
-  WebView2 refuses a genuinely custom scheme — while the panel matched
-  `marklet://vault/`, which is what an *arbitrary test resolver* returns in
-  `render/wikilink.rs`'s unit tests. It matched on neither platform, so every
-  resolved link was reported as unresolved. Nothing is matched against a prefix
-  now: the renderer's own `unresolved` class says whether a link resolved, and
-  the path is everything after the authority.
-- **Clicking a wiki-link in the document** passed `data-target` — the name as
-  written, `[[demo]]` — to `open_note`, which canonicalizes what it is given
-  against the vault root. A name with no extension resolves to nothing, so
-  every wiki-link click failed. It uses the href the renderer already resolved.
-
-- **Opening a folder no longer freezes the window.** The directory listing was
-  lazy, but two other things were not: opening a vault built the wiki-link
-  index, and the Search tab walked the whole tree — both as *synchronous*
-  Tauri commands, which run on the thread that draws the window. On a tree of
-  1 976 notes that is 1 358 ms of walking plus 865 ms of parsing with the
-  application unresponsive, and several times that on NTFS with a scanner in
-  the path. Both now run off the main thread.
-- **The index cache is actually used.** `index_vault` computed the cache
-  directory and then passed `None`, so every open re-read and re-parsed every
-  note: 865 ms where a warm cache costs 126 ms.
-- **The sidebar says when it is busy**, and which of the two things it is
-  doing — an application that looks idle while it is working is one you assume
-  is broken.
-
 ### Added
 
 - **Frontmatter is rendered, as a table at the top of the document.** It was
@@ -63,7 +21,28 @@ lightweight care about that number, and publishing it keeps us honest.
   because `serde_json::Map` is a `BTreeMap` and would have sorted
   `argument-hint` above `name`.
 
+- **A jump points at what it went to.** Clicking a row in "Links" scrolls to
+  the link and flashes it; clicking a search hit opens the note, scrolls to the
+  line and flashes the **whole block** it landed in — the passage the search
+  row showed, not the few characters that matched inside it. Scrolling alone
+  was half an answer: a viewport that has moved does not say which of the forty
+  things now on screen was the one asked for. The search hit's line was being
+  dropped entirely, so a hit opened its file at the top.
+
+- **A draggable divider between the split columns.** Double-click, `Home` or
+  `Enter` re-centres it; with it focused the arrow keys move it (`Shift` for
+  larger steps).
+
 ### Changed
+
+- **Opening a folder walks nothing.** It listed the top level lazily and then
+  did two things that were not lazy at all: it built the wiki-link index, and
+  the Search tab ran a full walk before its first query. Neither is needed when
+  a folder is opened. The index is built when a document on screen turns out to
+  contain a wiki-link that did not resolve — once per vault, and never for a
+  note that has no `[[link]]` in it. The Search tab's walk is gone outright:
+  nothing consumed it, because `vault::search::search` takes the root and walks
+  it itself, per query. Opening a folder is now one directory listing.
 
 - **Clicking a row in "Links" scrolls to where the link is written**; following
   it is the button on the right. Two destinations were behind one gesture, and
@@ -79,83 +58,7 @@ lightweight care about that number, and publishing it keeps us honest.
   opinion about. A wiki-link that resolves to nothing is struck through and
   inert. `backlinks_for` is still a command; only its caller changed.
 
-### Added
-
-- **A jump points at what it went to.** Clicking a row in "Links" scrolls to
-  the link and flashes it; clicking a search hit opens the note, scrolls to the
-  line and flashes the **whole block** it landed in — the passage the search
-  row showed, not the few characters that matched inside it. Scrolling alone
-  was half an answer: a viewport that has moved does not say which of the forty
-  things now on screen was the one asked for. The search hit's line was being
-  dropped entirely, so a hit opened its file at the top.
-
-### Fixed
-
-- **The Links panel kept showing links that were no longer in the document.**
-  It re-read the document when the `path` prop changed, and a document is also
-  replaced *without* its path changing — re-rendered once the index exists so
-  its wiki-links resolve, or reloaded by the watcher after a save. So the
-  document was fixed and the panel still listed every wiki-link struck through,
-  pointing at notes visible in the tree beside it. `setDocument` announces the
-  replacement now, and the panel listens for that instead.
-- **Wiki-links resolve after the vault opens.** Resolution happens in Rust when
-  the HTML is built, not when a link is clicked, so a document rendered before
-  there was an index had every `[[link]]` struck through for good — and *every*
-  document opened at launch is in that state, because `lib.rs` renders it
-  before a vault exists. Opening the explorer on a file therefore showed a
-  panel of dead links pointing at notes sitting right beside it. The document
-  is rendered again once the index is built, keeping the reading position, and
-  only when it actually holds an unresolved link.
-- **The welcome screen goes when a folder is chosen**, rather than staying
-  behind the explorer until a note is opened.
-
-### Added
-
-- **Ctrl+click the open button in "Links" opens that note in a second window**, the
-  way a browser does it. A second window is a second WebView2 instance, which
-  is why the settings panel deliberately is not one — but two notes side by
-  side is the thing a single-window reader cannot do at all, and the cost is
-  paid when asked for rather than at every launch. The new window renders its
-  document on the first frame, like the launch path, and carries the vault with
-  it so its explorer works.
-
-### Changed
-
 - **Rows are one line with an open glyph**, separated by a rule.
-
-### Fixed
-
-- **The search match is visible in the excerpt again.** It was marked with
-  `--accent-muted` as a background and nothing else, and in dark mode that
-  token is `oklch(0.24 …)` — a near-black amber on a near-black panel. The
-  excerpt read as one uniform block with no sign of what had matched. The match
-  now takes the accent colour and a heavier weight, with the wash only giving
-  the run an edge.
-- **Scrolling the preview in split view now moves the editor with it**, and
-  stops undoing itself. `visibleLine()` — the one number scroll sync, scroll
-  restore and the outline's scroll-spy all read — measured each block against
-  `#doc`'s own box. `#doc` scrolls with the document, so what it computed was
-  the block's offset *inside* the document, which does not change when you
-  scroll: it returned 0 at every position. Split view therefore told the editor
-  to go to line 0 on every preview scroll and then pulled the preview to the top
-  to match. Scroll restore across a reflow restored to the top for the same
-  reason, and the outline highlighted the first heading forever.
-- **Search results appear again.** Rust emitted each hit as a `(id, hit)`
-  *tuple*, which is a JSON array, while the webview destructured `{ id, hit }`
-  from it — so every hit arrived as `undefined`. A second fault sat behind it:
-  the panel only accepted hits while a `running` flag was set, and the command's
-  own response (which clears it) arrives before the hit events do, so even a
-  correct payload would have been dropped. Hits are now matched on the search id
-  Rust already tags them with.
-- **Backlinks and wiki-links work at all.** Two independent reasons they could
-  not: nothing in the application ever called `index_vault`, so the wiki-link
-  index was never built; and `OpenedDocument` had no vault-relative path, so the
-  webview passed the absolute one to a lookup keyed on the relative one. The
-  index is now built in the background when a folder is opened, and the document
-  carries its `rel`. The open note is also highlighted in the tree now, which
-  failed on the same mismatch.
-
-### Changed
 
 - **One scrollbar in split view**, at the window's right edge. The editor still
   scrolls by wheel, keyboard and the line link; it no longer draws a second bar
@@ -217,8 +120,6 @@ lightweight care about that number, and publishing it keeps us honest.
   Previously the session kept the old file's text and spliced its edits into the
   old file's path.
 
-### Changed
-
 - **Double-click to open** in the explorer, and one click to select — the
   gesture every file explorer uses. `Enter` opens from the keyboard.
 - **Non-Markdown files are listed**, dimmed and not openable. A folder shown
@@ -228,11 +129,84 @@ lightweight care about that number, and publishing it keeps us honest.
   filled when it is on. It changes how the document is shown rather than what is
   beside it, which is not what the activity bar is for.
 
-### Added
+### Fixed
 
-- **A draggable divider between the split columns.** Double-click, `Home` or
-  `Enter` re-centres it; with it focused the arrow keys move it (`Shift` for
-  larger steps).
+- **Wiki-links are no longer all struck through in the "Links" panel, and
+  clicking one in the document works.** Two faults, one cause: the webview was
+  reading a URL prefix that does not exist. `AssetRoot::url_prefix()` is
+  `marklet://localhost/` on Linux and `http://marklet.localhost/` on Windows —
+  WebView2 refuses a genuinely custom scheme — while the panel matched
+  `marklet://vault/`, which is what an *arbitrary test resolver* returns in
+  `render/wikilink.rs`'s unit tests. It matched on neither platform, so every
+  resolved link was reported as unresolved. Nothing is matched against a prefix
+  now: the renderer's own `unresolved` class says whether a link resolved, and
+  the path is everything after the authority.
+- **Clicking a wiki-link in the document** passed `data-target` — the name as
+  written, `[[demo]]` — to `open_note`, which canonicalizes what it is given
+  against the vault root. A name with no extension resolves to nothing, so
+  every wiki-link click failed. It uses the href the renderer already resolved.
+
+- **Opening a folder no longer freezes the window.** The directory listing was
+  lazy, but two other things were not: opening a vault built the wiki-link
+  index, and the Search tab walked the whole tree — both as *synchronous*
+  Tauri commands, which run on the thread that draws the window. On a tree of
+  1 976 notes that is 1 358 ms of walking plus 865 ms of parsing with the
+  application unresponsive, and several times that on NTFS with a scanner in
+  the path. Both now run off the main thread.
+- **The index cache is actually used.** `index_vault` computed the cache
+  directory and then passed `None`, so every open re-read and re-parsed every
+  note: 865 ms where a warm cache costs 126 ms.
+- **The sidebar says when it is busy**, and which of the two things it is
+  doing — an application that looks idle while it is working is one you assume
+  is broken.
+
+- **The Links panel kept showing links that were no longer in the document.**
+  It re-read the document when the `path` prop changed, and a document is also
+  replaced *without* its path changing — re-rendered once the index exists so
+  its wiki-links resolve, or reloaded by the watcher after a save. So the
+  document was fixed and the panel still listed every wiki-link struck through,
+  pointing at notes visible in the tree beside it. `setDocument` announces the
+  replacement now, and the panel listens for that instead.
+- **Wiki-links resolve after the vault opens.** Resolution happens in Rust when
+  the HTML is built, not when a link is clicked, so a document rendered before
+  there was an index had every `[[link]]` struck through for good — and *every*
+  document opened at launch is in that state, because `lib.rs` renders it
+  before a vault exists. Opening the explorer on a file therefore showed a
+  panel of dead links pointing at notes sitting right beside it. The document
+  is rendered again once the index is built, keeping the reading position, and
+  only when it actually holds an unresolved link.
+- **The welcome screen goes when a folder is chosen**, rather than staying
+  behind the explorer until a note is opened.
+
+- **The search match is visible in the excerpt again.** It was marked with
+  `--accent-muted` as a background and nothing else, and in dark mode that
+  token is `oklch(0.24 …)` — a near-black amber on a near-black panel. The
+  excerpt read as one uniform block with no sign of what had matched. The match
+  now takes the accent colour and a heavier weight, with the wash only giving
+  the run an edge.
+- **Scrolling the preview in split view now moves the editor with it**, and
+  stops undoing itself. `visibleLine()` — the one number scroll sync, scroll
+  restore and the outline's scroll-spy all read — measured each block against
+  `#doc`'s own box. `#doc` scrolls with the document, so what it computed was
+  the block's offset *inside* the document, which does not change when you
+  scroll: it returned 0 at every position. Split view therefore told the editor
+  to go to line 0 on every preview scroll and then pulled the preview to the top
+  to match. Scroll restore across a reflow restored to the top for the same
+  reason, and the outline highlighted the first heading forever.
+- **Search results appear again.** Rust emitted each hit as a `(id, hit)`
+  *tuple*, which is a JSON array, while the webview destructured `{ id, hit }`
+  from it — so every hit arrived as `undefined`. A second fault sat behind it:
+  the panel only accepted hits while a `running` flag was set, and the command's
+  own response (which clears it) arrives before the hit events do, so even a
+  correct payload would have been dropped. Hits are now matched on the search id
+  Rust already tags them with.
+- **Backlinks and wiki-links work at all.** Two independent reasons they could
+  not: nothing in the application ever called `index_vault`, so the wiki-link
+  index was never built; and `OpenedDocument` had no vault-relative path, so the
+  webview passed the absolute one to a lookup keyed on the relative one. The
+  index is now built in the background when a folder is opened, and the document
+  carries its `rel`. The open note is also highlighted in the tree now, which
+  failed on the same mismatch.
 
 ## [0.1.0] — 2026-09-25
 

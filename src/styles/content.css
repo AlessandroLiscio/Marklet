@@ -27,6 +27,10 @@ body {
      is the only thing that knows whether a panel is open; the document stays
      centred in whatever width is left rather than sliding under the panel. */
   padding-inline-start: var(--chrome-inset, var(--activity-bar-size));
+  /* The tab strip, when there is one. `app.svelte` publishes `0px` while a
+     single document is open, so the reading column sits exactly where it did
+     before tabs existed — most launches are a double click on one file. */
+  padding-block-start: var(--tabbar-height, 0px);
   transition: padding-inline-start var(--duration-base) ease;
   background: var(--bg);
   color: var(--fg);

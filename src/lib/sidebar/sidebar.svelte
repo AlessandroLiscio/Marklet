@@ -23,8 +23,8 @@
     vaultPath?: string | null;
     /** The open note, vault-relative — highlighted, and its backlinks shown. */
     active?: string | null;
-    /** Opens a note. `line` scrolls to it and highlights the block it is in. */
-    onopen?: (path: string, line?: number) => void;
+    /** Opens a note in its own tab. `line` scrolls to it and highlights it. */
+    onopen?: (path: string, options?: { line?: number }) => void;
     /**
      * The wiki-link index is being built, by the app shell.
      *
@@ -146,7 +146,7 @@
   {:else}
     <SearchPanel
       enabled={info !== null}
-      onopen={(path, line) => onopen?.(path, line)}
+      onopen={(path, line) => onopen?.(path, { line })}
     />
   {/if}
 

@@ -28,7 +28,9 @@
    open — on top of the source text. */
 #editor {
   position: fixed;
-  inset-block: 0;
+  /* Below the tab strip, like the reading column beside it. */
+  inset-block-start: var(--tabbar-height, 0px);
+  inset-block-end: 0;
   inset-inline-start: var(--chrome-inset, var(--activity-bar-size));
   inline-size: calc(100vw - var(--chrome-inset, var(--activity-bar-size)));
   background: var(--bg);

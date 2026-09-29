@@ -11,6 +11,7 @@
   import { onDestroy, onMount } from 'svelte';
 
   import ActivityBar, { type PanelId } from './lib/chrome/activity-bar.svelte';
+  import TabBar from './lib/chrome/tabbar.svelte';
   import {
     currentDocument,
     relOfAssetHref,
@@ -23,6 +24,16 @@
   import Outline from './lib/outline.svelte';
   import SettingsPanel from './lib/settings/panel.svelte';
   import Sidebar from './lib/sidebar/sidebar.svelte';
+  import {
+    activateTab,
+    activeTab,
+    closeTab,
+    cycle,
+    EMPTY,
+    openTab,
+    rememberLine,
+    type TabState,
+  } from './lib/tabs';
   import {
     exportHtml,
     exportPdf,
@@ -40,6 +51,34 @@
   } from './lib/ipc';
 
   let doc = $state<OpenedDocument | null>(currentDocument());
+
+  /**
+   * The open documents.
+   *
+   * A tab is a record — see `lib/tabs.ts`. Only the active one's markup is in
+   * the DOM, and switching re-renders from disk, which is the same path the
+   * watcher's live reload already takes on every save.
+   *
+   * Seeded from whatever the boot script put on screen, so the document opened
+   * by double-clicking a file is tab one rather than something the strip
+   * learns about later.
+   */
+  let tabState = $state<TabState>(seedTabs());
+
+  /** The strip at launch: whatever the boot script already put on screen. */
+  function seedTabs(): TabState {
+    const boot = currentDocument();
+    if (boot === null) return EMPTY;
+    return { tabs: [{ path: boot.path, rel: boot.rel, title: boot.title, line: 0 }], active: 0 };
+  }
+
+  /** Published for `content.css` and the split toggle, which sit under it. */
+  $effect(() => {
+    document.documentElement.style.setProperty(
+      '--tabbar-height',
+      tabState.tabs.length > 1 ? '2.25rem' : '0px'
+    );
+  });
   let mode = $state<EditMode>('read');
   /** The one transient line of feedback: an export's result, or a refusal. */
   let notice = $state<{ text: string; bad: boolean } | null>(null);
@@ -107,6 +146,97 @@
    * document containing none of those must download none of them. The import
    * itself is cheap; what it loads is decided by sniffing inside `enrich`.
    */
+  /** How a document was asked for. */
+  interface OpenOptions {
+    /** A source line to reveal once it is on screen. */
+    line?: number;
+  }
+
+  /**
+   * Opens a document in a tab, or reveals the tab it is already in.
+   *
+   * The document is read before the tab is recorded, so a file that cannot be
+   * opened does not leave a tab behind pointing at it.
+   */
+  async function openInTab(path: string, options: OpenOptions = {}): Promise<void> {
+    let opened: OpenedDocument;
+    try {
+      opened = await openDocument(path);
+    } catch (error) {
+      say(reason(error), true);
+      return;
+    }
+
+    const line = options.line ?? 0;
+    tabState = openTab(rememberLine(tabState, doc === null ? 0 : visibleLine()), {
+      path: opened.path,
+      rel: opened.rel,
+      title: opened.title,
+      line,
+    });
+
+    await show(opened);
+    revealAfterPaint(line);
+  }
+
+  /** Shows the tab at `index`, remembering where the reader was in this one. */
+  async function switchTo(index: number): Promise<void> {
+    if (index === tabState.active) return;
+    const next = tabState.tabs[index];
+    if (next === undefined) return;
+
+    tabState = activateTab(rememberLine(tabState, visibleLine()), index);
+    try {
+      await show(await openDocument(next.path));
+    } catch (error) {
+      // The file moved or was deleted while the tab was open. Close it rather
+      // than leave a tab that cannot be shown.
+      say(reason(error), true);
+      tabState = closeTab(tabState, index);
+      void showActive();
+      return;
+    }
+    revealAfterPaint(next.line);
+  }
+
+  /** Closes a tab, and shows whatever takes over. */
+  async function closeAt(index: number): Promise<void> {
+    const wasActive = index === tabState.active;
+    tabState = closeTab(tabState, index);
+    if (wasActive) await showActive();
+  }
+
+  /** Renders whatever the strip now says is active, or clears the view. */
+  async function showActive(): Promise<void> {
+    const active = activeTab(tabState);
+    if (active === null) {
+      const root = document.getElementById('doc');
+      if (root) root.innerHTML = '';
+      doc = null;
+      document.title = 'Marklet';
+      await edit?.setMode('read');
+      return;
+    }
+    try {
+      await show(await openDocument(active.path));
+      revealAfterPaint(active.line);
+    } catch (error) {
+      say(reason(error), true);
+    }
+  }
+
+  /**
+   * Restores a reading position once the new document has settled.
+   *
+   * Two frames, not one: the first commits the markup, the second lets layout
+   * settle so the anchor positions being read are the ones that will be on
+   * screen. The same reasoning as the reflow restore in `settings/model.ts`.
+   */
+  function revealAfterPaint(line: number): void {
+    if (line <= 0) return;
+    requestAnimationFrame(() => requestAnimationFrame(() => revealLine(line)));
+  }
+
   async function show(next: OpenedDocument) {
     const root = document.getElementById('doc');
     if (!root) return;
@@ -183,15 +313,11 @@
     }
 
     event.preventDefault();
-    try {
-      await show((await openNote(note)) as OpenedDocument);
-    } catch (error) {
-      // Said out loud rather than swallowed. Silence here is what hid
-      // `open_note` being called with the wrong argument name for five
-      // months: every wiki-link click was a rejected promise going into an
-      // empty catch, and the link simply looked inert.
-      say(reason(error), true);
-    }
+    // Opens in its own tab, like every other way of reaching a note.
+    // `openFromSidebar` says what went wrong out loud rather than swallowing
+    // it: silence here is what hid `open_note` being called with the wrong
+    // argument name for five months.
+    await openFromSidebar(note);
   }
 
   /**
@@ -311,16 +437,25 @@
    * the second lets layout settle so the anchor positions being read are the
    * ones that will be on screen.
    */
-  async function openFromSidebar(path: string, line?: number): Promise<void> {
+  async function openFromSidebar(path: string, options: OpenOptions = {}): Promise<void> {
+    let opened: OpenedDocument;
     try {
-      await show((await openNote(path)) as OpenedDocument);
+      opened = (await openNote(path)) as OpenedDocument;
     } catch (error) {
       say(reason(error), true);
       return;
     }
-    if (line === undefined || line <= 0) return;
 
-    requestAnimationFrame(() => requestAnimationFrame(() => revealLine(line)));
+    const line = options.line ?? 0;
+    tabState = openTab(rememberLine(tabState, doc === null ? 0 : visibleLine()), {
+      path: opened.path,
+      rel: opened.rel,
+      title: opened.title,
+      line,
+    });
+
+    await show(opened);
+    revealAfterPaint(line);
   }
 
   /**
@@ -473,14 +608,39 @@
         vaultPath = picked;
         panel = 'explorer';
       } else {
-        await show(await openDocument(picked));
+        await openInTab(picked);
       }
     } catch (error) {
       say(reason(error), true);
     }
   }
 
+  /**
+   * The tab shortcuts, checked before the editor sees the keystroke.
+   *
+   * Before, because `Ctrl+W` inside a CodeMirror session still means "close
+   * this document" — the editor has no use for it and a reader who has one
+   * open still expects it to work.
+   */
+  function tabShortcut(event: KeyboardEvent): boolean {
+    if (!event.ctrlKey || event.altKey || event.metaKey) return false;
+
+    if (event.key.toLowerCase() === 'w' && !event.shiftKey) {
+      event.preventDefault();
+      if (tabState.active !== -1) void closeAt(tabState.active);
+      return true;
+    }
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      const next = cycle(tabState, event.shiftKey ? -1 : 1);
+      void switchTo(next.active);
+      return true;
+    }
+    return false;
+  }
+
   function onKeyDown(event: KeyboardEvent): void {
+    if (tabShortcut(event)) return;
     if (edit?.handleKey(event)) return;
     exportShortcut(event);
   }
@@ -553,7 +713,9 @@
       // process, which is what `tauri-plugin-single-instance` buys us.
       unlisten.push(
         await listen<string>('open-file', async (event) => {
-          await show(await openDocument(event.payload));
+          // A second launch forwarded a path here. It becomes a tab, in front,
+          // because the user asked for that file just now.
+          await openInTab(event.payload);
         }),
       );
     })();
@@ -591,7 +753,7 @@
             {vaultPath}
             active={doc?.rel ?? null}
             {indexing}
-            onopen={(path, line) => void openFromSidebar(path, line)}
+            onopen={(path, options) => void openFromSidebar(path, options)}
           />
         {:else}
           <div class="empty-panel">
@@ -611,6 +773,13 @@
 <!-- Floating, bottom-right, and owning its own open state: settings is not a
      view of the document the way the explorer and the outline are. -->
 <SettingsPanel />
+
+<TabBar
+  tabs={tabState.tabs}
+  active={tabState.active}
+  onselect={(i) => void switchTo(i)}
+  onclose={(i) => void closeAt(i)}
+/>
 
 {#if doc}
   <!-- The split toggle sits in the document's own top-right corner, not in
@@ -788,7 +957,8 @@
 
   .split-toggle {
     position: fixed;
-    inset-block-start: var(--space-3);
+    /* Under the tab strip when there is one, so the two never overlap. */
+    inset-block-start: calc(var(--space-3) + var(--tabbar-height, 0px));
     inset-inline-end: var(--space-3);
     display: inline-flex;
     align-items: center;
@@ -825,7 +995,8 @@
      the seam rather than sitting beside it. */
   .divider {
     position: fixed;
-    inset-block: 0;
+    inset-block-start: var(--tabbar-height, 0px);
+    inset-block-end: 0;
     inset-inline-start: var(--split-left, 50vw);
     inline-size: 9px;
     translate: -50% 0;

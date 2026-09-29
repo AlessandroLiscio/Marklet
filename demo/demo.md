@@ -444,6 +444,11 @@ and diagrams rendered.
 | `F4` / `Ctrl+E` | Open this file in your own editor at the cursor |
 | `Esc` | Back to reading |
 
+Every way of opening a note opens a tab: the explorer, a search hit, a wiki-link in the
+document, the Links panel. Nothing replaces what you were reading. The strip appears at the
+top from the second tab onwards — `Ctrl+W` closes one, `Ctrl+Tab` cycles, middle-click
+closes — and opening something already open reveals its tab rather than making a second.
+
 Split view also has a button, in the document's **top-right** corner: filled when it is
 on, outlined when it is off. It is not in the activity bar, because it changes how the
 document is shown rather than what sits beside it.
@@ -504,8 +509,8 @@ Open the `demo/` folder rather than this file, and you should also get:
 - the wiki-links in section 12 resolving,
 - a **Links** panel listing what the note you are reading points at — notes and web
   links together, each with its line. Clicking a row scrolls to where the link is written
-  and flashes it; the button on the right follows it, Ctrl+click for a second window, and
-  a web link goes to your browser.
+  and flashes it; the button on the right opens it **in its own tab**, and a web link goes
+  to your browser.
 
 On a synthetic 5,000-note vault this measured: first search result in 1 ms, search
 complete in 31 ms, 622 bytes of index per note, 10 MB of RSS for the whole thing.
