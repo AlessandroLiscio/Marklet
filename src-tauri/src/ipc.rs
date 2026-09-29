@@ -359,6 +359,64 @@ pub fn open_note(
     open_path(&root, Some(&vault), &path)
 }
 
+/// Opens a note in a **second window**, for Ctrl+click.
+///
+/// A second window is a second WebView2 instance, which is why `--settings`
+/// deliberately is not one: roughly 40 MB of RSS for nine controls. A second
+/// *document* is the case that earns it — two notes side by side is the thing
+/// a single-window reader cannot do at all, and the cost is paid once, when
+/// asked for, rather than at every launch.
+///
+/// The document is rendered here and injected as a boot script, exactly like
+/// the launch path: the new window paints its content on the first frame
+/// instead of opening empty and filling in over IPC. The vault comes with it,
+/// so the new window has the same explorer rather than a dead sidebar.
+///
+/// The label is `doc-<n>`, which `capabilities/default.json` has to allow by
+/// pattern — a window outside that list gets no permissions at all, not
+/// reduced ones, and every `invoke` from it fails.
+#[tauri::command]
+pub fn open_in_new_window(
+    app: tauri::AppHandle,
+    rel: String,
+    root: tauri::State<'_, AssetRoot>,
+    vault: tauri::State<'_, VaultState>,
+) -> Result<(), IpcError> {
+    let path = vault.resolve_path(&rel)?;
+    let doc = open_path(&root, Some(&vault), &path)?;
+
+    let mut script = crate::boot_script(&doc);
+    if let Some(vault_root) = vault.root() {
+        script.push_str(&crate::vault_boot_script(&vault_root.display().to_string()));
+    }
+
+    static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
+    let label = format!(
+        "doc-{}",
+        NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    );
+
+    tauri::WebviewWindowBuilder::new(&app, &label, tauri::WebviewUrl::default())
+        .title(&doc.title)
+        .inner_size(1000.0, 760.0)
+        .min_inner_size(420.0, 320.0)
+        // Shown by the frontend on the first frame that has content, the same
+        // as the main window — an empty white rectangle appearing first is
+        // what this avoids.
+        .visible(false)
+        .initialization_script(&script)
+        .build()
+        .map_err(|e| {
+            IpcError::new(
+                IpcErrorKind::Io,
+                format!("could not open a second window: {e}"),
+                Some(&path),
+            )
+        })?;
+
+    Ok(())
+}
+
 // --- editing (P7) -----------------------------------------------------------
 
 /// What a successful splice leaves behind.

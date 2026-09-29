@@ -170,6 +170,7 @@ pub fn run(job: cli::WindowJob, started: Instant) {
             ipc::list_dir,
             ipc::pick_file,
             ipc::pick_folder,
+            ipc::open_in_new_window,
         ])
         .setup(move |app| {
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
@@ -225,7 +226,7 @@ pub fn run(job: cli::WindowJob, started: Instant) {
 /// contains arbitrary document text, and hand-quoting it would be an injection
 /// bug in the one place that handles untrusted input before the sanitizer's
 /// output reaches the DOM.
-fn boot_script(doc: &ipc::OpenedDocument) -> String {
+pub(crate) fn boot_script(doc: &ipc::OpenedDocument) -> String {
     match serde_json::to_string(doc) {
         Ok(json) => format!("window.__MARKLET_BOOT__ = {};", escape_js_literal(&json)),
         Err(_) => String::new(),
@@ -234,7 +235,7 @@ fn boot_script(doc: &ipc::OpenedDocument) -> String {
 
 /// Tells the frontend a vault is already open, so the sidebar can populate
 /// without a round trip asking which one.
-fn vault_boot_script(path: &str) -> String {
+pub(crate) fn vault_boot_script(path: &str) -> String {
     match serde_json::to_string(path) {
         Ok(json) => format!("window.__MARKLET_VAULT__ = {};", escape_js_literal(&json)),
         Err(_) => String::new(),

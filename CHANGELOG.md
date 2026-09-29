@@ -10,6 +10,22 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+### Added
+
+- **Ctrl+click a row in "Linked from" opens the note in a second window**, the
+  way a browser does it. A second window is a second WebView2 instance, which
+  is why the settings panel deliberately is not one — but two notes side by
+  side is the thing a single-window reader cannot do at all, and the cost is
+  paid when asked for rather than at every launch. The new window renders its
+  document on the first frame, like the launch path, and carries the vault with
+  it so its explorer works.
+
+### Changed
+
+- **"Linked from" rows are one line with an open glyph**, separated by a rule.
+  The `via [[target]]` line is gone: the target is always the note being read,
+  so it said the same thing on every row.
+
 ### Fixed
 
 - **The search match is visible in the excerpt again.** It was marked with
