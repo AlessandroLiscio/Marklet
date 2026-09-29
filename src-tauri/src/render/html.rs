@@ -129,6 +129,11 @@ struct Writer<'o> {
     line_map: Vec<BlockSpan>,
     links: Vec<Link>,
     frontmatter: Option<serde_json::Value>,
+    /// The byte range of the metadata block, kept from its opening tag.
+    ///
+    /// `end()` takes only a `TagEnd`, and the table written for the
+    /// frontmatter needs a `data-l` like every other block.
+    meta_range: Option<Range<usize>>,
 
     slugger: Slugger,
     sanitizer: Sanitizer,
@@ -170,6 +175,7 @@ pub fn write_document(text: &str, opts: &RenderOpts<'_>, encoding: Encoding) -> 
         outline: Vec::new(),
         links: Vec::new(),
         frontmatter: None,
+        meta_range: None,
         slugger: Slugger::new(),
         sanitizer: Sanitizer::new(),
         numbers: HashMap::new(),
@@ -604,6 +610,7 @@ impl Writer<'_> {
             Tag::MetadataBlock(_) => {
                 self.buf.clear();
                 self.mode = TextMode::Metadata;
+                self.meta_range = Some(range.clone());
             }
 
             // Not enabled in `options()`, but the match must stay total so that
@@ -748,12 +755,52 @@ impl Writer<'_> {
                 self.mode = TextMode::Normal;
                 let raw = std::mem::take(&mut self.buf);
                 self.frontmatter = parse_frontmatter(&raw);
+                if let Some(range) = self.meta_range.take() {
+                    self.write_frontmatter(&raw, &range);
+                }
             }
 
             TagEnd::DefinitionList => self.push("</dl>\n"),
             TagEnd::DefinitionListTitle => self.push("</dt>\n"),
             TagEnd::DefinitionListDefinition => self.push("</dd>\n"),
         }
+    }
+
+    /// Writes the frontmatter as a table, at the top of the document.
+    ///
+    /// It used to be parsed and then dropped: the metadata was read for the
+    /// note's title and the block itself rendered to nothing, so a file whose
+    /// first fifteen lines are `name:` / `description:` / `argument-hint:` —
+    /// an agent definition, a skill, a prompt — opened on its body with the
+    /// part that says what the file *is* missing. Both of the editors people
+    /// read these in show it, and as a table.
+    ///
+    /// Written from the raw text rather than from `parse_frontmatter`'s JSON,
+    /// for order: `serde_json::Map` is a `BTreeMap` without the
+    /// `preserve_order` feature, so rendering the parsed value would list the
+    /// keys alphabetically and `argument-hint` would come before `name`. A
+    /// file's own order is information.
+    fn write_frontmatter(&mut self, raw: &str, range: &Range<usize>) {
+        let rows = frontmatter_rows(raw);
+        if rows.is_empty() {
+            return;
+        }
+
+        let line = self.block(range);
+        self.block_break();
+
+        let mut html = String::from("<table class=\"frontmatter\" data-l=\"");
+        html.push_str(itoa(line).as_str());
+        html.push_str("\"><tbody>");
+        for (key, value) in rows {
+            html.push_str("<tr><th scope=\"row\">");
+            escape_html(&key, &mut html);
+            html.push_str("</th><td>");
+            escape_html(&value, &mut html);
+            html.push_str("</td></tr>");
+        }
+        html.push_str("</tbody></table>\n");
+        self.push(&html);
     }
 
     fn finish_heading(&mut self) {
@@ -904,6 +951,77 @@ impl ArrayStr {
     }
 }
 
+/// The frontmatter as display pairs, **in the order the file wrote them**.
+///
+/// The same flat subset `parse_frontmatter` accepts, and the same skipping
+/// rules, but keeping order and flattening every value to one string: a list
+/// becomes `a, b, c`, whether it was written inline or as a block sequence.
+/// Quotes come off scalars the way `scalar` takes them off, so a YAML-quoted
+/// value does not read as if the quotes were part of it.
+pub fn frontmatter_rows(raw: &str) -> Vec<(String, String)> {
+    let mut rows: Vec<(String, String)> = Vec::new();
+    let mut pending: Option<(String, Vec<String>)> = None;
+
+    fn unquote(s: &str) -> String {
+        let s = s.trim();
+        let quoted =
+            (s.starts_with('"') && s.ends_with('"')) || (s.starts_with('\'') && s.ends_with('\''));
+        if quoted && s.len() >= 2 {
+            s[1..s.len() - 1].to_string()
+        } else {
+            s.to_string()
+        }
+    }
+
+    fn flush(pending: &mut Option<(String, Vec<String>)>, rows: &mut Vec<(String, String)>) {
+        if let Some((key, items)) = pending.take() {
+            rows.push((key, items.join(", ")));
+        }
+    }
+
+    for line in raw.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') || trimmed == "---" {
+            continue;
+        }
+
+        if let Some(item) = trimmed.strip_prefix("- ") {
+            if let Some((_, items)) = pending.as_mut() {
+                items.push(unquote(item));
+                continue;
+            }
+        }
+
+        flush(&mut pending, &mut rows);
+
+        let Some((key, rest)) = trimmed.split_once(':') else {
+            continue;
+        };
+        let key = key.trim();
+        if key.is_empty() {
+            continue;
+        }
+        let rest = rest.trim();
+
+        if rest.is_empty() {
+            pending = Some((key.to_string(), Vec::new()));
+        } else if let Some(inner) = rest.strip_prefix('[').and_then(|r| r.strip_suffix(']')) {
+            let items: Vec<String> = inner
+                .split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(unquote)
+                .collect();
+            rows.push((key.to_string(), items.join(", ")));
+        } else {
+            rows.push((key.to_string(), unquote(rest)));
+        }
+    }
+
+    flush(&mut pending, &mut rows);
+    rows
+}
+
 /// Parses the flat subset of YAML that markdown frontmatter actually uses.
 ///
 /// Supported: `key: scalar`, `key: [a, b]`, and a block sequence of `- item`
@@ -1018,6 +1136,58 @@ mod tests {
         for n in [0usize, 1, 9, 10, 99, 100, 12345, usize::MAX] {
             assert_eq!(itoa(n).as_str(), n.to_string());
         }
+    }
+
+    /// The rows keep the file's order, which the parsed value cannot.
+    ///
+    /// `serde_json::Map` is a `BTreeMap` without the `preserve_order` feature,
+    /// so rendering from `parse_frontmatter` would list `argument-hint` before
+    /// `name` in an agent definition. A file's own order is information.
+    #[test]
+    fn frontmatter_rows_keep_the_order_the_file_wrote() {
+        let rows = frontmatter_rows(
+            "name: 'Frontend Designer'\ndescription: \"Arbitrates three catalogs\"\nargument-hint: page or component\n",
+        );
+        assert_eq!(
+            rows,
+            vec![
+                ("name".to_string(), "Frontend Designer".to_string()),
+                (
+                    "description".to_string(),
+                    "Arbitrates three catalogs".to_string()
+                ),
+                ("argument-hint".to_string(), "page or component".to_string()),
+            ],
+            "order kept, and the YAML quotes are not part of the value"
+        );
+    }
+
+    #[test]
+    fn frontmatter_rows_flatten_both_spellings_of_a_list() {
+        // Inline and block sequences are the same thing to a reader.
+        let rows = frontmatter_rows("tags: [a, b]\nkeys:\n  - one\n  - two\nafter: x\n");
+        assert_eq!(
+            rows,
+            vec![
+                ("tags".to_string(), "a, b".to_string()),
+                ("keys".to_string(), "one, two".to_string()),
+                ("after".to_string(), "x".to_string()),
+            ],
+            "a block sequence must not swallow the key that follows it"
+        );
+    }
+
+    #[test]
+    fn frontmatter_rows_skip_what_the_parser_skips() {
+        // Comments, the fences, blank lines, and a line with no colon at all.
+        assert_eq!(
+            frontmatter_rows("---\n# a comment\n\nnot a pair\nk: v\n---\n"),
+            vec![("k".to_string(), "v".to_string())]
+        );
+        assert!(
+            frontmatter_rows("").is_empty(),
+            "an empty block writes no table"
+        );
     }
 
     #[test]

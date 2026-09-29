@@ -314,8 +314,14 @@ mod tests {
         assert!(doc.links.iter().all(|l| l.wiki));
     }
 
+    /// Parsed for the title, **and** rendered as a table.
+    ///
+    /// It was parsed and dropped for one release. A file whose first fifteen
+    /// lines are `name:` / `description:` / `argument-hint:` — an agent
+    /// definition, a skill, a prompt — therefore opened on its body with the
+    /// part that says what the file is missing entirely.
     #[test]
-    fn frontmatter_is_parsed_and_not_rendered() {
+    fn frontmatter_is_parsed_and_rendered_as_a_table() {
         let doc = render(
             b"---\ntitle: Test\ntags: [a, b]\n---\n\n# H\n",
             RenderOpts::default(),
@@ -323,7 +329,42 @@ mod tests {
         let fm = doc.frontmatter.expect("frontmatter");
         assert_eq!(fm["title"], "Test");
         assert_eq!(fm["tags"][0], "a");
-        assert!(!doc.html.contains("title:"), "got {}", doc.html);
+
+        assert!(
+            doc.html
+                .contains(r#"<table class="frontmatter" data-l="1">"#),
+            "got {}",
+            doc.html
+        );
+        assert!(doc
+            .html
+            .contains("<th scope=\"row\">title</th><td>Test</td>"));
+        assert!(
+            doc.html.contains("<td>a, b</td>"),
+            "a list is flattened for display"
+        );
+        assert!(
+            !doc.html.contains("title:"),
+            "the raw YAML is never written out: {}",
+            doc.html
+        );
+    }
+
+    /// A document with no frontmatter gains no empty table.
+    #[test]
+    fn no_frontmatter_writes_no_table() {
+        let doc = render(b"# H\n\nBody.\n", RenderOpts::default());
+        assert!(!doc.html.contains("frontmatter"), "got {}", doc.html);
+    }
+
+    /// The table is a block like any other, so it is in the line map.
+    ///
+    /// `tests/fixtures.rs` asserts one `line_map` entry per `data-l` across
+    /// the whole corpus; this is the same rule stated where it is produced.
+    #[test]
+    fn the_frontmatter_table_is_in_the_line_map() {
+        let doc = render(b"---\nk: v\n---\n\n# H\n", RenderOpts::default());
+        assert_eq!(doc.line_map.first().map(|b| b.line), Some(1));
     }
 
     #[test]

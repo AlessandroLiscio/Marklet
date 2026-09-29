@@ -93,6 +93,44 @@ The fixture corpus in `tests/fixtures/` includes `javascript:` hrefs, `onerror=`
 
 `ammonia` is not an option — it pulls `html5ever` for roughly +1.2 MB.
 
+## Frontmatter
+
+Parsed into `RenderedDoc.frontmatter` for the title and the index, **and** written into
+the document as a table:
+
+```html
+<table class="frontmatter" data-l="1"><tbody>
+<tr><th scope="row">name</th><td>Frontend Designer</td></tr>
+</tbody></table>
+```
+
+It is a block like any other: one `data-l`, one `line_map` entry, first in both.
+
+The table is built by `frontmatter_rows`, from the **raw text**, not from the parsed
+`serde_json::Value` — that is a `BTreeMap` without the `preserve_order` feature, so
+rendering from it would sort the keys and put `argument-hint` above `name`. A file's own
+order is information. Lists flatten to `a, b, c` from either spelling; quotes come off
+scalars.
+
+## Frontmatter
+
+Parsed into `RenderedDoc.frontmatter` for the title and the index, **and** written into
+the document as a table:
+
+```html
+<table class="frontmatter" data-l="1"><tbody>
+<tr><th scope="row">name</th><td>Frontend Designer</td></tr>
+</tbody></table>
+```
+
+It is a block like any other: one `data-l`, one `line_map` entry, first in both.
+
+The table is built by `frontmatter_rows`, from the **raw text**, not from the parsed
+`serde_json::Value` — that is a `BTreeMap` without the `preserve_order` feature, so
+rendering from it would sort the keys and put `argument-hint` above `name`. A file's own
+order is information. Lists flatten to `a, b, c` from either spelling; quotes come off
+scalars.
+
 ## Heading slugs
 
 GitHub-compatible, because people paste GitHub anchors: lowercase, strip punctuation,

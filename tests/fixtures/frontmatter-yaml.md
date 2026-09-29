@@ -6,4 +6,4 @@ weight: 12
 
 # Body
 
-The frontmatter is parsed, never rendered.
+The frontmatter is parsed for the title *and* rendered, as a table above this heading.
