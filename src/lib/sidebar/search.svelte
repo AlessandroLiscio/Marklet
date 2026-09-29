@@ -23,6 +23,7 @@
   interface Props {
     /** Reported by the sidebar so search can be disabled without a vault. */
     enabled?: boolean;
+    /** Opens a note in its own tab, at `line`. */
     onopen?: (path: string, line: number) => void;
   }
 

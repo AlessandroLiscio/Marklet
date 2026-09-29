@@ -13,7 +13,7 @@
    */
   import { onDestroy, onMount } from 'svelte';
   import { DOCUMENT_EVENT, revealElement } from '../doc';
-  import { openExternal, openInNewWindow } from '../ipc';
+  import { openExternal } from '../ipc';
   import { collectLinkRows, type DocLink, type LinkRow } from './links';
 
   interface Props {
@@ -26,7 +26,7 @@
      * effect runs the new document is already in the DOM.
      */
     path?: string | null;
-    /** Opens another note. No line: see {@link open}. */
+    /** Opens another note, in its own tab. No line: see {@link open}. */
     onopen?: (path: string) => void;
   }
 
@@ -69,11 +69,10 @@
   }
 
   /**
-   * Follows the link: a note here, or in a second window with Ctrl (Cmd on
-   * macOS), and a web link to the OS browser — which is already a separate
-   * window, and where Rust re-checks the scheme before handing it over.
+   * Follows the link: a note into its own tab, a web link to the OS browser —
+   * where Rust re-checks the scheme before handing it over.
    */
-  function open(event: MouseEvent, link: DocLink): void {
+  function open(link: DocLink): void {
     if (link.kind === 'unresolved') return;
 
     if (link.kind === 'web') {
@@ -83,14 +82,6 @@
       return;
     }
 
-    if (event.ctrlKey || event.metaKey) {
-      void openInNewWindow(link.target).catch(() => {
-        // The window could not be created — open it here instead, which is
-        // what the plain click would have done.
-        onopen?.(link.target);
-      });
-      return;
-    }
     // No line: `link.line` is where the link is written in *this* document and
     // means nothing in the one being opened.
     onopen?.(link.target);
@@ -98,7 +89,7 @@
 
   function openHint(link: DocLink): string {
     if (link.kind === 'web') return `Open ${link.target} in your browser`;
-    return `Open ${link.target} — Ctrl+click for a new window`;
+    return `Open ${link.target} in a new tab`;
   }
 </script>
 
@@ -161,7 +152,7 @@
               class="open"
               title={openHint(link)}
               aria-label={openHint(link)}
-              onclick={(event) => open(event, link)}
+              onclick={() => open(link)}
             >
               <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
                 <path

@@ -34,6 +34,7 @@
     listed?: ReadonlySet<string> | null;
     /** Asked before a folder is expanded for the first time. */
     onexpand?: (path: string, depth: number) => void;
+    /** Opens a note in its own tab. */
     onopen?: (path: string) => void;
   }
 

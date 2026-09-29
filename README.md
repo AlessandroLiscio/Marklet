@@ -188,6 +188,8 @@ marklet --help
 | `F3` | Split — plain source on the left, rendered preview on the right, scroll-synced both ways |
 | `F4` / `Ctrl+E` | Open the file in your own editor at the cursor |
 | `Esc` | Back to reading |
+| `Ctrl+W` | Close the current tab |
+| `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab |
 | `Ctrl+P` | Export a PDF beside the document |
 | `Ctrl+Shift+S` | Export a standalone HTML file beside the document |
 
