@@ -12,6 +12,17 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Fixed
 
+- **Clicking a heading in Contents while split view is open** now moves both
+  columns to it. It used to move the preview back to wherever the editor still
+  was: the outline scrolls *smoothly*, a smooth scroll runs for several hundred
+  milliseconds, and the two columns are linked by an echo window sized at
+  150 ms. Mid-animation the link arbitrated between two moving positions and
+  answered with an instant scroll, which cancelled the animation. A jump is
+  announced on `document` now (`JUMP_EVENT` in `doc.ts`), so the link mutes
+  itself for the animation and moves the editor to the target line directly.
+- **The settings gear no longer touches the status line** in the bottom-right
+  corner.
+
 - **Opening a note from the explorer, and every wiki-link.** `open_note` declares
   its argument `rel`; `src/lib/ipc.ts` was calling it with `path`. Tauri rejects a
   call whose payload does not match the signature *before* it reaches Rust, as a
