@@ -10,6 +10,17 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+### Added
+
+- **Frontmatter is rendered, as a table at the top of the document.** It was
+  parsed for the note's title and then dropped, so a file whose first fifteen
+  lines say what it *is* — an agent definition, a skill, a prompt — opened on
+  its body with that part missing. One row per key, in the order the file wrote
+  them; a list is flattened to `a, b, c` whether it was written inline or as a
+  block sequence. Rendered from the raw text rather than from the parsed value,
+  because `serde_json::Map` is a `BTreeMap` and would have sorted
+  `argument-hint` above `name`.
+
 ### Changed
 
 - **Clicking a row in "Links" scrolls to where the link is written**; following

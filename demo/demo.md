@@ -8,9 +8,10 @@ date: 2026-09-25
 # Marklet demo
 
 Everything Marklet does, in one file, arranged so you can work down it and see each
-thing happen. The frontmatter block above this line should **not** appear as text —
-if you can read `title: Marklet demo` in the document body, frontmatter parsing is
-broken.
+thing happen. The frontmatter above should be a **table** at the top of this page, one
+row per key, in the order the file wrote them — not raw `title: Marklet demo` text, and
+not missing. That block is the whole of what an agent definition, a skill or a prompt
+says about itself, so it is shown rather than swallowed.
 
 > [!NOTE]
 > Some sections below need the **full edition** or an **open vault**. Each one says so.

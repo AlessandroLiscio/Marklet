@@ -248,6 +248,43 @@ body {
   background: color-mix(in oklab, var(--bg-subtle) 60%, transparent);
 }
 
+/* Frontmatter, rendered as a key/value table at the top of the document.
+   It used to be parsed and dropped, so a file whose first fifteen lines say
+   what it *is* — an agent definition, a skill, a prompt — opened on its body
+   with that part missing. Both of the editors people read these in show it.
+
+   `display: table` rather than the block-with-overflow the prose tables use:
+   a `description:` is a sentence and should wrap, not put the whole table on a
+   horizontal scrollbar. The key column shrinks to its content — `1%` is the
+   idiom for "as narrow as the longest key" — and the striping is turned off,
+   because a coloured key column reads as the axis of the table and the two
+   patterns together read as neither. */
+#doc table.frontmatter {
+  display: table;
+  inline-size: 100%;
+  font-size: var(--text-small);
+}
+
+#doc .frontmatter th[scope='row'] {
+  inline-size: 1%;
+  white-space: nowrap;
+  vertical-align: top;
+  text-align: start;
+  font-family: var(--font-code);
+  font-weight: 500;
+  color: var(--fg-muted);
+  background: color-mix(in oklab, var(--bg-subtle) 70%, transparent);
+}
+
+#doc .frontmatter tbody tr:nth-child(even) {
+  background: none;
+}
+
+#doc .frontmatter td {
+  /* A URL or a long flag list has no spaces to break at. */
+  overflow-wrap: anywhere;
+}
+
 /* ------------------------------ blockquotes -------------------------------- */
 
 #doc blockquote {
