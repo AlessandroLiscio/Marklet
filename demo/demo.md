@@ -498,12 +498,13 @@ Open the `demo/` folder rather than this file, and you should also get:
 - a folder tree in the sidebar, virtualized, so a vault of thousands of notes still
   paints immediately,
 - full-text search across every note, streaming results as it finds them, with no
-  index built and nothing cached on disk to go stale,
+  index built and nothing cached on disk to go stale — clicking a hit opens the note at
+  that line and flashes the matched text,
 - the wiki-links in section 12 resolving,
 - a **Links** panel listing what the note you are reading points at — notes and web
-  links together, each with its line. Clicking a row scrolls to where the link is
-  written; the button on the right follows it, Ctrl+click for a second window, and a web
-  link goes to your browser.
+  links together, each with its line. Clicking a row scrolls to where the link is written
+  and flashes it; the button on the right follows it, Ctrl+click for a second window, and
+  a web link goes to your browser.
 
 On a synthetic 5,000-note vault this measured: first search result in 1 ms, search
 complete in 31 ms, 622 bytes of index per note, 10 MB of RSS for the whole thing.

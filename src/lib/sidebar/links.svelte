@@ -11,9 +11,10 @@
    * `backlinks_for` is still a command and still correct — the panel that
    * consumed it is what changed.
    */
-  import { scrollToLine } from '../doc';
+  import { onDestroy, onMount } from 'svelte';
+  import { DOCUMENT_EVENT, revealElement } from '../doc';
   import { openExternal, openInNewWindow } from '../ipc';
-  import { collectLinks, type DocLink } from './links';
+  import { collectLinkRows, type DocLink, type LinkRow } from './links';
 
   interface Props {
     /**
@@ -25,19 +26,33 @@
      * effect runs the new document is already in the DOM.
      */
     path?: string | null;
-    onopen?: (path: string, line: number) => void;
+    /** Opens another note. No line: see {@link open}. */
+    onopen?: (path: string) => void;
   }
 
   let { path = null, onopen }: Props = $props();
 
-  let links = $state<DocLink[]>([]);
+  let rows = $state<LinkRow[]>([]);
 
-  $effect(() => {
-    // Named so the effect depends on it; the document itself is the source.
-    void path;
+  function reread(): void {
     const root = document.getElementById('doc');
-    links = root === null ? [] : collectLinks(root);
+    rows = root === null ? [] : collectLinkRows(root);
+  }
+
+  // Driven by the document being replaced, not by the `path` prop.
+  //
+  // The prop is the wrong signal and reading it was a bug: a document is also
+  // replaced *without* its path changing — re-rendered once the vault index
+  // exists, so its wiki-links resolve, or reloaded by the watcher after a
+  // save. The panel then kept showing links read from markup that no longer
+  // existed, which is why notes sitting in the tree beside it stayed struck
+  // through after the document itself had been fixed.
+  onMount(() => {
+    reread();
+    document.addEventListener(DOCUMENT_EVENT, reread);
   });
+
+  onDestroy(() => document.removeEventListener(DOCUMENT_EVENT, reread));
 
   /**
    * The row takes you to where the link is **written**; only the button
@@ -49,8 +64,8 @@
    * document — or opened a browser — lost the reader's place to answer a
    * question they had not asked. Following a link is now something you aim at.
    */
-  function jump(link: DocLink): void {
-    if (link.line > 0) scrollToLine(link.line);
+  function jump(row: LinkRow): void {
+    revealElement(row.el, row.link.line);
   }
 
   /**
@@ -72,11 +87,13 @@
       void openInNewWindow(link.target).catch(() => {
         // The window could not be created — open it here instead, which is
         // what the plain click would have done.
-        onopen?.(link.target, link.line);
+        onopen?.(link.target);
       });
       return;
     }
-    onopen?.(link.target, link.line);
+    // No line: `link.line` is where the link is written in *this* document and
+    // means nothing in the one being opened.
+    onopen?.(link.target);
   }
 
   function openHint(link: DocLink): string {
@@ -88,25 +105,25 @@
 <section class="links" aria-label="Links in this note">
   <h2>
     Links
-    {#if links.length > 0}<span class="count">{links.length}</span>{/if}
+    {#if rows.length > 0}<span class="count">{rows.length}</span>{/if}
   </h2>
 
   {#if path === null}
     <p class="empty">No note open.</p>
-  {:else if links.length === 0}
+  {:else if rows.length === 0}
     <p class="empty">This note links nowhere.</p>
   {:else}
     <ul>
-      {#each links as link, i (`${link.kind}:${link.target}:${link.line}:${i}`)}
+      {#each rows as { link }, i (`${link.kind}:${link.target}:${link.line}:${i}`)}
         <li class={link.kind}>
           <button
             type="button"
             class="jump"
             disabled={link.line === 0}
             title={link.line > 0
-              ? `Go to line ${link.line}, where this link is written`
+              ? `Show where this link is written, on line ${link.line}`
               : 'This link is not inside a numbered block'}
-            onclick={() => jump(link)}
+            onclick={() => jump(rows[i]!)}
           >
             <!-- Inline SVG per the icon rule: no icon font, no icon package.
                  The leading glyph is the one thing that has to be readable at

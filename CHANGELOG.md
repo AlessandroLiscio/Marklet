@@ -26,8 +26,24 @@ lightweight care about that number, and publishing it keeps us honest.
   opinion about. A wiki-link that resolves to nothing is struck through and
   inert. `backlinks_for` is still a command; only its caller changed.
 
+### Added
+
+- **A jump points at what it went to.** Clicking a row in "Links" scrolls to
+  the link and flashes it; clicking a search hit opens the note, scrolls to the
+  line and flashes the matched text itself. Scrolling alone was half an answer
+  — a viewport that has moved does not say which of the forty things now on
+  screen was the one asked for. The search hit's line was being dropped
+  entirely, so a hit opened its file at the top.
+
 ### Fixed
 
+- **The Links panel kept showing links that were no longer in the document.**
+  It re-read the document when the `path` prop changed, and a document is also
+  replaced *without* its path changing — re-rendered once the index exists so
+  its wiki-links resolve, or reloaded by the watcher after a save. So the
+  document was fixed and the panel still listed every wiki-link struck through,
+  pointing at notes visible in the tree beside it. `setDocument` announces the
+  replacement now, and the panel listens for that instead.
 - **Wiki-links resolve after the vault opens.** Resolution happens in Rust when
   the HTML is built, not when a link is clicked, so a document rendered before
   there was an index had every `[[link]]` struck through for good — and *every*

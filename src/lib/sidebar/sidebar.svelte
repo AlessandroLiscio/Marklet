@@ -32,7 +32,12 @@
     vaultPath?: string | null;
     /** The open note, vault-relative — highlighted, and its backlinks shown. */
     active?: string | null;
-    onopen?: (path: string, line?: number) => void;
+    /**
+     * Opens a note. `line` scrolls to it; `match` is the text to point at once
+     * there — a search term, so the hit is highlighted rather than merely
+     * scrolled past.
+     */
+    onopen?: (path: string, line?: number, match?: string) => void;
     /**
      * The wiki-link index has been built.
      *
@@ -61,14 +66,6 @@
    * second expand from re-listing a folder that has not changed.
    */
   let listed = $state<Set<string>>(new Set());
-
-  /**
-   * Bumped when the wiki-link index finishes, to re-ask for backlinks.
-   *
-   * A note opened before the index was ready got an honest empty answer, and
-   * nothing would have asked again.
-   */
-  let indexed = $state(0);
 
   /**
    * The full walk has run, so the Rust-side index Search queries is built.
@@ -126,9 +123,7 @@
         // parsing every note. The panel fills in when it finishes.
         void indexVault()
           .then(() => {
-            if (!current) return;
-            indexed += 1;
-            onindexed?.();
+            if (current) onindexed?.();
           })
           .catch(() => {
             // An unreadable note, a folder that vanished. Backlinks stay empty,
@@ -217,16 +212,16 @@
   {:else}
     <SearchPanel
       enabled={info !== null}
-      onopen={(path, line) => onopen?.(path, line)}
+      onopen={(path, line, match) => onopen?.(path, line, match)}
     />
   {/if}
 
-  <!-- Keyed on the index build: a wiki-link that could not resolve when the
-       document was rendered resolves once the index exists, and the row has to
-       be read again to see it. -->
-  {#key indexed}
-    <Links path={active} onopen={(path, line) => onopen?.(path, line)} />
-  {/key}
+  <!-- Not keyed on anything: the panel listens for the document being replaced,
+       which is the event that actually changes its answer. Remounting it when
+       the index finished was the wrong signal — the re-render it triggers has
+       not happened yet at that moment, so the fresh component read the same
+       stale markup. -->
+  <Links path={active} onopen={(path) => onopen?.(path)} />
 </aside>
 
 <style>

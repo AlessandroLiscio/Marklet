@@ -40,6 +40,48 @@ function lineOf(el: Element): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
+/** A link, paired with the element it was read from — what the panel jumps to. */
+export interface LinkRow {
+  link: DocLink;
+  el: HTMLAnchorElement;
+}
+
+/**
+ * Every link in `root`, in document order, each with its element.
+ *
+ * The element is what makes "show me where this link is written" possible:
+ * the panel scrolls to it and flashes it, rather than scrolling to the block
+ * around it and leaving the reader to find which of its links was meant.
+ * {@link collectLinks} is the same pass without the elements, which is the
+ * part worth testing on its own.
+ */
+export function collectLinkRows(root: HTMLElement): LinkRow[] {
+  const rows: LinkRow[] = [];
+
+  for (const el of root.querySelectorAll<HTMLAnchorElement>('a')) {
+    const href = el.getAttribute('href') ?? '';
+    const label = (el.textContent ?? '').trim();
+    const line = lineOf(el);
+
+    if (el.classList.contains('wikilink')) {
+      if (el.classList.contains('unresolved') || !href.startsWith(VAULT_PREFIX)) {
+        const target = el.dataset['target'] ?? label;
+        rows.push({ link: { kind: 'unresolved', label: label || target, target, line }, el });
+      } else {
+        const target = decodeURIComponent(href.slice(VAULT_PREFIX.length));
+        rows.push({ link: { kind: 'note', label: label || target, target, line }, el });
+      }
+      continue;
+    }
+
+    if (/^https?:\/\//i.test(href)) {
+      rows.push({ link: { kind: 'web', label: label || href, target: href, line }, el });
+    }
+  }
+
+  return rows;
+}
+
 /**
  * Every link in `root`, in document order.
  *
@@ -53,28 +95,5 @@ function lineOf(el: Element): number {
  * else.
  */
 export function collectLinks(root: HTMLElement): DocLink[] {
-  const out: DocLink[] = [];
-
-  for (const el of root.querySelectorAll<HTMLAnchorElement>('a')) {
-    const href = el.getAttribute('href') ?? '';
-    const label = (el.textContent ?? '').trim();
-    const line = lineOf(el);
-
-    if (el.classList.contains('wikilink')) {
-      if (el.classList.contains('unresolved') || !href.startsWith(VAULT_PREFIX)) {
-        const target = el.dataset['target'] ?? label;
-        out.push({ kind: 'unresolved', label: label || target, target, line });
-      } else {
-        const target = href.slice(VAULT_PREFIX.length);
-        out.push({ kind: 'note', label: label || target, target, line });
-      }
-      continue;
-    }
-
-    if (/^https?:\/\//i.test(href)) {
-      out.push({ kind: 'web', label: label || href, target: href, line });
-    }
-  }
-
-  return out;
+  return collectLinkRows(root).map((row) => row.link);
 }

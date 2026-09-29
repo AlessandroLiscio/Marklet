@@ -23,7 +23,8 @@
   interface Props {
     /** Reported by the sidebar so search can be disabled without a vault. */
     enabled?: boolean;
-    onopen?: (path: string, line: number) => void;
+    /** `match` is the term to highlight once the hit's line is on screen. */
+    onopen?: (path: string, line: number, match: string) => void;
   }
 
   let { enabled = true, onopen }: Props = $props();
@@ -145,7 +146,14 @@
   <ul class="results">
     {#each hits as hit, i (`${hit.path}:${hit.line}:${i}`)}
       <li>
-        <button type="button" onclick={() => onopen?.(hit.path, hit.line)}>
+        <!-- The first span the search marked is the text to point at once the
+             note is open: it is the actual matched run, so it survives a
+             multi-term query and a case difference, neither of which the raw
+             query text would. -->
+        <button
+          type="button"
+          onclick={() => onopen?.(hit.path, hit.line, hit.spans.find((s) => s.hit)?.text ?? text)}
+        >
           <span class="where">{hit.path}<span class="line">:{hit.line}</span></span>
           <span class="excerpt">
             <!-- Spans, not offsets, and text nodes, not innerHTML: the excerpt
