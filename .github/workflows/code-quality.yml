@@ -59,5 +59,11 @@ jobs:
       - name: No heavy top-level imports on the boot path
         run: npm run check:imports
 
+      # Catches an `invoke()` payload key that no `#[tauri::command]` declares.
+      # Nothing else does: both sides compile, and Tauri rejects the call at
+      # runtime as a promise that the caller usually never looks at.
+      - name: IPC argument names match their commands
+        run: npm run check:ipc
+
       - name: Contrast (WCAG AA)
         run: npm run contrast

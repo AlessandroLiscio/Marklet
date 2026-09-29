@@ -12,6 +12,21 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Fixed
 
+- **Opening a note from the explorer, and every wiki-link.** `open_note` declares
+  its argument `rel`; `src/lib/ipc.ts` was calling it with `path`. Tauri rejects a
+  call whose payload does not match the signature *before* it reaches Rust, as a
+  rejected promise — and the two call sites both discarded it, so a double-click
+  and a wiki-link click were silently inert. `backlinks_for` had the same fault
+  (`note` called as `path`), which is why the backlinks panel was always empty.
+  Both call sites now surface a failure instead of swallowing it, and
+  `npm run check:ipc` cross-checks every `invoke()` against the commands so this
+  class of bug cannot ship again: it type-checks on one side, compiles on the
+  other, and appears only at runtime.
+- **Settings is a floating card in the bottom-right corner again**, not a panel
+  docked into the activity bar. The explorer and the outline change what you are
+  looking at and want the document to move aside; settings is opened, changed and
+  dismissed, and should sit over the document instead.
+
 - **The accent colour, everywhere.** Settings crossed the IPC boundary in
   `kebab-case`, so the hue arrived at the webview as `accent-hue` while the
   webview read `accent_hue`. `--accent-hue` was set to the string `undefined`,

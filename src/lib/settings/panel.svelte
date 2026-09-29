@@ -5,9 +5,15 @@
    * this one). Every control here writes through to `store.rs` via the
    * `read_settings` / `write_settings` commands in `ipc.ts`.
    *
-   * Self-contained like `outline.svelte`: not wired into `app.svelte` this
-   * wave (main thread does that at wave close), so it resolves `#doc` and
-   * `:root` itself rather than requiring props nobody passes yet.
+   * **A floating card in the bottom-right corner, not a docked panel.** It was
+   * docked into the activity bar for one release and asked back out. The
+   * reasoning holds up: the other two panels change what you are looking at
+   * and want the document to move aside for them, while settings is a thing
+   * you open, change and dismiss — it should sit over the document rather
+   * than push it.
+   *
+   * Self-contained: it owns its own open state and resolves `#doc` and
+   * `:root` itself, so `app.svelte` mounts it with no props.
    *
    * Typeface and palette are full-edition-only controls, eliminated from the
    * lite bundle at compile time by `if (__MARKLET_EDITION__ === 'full')` —
@@ -20,10 +26,12 @@
 
   const EDITION: 'lite' | 'full' = __MARKLET_EDITION__;
 
-  // Opened and closed by the activity bar. `marklet --settings` still opens it
-  // with the window rather than a moment after — `app.svelte` reads the same
-  // boot flag and chooses the initial panel before the first paint.
-  let { open = false }: { open?: boolean } = $props();
+  // `marklet --settings` opens it with the window rather than a moment after:
+  // the flag is on `window` before the first frame, set by the boot script in
+  // `lib.rs`, so this is a plain initializer and not an effect.
+  let open = $state(
+    typeof window !== 'undefined' && window.__MARKLET_SETTINGS__ === true
+  );
   let settings = $state<Settings>({ ...DEFAULT_SETTINGS });
   let loaded = $state(false);
 
@@ -169,6 +177,26 @@
 </script>
 
 <div class="settings">
+  <button
+    type="button"
+    class="toggle"
+    class:on={open}
+    aria-expanded={open}
+    aria-controls="settings-panel"
+    aria-label="Settings"
+    title="Settings"
+    onclick={() => (open = !open)}
+  >
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="2.25" stroke="currentColor" stroke-width="1.5" />
+      <path
+        d="M8 1.5v1.6M8 12.9v1.6M14.5 8h-1.6M3.1 8H1.5M12.4 3.6l-1.13 1.13M4.73 11.27L3.6 12.4M12.4 12.4l-1.13-1.13M4.73 4.73L3.6 3.6"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+      />
+    </svg>
+  </button>
 
   {#if open}
     <div id="settings-panel" class="panel" class:panel-loading={!loaded}>
@@ -287,20 +315,68 @@
 </div>
 
 <style>
+  /* Clear of the status line in the very corner, which is why this is
+     `--space-8` and not the `--space-4` every other floating thing uses. */
   .settings {
-    block-size: 100%;
-    overflow-y: auto;
-    /* The panel is a fixed 260px. Nothing inside it is allowed to widen it
-       into a horizontal scrollbar — controls wrap or truncate instead. */
-    overflow-x: hidden;
+    position: fixed;
+    inset-block-end: var(--space-8);
+    inset-inline-end: var(--space-4);
     font-family: var(--font-ui);
+    z-index: 30;
+  }
+
+  .toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    padding: 0;
+    background: color-mix(in oklab, var(--bg) 88%, transparent);
+    color: var(--fg-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition: color var(--duration-fast) ease, border-color var(--duration-fast) ease;
+  }
+
+  .toggle:hover {
+    color: var(--fg);
+    border-color: var(--fg-muted);
+  }
+
+  /* Open reads as pressed by fill, the same rule the split toggle follows. */
+  .toggle.on {
+    color: var(--on-accent);
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
   .panel {
+    position: absolute;
+    inset-block-end: calc(2.25rem + var(--space-2));
+    inset-inline-end: 0;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+    inline-size: 18rem;
+    max-block-size: 70vh;
+    overflow-y: auto;
+    /* Nothing inside is allowed to widen the card into a horizontal
+       scrollbar — controls wrap or truncate instead. */
+    overflow-x: hidden;
     padding: var(--space-4);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px oklch(0% 0 0 / 20%);
+    transition: opacity var(--duration-fast) ease;
   }
 
   .panel-loading {

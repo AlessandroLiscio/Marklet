@@ -43,9 +43,9 @@ Three levels of nesting, so the outline has something to indent.
 Scroll to the bottom of this file, close Marklet, and open it again. You should come
 back to where you were, not to the top.
 
-Then change the font size or the column width in settings and reload. You should
-*still* be near the same paragraph — the position is anchored to a source line, not
-to a pixel offset, so it survives the reflow.
+Then change the zoom or the column width in settings — the gear in the bottom-right
+corner — and reload. You should *still* be near the same paragraph: the position is
+anchored to a source line, not to a pixel offset, so it survives the reflow.
 
 ---
 

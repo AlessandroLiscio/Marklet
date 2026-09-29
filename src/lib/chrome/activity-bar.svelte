@@ -13,7 +13,7 @@
    * controller — and a toggle that owns the truth about a layout it does not
    * lay out is how the two drift apart.
    */
-  export type PanelId = 'explorer' | 'outline' | 'settings';
+  export type PanelId = 'explorer' | 'outline';
 
   interface Props {
     /** The open panel, or `null` when the document has the full width. */
@@ -73,25 +73,9 @@
        shown rather than which panel is beside it, and it lives in the
        document's own top-right corner where an editor's view controls sit. -->
 
-  <button
-    type="button"
-    class="item bottom"
-    class:active={panel === 'settings'}
-    aria-pressed={panel === 'settings'}
-    title="Settings"
-    aria-label="Settings"
-    onclick={() => choose('settings')}
-  >
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <circle cx="10" cy="10" r="2.6" stroke="currentColor" stroke-width="1.4" />
-      <path
-        d="M10 2.6v1.8M10 15.6v1.8M17.4 10h-1.8M4.4 10H2.6M15.2 4.8l-1.3 1.3M6.1 13.9l-1.3 1.3M15.2 15.2l-1.3-1.3M6.1 6.1L4.8 4.8"
-        stroke="currentColor"
-        stroke-width="1.4"
-        stroke-linecap="round"
-      />
-    </svg>
-  </button>
+  <!-- Settings is NOT here either. It is a floating card in the bottom-right
+       corner, because it is opened, changed and dismissed rather than read
+       alongside the document — see `settings/panel.svelte`. -->
 </nav>
 
 <style>
@@ -140,12 +124,6 @@
     inline-size: 2px;
     border-radius: 1px;
     background: var(--accent);
-  }
-
-  /* Settings sits at the far end, away from the view switches: it is a
-     different kind of action and a misclick between them is annoying. */
-  .bottom {
-    margin-block-start: auto;
   }
 
   .item:focus-visible {
