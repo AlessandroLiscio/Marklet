@@ -135,8 +135,8 @@ export function applySettingsToRoot(
  * "two frames so layout has settled" reasoning `main.ts` uses before
  * showing the window.
  */
-export function preserveScrollAcrossReflow(docRoot: HTMLElement, apply: () => void): void {
-  const line = visibleLine(docRoot);
+export function preserveScrollAcrossReflow(apply: () => void): void {
+  const line = visibleLine();
   apply();
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {

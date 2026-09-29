@@ -33,7 +33,7 @@
 
   function updateActive(): void {
     if (!docRoot || outline.length === 0) return;
-    const line = visibleLine(docRoot);
+    const line = visibleLine();
     activeSlug = nearestHeading(outline, line)?.slug ?? null;
   }
 

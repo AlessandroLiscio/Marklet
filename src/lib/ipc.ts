@@ -44,6 +44,14 @@ export interface BlockSpan {
 /** Mirrors `ipc::OpenedDocument`, which flattens `render::RenderedDoc` into itself. */
 export interface OpenedDocument {
   path: string;
+  /**
+   * The vault-relative path, or `null` for a document opened on its own.
+   *
+   * Everything vault-shaped is keyed on this and not on {@link path}: the
+   * index, the tree's rows, `backlinks_for`. The webview had no way to produce
+   * it and was passing the absolute path to lookups that could never match it.
+   */
+  rel: string | null;
   title: string;
   html: string;
   outline: Heading[];

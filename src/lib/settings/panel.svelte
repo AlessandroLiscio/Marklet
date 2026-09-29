@@ -62,18 +62,13 @@
     { value: 'violet', label: 'Violet' },
   ];
 
-  function docRoot(): HTMLElement | null {
-    return document.getElementById('doc');
-  }
-
   /** Applies to `:root`, persists, and — for the three controls that can
    *  reflow the document — preserves reading position across the reflow. */
   function commit(next: Settings, reflows: boolean): void {
     settings = next;
-    const root = docRoot();
 
     const apply = () => applySettingsToRoot(document.documentElement, next, EDITION);
-    if (reflows && root) preserveScrollAcrossReflow(root, apply);
+    if (reflows) preserveScrollAcrossReflow(apply);
     else apply();
 
     void writeSettings(next).catch(() => {

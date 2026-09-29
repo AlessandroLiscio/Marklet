@@ -65,6 +65,16 @@ impl IpcError {
 #[derive(Debug, Serialize)]
 pub struct OpenedDocument {
     pub path: String,
+    /// The vault-relative path, when a vault is open and this file is inside
+    /// it; `None` for a document opened on its own.
+    ///
+    /// The absolute `path` above is what the editor and the exporters need.
+    /// Everything vault-shaped is keyed on the relative one — the index, the
+    /// tree's rows, `backlinks_for` — and the webview had no way to produce it,
+    /// so it was passing the absolute path to lookups that could never match.
+    /// That is why the backlinks panel was empty for every note and why the
+    /// open note was never highlighted in the tree.
+    pub rel: Option<String>,
     pub title: String,
     #[serde(flatten)]
     pub doc: RenderedDoc,
@@ -130,6 +140,7 @@ pub fn open_path(
 
     Ok(OpenedDocument {
         title: document_title(&resolved, &doc),
+        rel: vault.and_then(|v| v.relative_of(&resolved)),
         path: resolved.display().to_string(),
         doc,
     })
@@ -281,6 +292,16 @@ pub fn index_vault(
     })
 }
 
+/// One streamed search hit, tagged with the search that produced it.
+///
+/// Mirrored by `SearchResult` in `src/lib/ipc.ts`; the field names are the
+/// contract.
+#[derive(serde::Serialize, Clone)]
+struct SearchResultEvent<'a> {
+    id: u64,
+    hit: &'a Hit,
+}
+
 /// Streams search hits as they are found.
 ///
 /// The generation id is the cancellation mechanism: typing another character
@@ -298,7 +319,14 @@ pub fn search_vault(
         if !vault.search_is_current(id) {
             return false;
         }
-        window.emit("search-result", (id, hit)).is_ok()
+        // A named struct, not a `(id, hit)` tuple. A tuple serializes as a
+        // JSON *array*, and `src/lib/ipc.ts` declares this payload as
+        // `{ id, hit }` — so the destructuring on the other side produced
+        // `undefined` for every hit and the results list stayed empty while
+        // the summary line said how many there were.
+        window
+            .emit("search-result", SearchResultEvent { id, hit })
+            .is_ok()
     })?;
     if vault.search_is_current(id) {
         let _ = window.emit("search-done", &stats);
@@ -1007,6 +1035,37 @@ mod tests {
         let opened = open_path(&AssetRoot::new(), None, &path).unwrap();
         assert_eq!(opened.title, "Deployment runbook");
         assert!(opened.doc.html.contains("Deployment runbook"));
+    }
+
+    /// `rel` is what every vault-shaped lookup is keyed on.
+    ///
+    /// It did not exist for one release, and the webview passed the absolute
+    /// path to `backlinks_for` instead — which normalizes and strips the
+    /// extension before looking the note up by its vault-relative name, so it
+    /// matched nothing, for every note, in every vault.
+    #[test]
+    fn a_note_inside_an_open_vault_carries_its_vault_relative_path() {
+        let dir = std::env::temp_dir().join(format!("marklet-rel-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("sub")).unwrap();
+        fs::write(dir.join("sub/note.md"), "# Note\n").unwrap();
+
+        let vault = VaultState::default();
+        vault.open(&AssetRoot::new(), &dir).unwrap();
+
+        let opened = open_path(&AssetRoot::new(), Some(&vault), &dir.join("sub/note.md")).unwrap();
+        assert_eq!(
+            opened.rel.as_deref(),
+            Some("sub/note.md"),
+            "forward slashes on every platform, because it is an identity"
+        );
+
+        // No vault, no relative path: a file opened on its own is not in one.
+        let alone = sandbox("alone.md", "# Alone\n");
+        assert_eq!(
+            open_path(&AssetRoot::new(), None, &alone).unwrap().rel,
+            None
+        );
     }
 
     #[test]
