@@ -15,6 +15,7 @@
     "tauri": "tauri",
     "contrast": "node scripts/check-contrast.mjs",
     "check:imports": "node scripts/check-imports.mjs",
+    "check:ipc": "node scripts/check-ipc-args.mjs",
     "size": "node scripts/size-report.mjs"
   },
   "devDependencies": {

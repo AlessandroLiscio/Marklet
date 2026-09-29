@@ -52,9 +52,7 @@
   );
 
   /** Which side panel is showing, or `null` for the document at full width. */
-  let panel = $state<PanelId | null>(
-    typeof window !== 'undefined' && window.__MARKLET_SETTINGS__ === true ? 'settings' : null
-  );
+  let panel = $state<PanelId | null>(null);
 
   /**
    * How much room the fixed chrome takes, published to `:root` for
@@ -165,8 +163,12 @@
     event.preventDefault();
     try {
       await show((await openNote(note)) as OpenedDocument);
-    } catch {
-      /* the sidebar surfaces vault errors; a dead link is not worth a dialog */
+    } catch (error) {
+      // Said out loud rather than swallowed. Silence here is what hid
+      // `open_note` being called with the wrong argument name for five
+      // months: every wiki-link click was a rejected promise going into an
+      // empty catch, and the link simply looked inert.
+      say(reason(error), true);
     }
   }
 
@@ -461,7 +463,10 @@
           <Sidebar
             {vaultPath}
             active={doc?.path ?? null}
-            onopen={(path) => void openNote(path).then((d) => show(d as OpenedDocument))}
+            onopen={(path) =>
+              void openNote(path)
+                .then((d) => show(d as OpenedDocument))
+                .catch((error: unknown) => say(reason(error), true))}
           />
         {:else}
           <div class="empty-panel">
@@ -471,14 +476,16 @@
             </button>
           </div>
         {/if}
-      {:else if panel === 'outline'}
-        <Outline open />
       {:else}
-        <SettingsPanel open />
+        <Outline open />
       {/if}
     </div>
   {/if}
 </div>
+
+<!-- Floating, bottom-right, and owning its own open state: settings is not a
+     view of the document the way the explorer and the outline are. -->
+<SettingsPanel />
 
 {#if doc}
   <!-- The split toggle sits in the document's own top-right corner, not in

@@ -491,14 +491,28 @@ export function resolveWikilink(target: string): Promise<NoteMeta | null> {
   return invoke<NoteMeta | null>('resolve_wikilink', { target });
 }
 
-/** Every note linking to `path`. */
+/**
+ * Every note linking to `path`.
+ *
+ * The key is `note`, because that is what `ipc.rs` calls the parameter. It
+ * said `path` here for five months and every backlinks lookup was rejected
+ * before it ran — `scripts/check-ipc-args.mjs` exists so that cannot happen
+ * again silently.
+ */
 export function backlinksFor(path: string): Promise<Backlink[]> {
-  return invoke<Backlink[]>('backlinks_for', { path });
+  return invoke<Backlink[]>('backlinks_for', { note: path });
 }
 
-/** Opens a note by its vault-relative path. */
-export function openNote(path: string): Promise<unknown> {
-  return invoke<unknown>('open_note', { path });
+/**
+ * Opens a note by its vault-relative path.
+ *
+ * The key is `rel`, not `path`: the command takes a vault-relative path and
+ * says so in its parameter name. Sending `path` made Tauri reject the call
+ * before it reached Rust, which is why double-clicking a file in the explorer
+ * and clicking a wiki-link both did nothing at all.
+ */
+export function openNote(rel: string): Promise<unknown> {
+  return invoke<unknown>('open_note', { rel });
 }
 
 /** A batch of tree entries, mid-walk. */

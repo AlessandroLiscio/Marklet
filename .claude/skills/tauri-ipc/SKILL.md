@@ -35,8 +35,26 @@ save_pasted_image  reveal_in_editor
 ```
 
 Frontend wrappers live in `src/lib/ipc.ts`, one typed function per command, and nothing
-else in the frontend calls `invoke()` directly. That file is the single place where a
-payload shape change shows up as a type error rather than a runtime surprise.
+else in the frontend calls `invoke()` directly.
+
+**The parameter names are a contract, and nothing in the build used to check it.**
+`invoke` takes `Record<string, unknown>`, so a payload key that no parameter answers to
+type-checks on the TypeScript side and compiles on the Rust side. Tauri rejects the call
+before it reaches the command, as a rejected promise — and a `void invoke(...)` swallows
+it. Two commands shipped that way and were found by reading:
+
+| Command | Declares | Was called with | What the user saw |
+|---|---|---|---|
+| `open_note` | `rel` | `path` | double-click in the explorer and every wiki-link did nothing |
+| `backlinks_for` | `note` | `path` | the backlinks panel was always empty |
+
+`npm run check:ipc` (`scripts/check-ipc-args.mjs`) now cross-checks every `invoke()` call
+site in `src/lib/ipc.ts` against the `#[tauri::command]` signatures, skipping the
+parameters Tauri injects — `AppHandle`, `Window`, `State<'_, T>` — by type rather than by
+name. It runs in `code-quality`. Run it after adding or renaming any command parameter.
+
+Tauri v2 exposes a `snake_case` Rust parameter to JavaScript as `camelCase` unless the
+command declares `rename_all = "snake_case"`; the check accepts either spelling.
 
 ## The webview describes intent; Rust decides the action
 
