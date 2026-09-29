@@ -499,7 +499,7 @@ Open the `demo/` folder rather than this file, and you should also get:
   paints immediately,
 - full-text search across every note, streaming results as it finds them, with no
   index built and nothing cached on disk to go stale — clicking a hit opens the note at
-  that line and flashes the matched text,
+  that line and flashes the whole passage it was found in,
 - the wiki-links in section 12 resolving,
 - a **Links** panel listing what the note you are reading points at — notes and web
   links together, each with its line. Clicking a row scrolls to where the link is written

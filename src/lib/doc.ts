@@ -134,7 +134,7 @@ const FLASH_CLASS = 'marklet-flash';
  *  enough that it is gone before it becomes decoration. */
 const FLASH_MS = 1600;
 
-/** Undoes whatever the last flash did — a class, or a wrapper element. */
+/** Takes the current highlight off. One element carries it at a time. */
 let undoFlash: (() => void) | null = null;
 
 /** Removes the highlight currently showing, if any. */
@@ -143,14 +143,18 @@ export function clearFlash(): void {
   undoFlash = null;
 }
 
-function flash(el: HTMLElement, undo: () => void): void {
+function flash(el: HTMLElement): void {
   clearFlash();
   el.classList.add(FLASH_CLASS);
   const timer = setTimeout(clearFlash, FLASH_MS);
   undoFlash = () => {
     clearTimeout(timer);
     el.classList.remove(FLASH_CLASS);
-    undo();
+    // `classList.remove` leaves `class=""` behind on an element that had no
+    // class of its own. Harmless to render, but it means the markup is not
+    // what the renderer produced any more — and this module's rule is that a
+    // highlight leaves nothing behind.
+    if (el.classList.length === 0) el.removeAttribute('class');
   };
 }
 
@@ -167,71 +171,24 @@ export function revealElement(el: HTMLElement, line: number): void {
     document.dispatchEvent(new CustomEvent(JUMP_EVENT, { detail: { line } }));
   }
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  flash(el, () => {});
+  flash(el);
 }
 
 /**
- * Scrolls to a source line and highlights the block that holds it.
+ * Scrolls to a source line and highlights the **whole block** that holds it.
  *
- * The fallback for "go here" when there is nothing finer to point at.
+ * The block, not the matched words inside it. Marking only the search term
+ * highlighted three characters in the middle of a paragraph and left the
+ * reader to work out what they were part of; the row in the search panel
+ * showed a passage, and the passage is what the jump should land on. It also
+ * means nothing has to be wrapped in a `<mark>` and unwrapped again — the
+ * document the renderer owns is never touched.
  */
 export function revealLine(line: number): boolean {
   const el = anchorForLine(line);
   if (el === null) return false;
   revealElement(el, line);
   return true;
-}
-
-/**
- * Scrolls to a source line and highlights the first occurrence of `text`
- * inside it — a search hit, pointed at rather than merely scrolled to.
- *
- * The match is wrapped in a `<mark>` and unwrapped again when the highlight
- * expires, with `normalize()` putting the split text nodes back together, so
- * the document is byte-identical afterwards. The alternative, the CSS Custom
- * Highlight API, needs no mutation at all but is not old enough to rely on in
- * WebKitGTK, which is the development platform.
- *
- * Falls back to {@link revealLine} when the text is not found — the line moved,
- * the match spans an element boundary, or the query was a regex whose source
- * text is not what the document says.
- */
-export function revealMatch(line: number, text: string): boolean {
-  const block = anchorForLine(line);
-  const needle = text.trim().toLowerCase();
-  if (block === null || needle === '') return revealLine(line);
-
-  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-    const value = node.nodeValue ?? '';
-    const at = value.toLowerCase().indexOf(needle);
-    if (at === -1) continue;
-
-    const target = node as Text;
-    const rest = target.splitText(at);
-    rest.splitText(needle.length);
-
-    const mark = document.createElement('mark');
-    const parent = rest.parentNode;
-    if (parent === null) return revealLine(line);
-    parent.replaceChild(mark, rest);
-    mark.append(rest);
-
-    revealElement(mark, line);
-    // Re-wrap the undo so it also unwraps the <mark>; `revealElement` only
-    // knows how to take a class off.
-    const takeClassOff = undoFlash;
-    undoFlash = () => {
-      takeClassOff?.();
-      const owner = mark.parentNode;
-      if (owner === null) return;
-      owner.replaceChild(rest, mark);
-      owner.normalize();
-    };
-    return true;
-  }
-
-  return revealLine(line);
 }
 
 /** Scrolls to a heading by its GitHub-compatible slug. */

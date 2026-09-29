@@ -401,8 +401,8 @@ body {
 /* ------------------------------ the flash -------------------------------- */
 
 /* "This is the thing you asked for." Put on one element at a time by `doc.ts`
-   and taken off again after 1.6s — a link the Links panel jumped to, or the
-   `<mark>` it wraps around a search hit.
+   and taken off again after 1.6s — the link a Links row jumped to, or the whole
+   block a search hit landed in.
 
    Scrolling alone is not an answer: the reader asked *where*, and a viewport
    that has moved does not say which of the forty things now on screen was the
@@ -422,20 +422,10 @@ body {
   }
 }
 
-/* A search hit is wrapped in a real `<mark>`, whose browser default background
-   would sit under the flash and stay behind after it. */
-#doc mark.marklet-flash {
-  color: inherit;
-  background: transparent;
-}
-
 /* With motion off the animation would be a no-op and the highlight invisible,
-   so it becomes a plain wash instead — still removed on the same timer. Both
-   selectors, and last, so it outranks the `<mark>` reset above rather than
-   being silently undone by it. */
+   so it becomes a plain wash instead — still removed on the same timer. */
 @media (prefers-reduced-motion: reduce) {
-  #doc .marklet-flash,
-  #doc mark.marklet-flash {
+  .marklet-flash {
     animation: none;
     background: color-mix(in oklab, var(--accent) 35%, transparent);
   }

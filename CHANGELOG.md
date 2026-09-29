@@ -30,10 +30,11 @@ lightweight care about that number, and publishing it keeps us honest.
 
 - **A jump points at what it went to.** Clicking a row in "Links" scrolls to
   the link and flashes it; clicking a search hit opens the note, scrolls to the
-  line and flashes the matched text itself. Scrolling alone was half an answer
-  — a viewport that has moved does not say which of the forty things now on
-  screen was the one asked for. The search hit's line was being dropped
-  entirely, so a hit opened its file at the top.
+  line and flashes the **whole block** it landed in — the passage the search
+  row showed, not the few characters that matched inside it. Scrolling alone
+  was half an answer: a viewport that has moved does not say which of the forty
+  things now on screen was the one asked for. The search hit's line was being
+  dropped entirely, so a hit opened its file at the top.
 
 ### Fixed
 
