@@ -26,11 +26,8 @@ Thumbs.db
 # copy stays in the history at full size forever. One afternoon of iteration in
 # this repository would have added ~40 MB that no `git rm` can take back out.
 # The installers are published by CI — as a run artifact on every branch, and as
-# a release asset on a tag — which is where a build belongs.
-#
-# `/installers/` is the local drop for one: a folder inside the checkout so a
-# built installer is somewhere obvious, ignored so it never reaches a commit.
-/installers/
+# a release asset on a tag — which is where a build belongs. `gh run download
+# <run-id> -n marklet-setup` fetches one; nothing here needs to hold it.
 *.exe
 *.AppImage
 *.deb
