@@ -381,7 +381,7 @@ waiting for a symlink.
 
 These resolve only when a vault is open (open the folder, not the file):
 
-- [[README]] — should resolve if this folder is the vault root
+- [[README]] — the note beside this one
 - [[docs/architecture]] — a note in a subfolder
 - [[A note that does not exist]] — should render in the *unresolved* style, and
   clicking it should do nothing rather than navigate to a 404
@@ -492,7 +492,7 @@ The **Search** tab is the exception: it runs the full walk, because a directory 
 cannot answer a search. Switching to it and back leaves the tree exactly as you left it —
 expanded folders included.
 
-Open the repository folder rather than this file, and you should also get:
+Open the `demo/` folder rather than this file, and you should also get:
 
 - a folder tree in the sidebar, virtualized, so a vault of thousands of notes still
   paints immediately,

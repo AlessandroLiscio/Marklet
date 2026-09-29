@@ -19,7 +19,18 @@ Thumbs.db
 # Local agent state
 .claude/settings.local.json
 
-# Build artifacts
+# Build artifacts.
+#
+# `*.exe` is why an installer is not committed, and the rule is deliberate: a
+# 3.2 MB binary that changes on every build cannot be delta-compressed, so every
+# copy stays in the history at full size forever. One afternoon of iteration in
+# this repository would have added ~40 MB that no `git rm` can take back out.
+# The installers are published by CI — as a run artifact on every branch, and as
+# a release asset on a tag — which is where a build belongs.
+#
+# `/installers/` is the local drop for one: a folder inside the checkout so a
+# built installer is somewhere obvious, ignored so it never reaches a commit.
+/installers/
 *.exe
 *.AppImage
 *.deb
