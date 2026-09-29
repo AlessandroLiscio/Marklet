@@ -51,6 +51,13 @@
   let info = $state<VaultInfo | null>(null);
   let entries = $state<Entry[]>([]);
   let scanning = $state(false);
+  /**
+   * The wiki-link index is being built.
+   *
+   * Shown, because on a large folder it is seconds of work and an application
+   * that looks idle while it is busy is one the reader assumes is broken.
+   */
+  let indexing = $state(false);
   let error = $state<string | null>(null);
   let tab = $state<'files' | 'search'>('files');
 
@@ -110,20 +117,22 @@
 
         // The wiki-link index, in the background.
         //
-        // Nothing built it before, which is the whole reason the backlinks
-        // panel said "Nothing links here yet." for every note in every vault
-        // and every `[[link]]` rendered unresolved: the index exists, the
-        // command exists, and no code path ever called it.
-        //
-        // Not awaited — the tree is already on screen and this is reading and
-        // parsing every note. The panel fills in when it finishes.
+        // Not awaited — the tree is already on screen and this walks the whole
+        // folder and parses every note in it. On the Rust side it now runs off
+        // the main thread as well, which is what stopped the window freezing
+        // while it ran; here it only has to not block the rows that are
+        // already painted.
+        indexing = true;
         void indexVault()
           .then(() => {
             if (current) onindexed?.();
           })
           .catch(() => {
-            // An unreadable note, a folder that vanished. Backlinks stay empty,
-            // which is what they were before this ran.
+            // An unreadable note, a folder that vanished. Wiki-links stay
+            // unresolved, which is what they were before this ran.
+          })
+          .finally(() => {
+            if (current) indexing = false;
           });
       } catch (e) {
         if (!current) return;
@@ -174,9 +183,14 @@
 <aside class="sidebar" aria-label="Vault">
   <header>
     <span class="name" title={info?.root ?? ''}>{info?.name ?? 'No vault'}</span>
-    <!-- The walk's progress, not a row count: the tree is listed lazily and
-         its size is not what is being waited for. -->
-    {#if scanning}<span class="counting" title="Indexing for search">&hellip;</span>{/if}
+    <!-- Not a row count: the tree is listed lazily and its size is not what is
+         being waited for. What is worth saying is that something is still
+         running, and which of the two things it is. -->
+    {#if scanning || indexing}
+      <span class="counting" title={scanning ? 'Walking the folder for search' : 'Building the wiki-link index'}>
+        &hellip;
+      </span>
+    {/if}
   </header>
 
   <nav class="tabs">
