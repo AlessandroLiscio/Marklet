@@ -3,23 +3,18 @@
  * "Show me where" — the half of a jump that scrolling does not do.
  *
  * A viewport that has moved does not say which of the forty things now on
- * screen was the one asked for. So the Links panel and a search hit both point
- * at something: a link element, or the matched run of text inside a line.
+ * screen was the one asked for. So the Links panel points at the link element
+ * itself, and a search hit points at the whole block it landed in — the
+ * passage the search row showed, not the three characters that matched inside
+ * it.
  *
- * The search case mutates the document — it wraps the match in a `<mark>` —
- * and that mutation has to be exactly reversible, because the document is
- * `innerHTML` the renderer owns and nothing downstream may see a stray
- * element. That reversal is most of what is asserted here.
+ * Nothing here mutates the document. An earlier version wrapped the search
+ * term in a `<mark>` and unwrapped it afterwards; highlighting the block needs
+ * no wrapper at all, and the markup the renderer owns is never touched.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  clearFlash,
-  revealElement,
-  revealLine,
-  revealMatch,
-  setDocument,
-} from '../../src/lib/doc';
+import { clearFlash, revealElement, revealLine, setDocument } from '../../src/lib/doc';
 import type { OpenedDocument } from '../../src/lib/ipc';
 
 const HTML =
@@ -75,41 +70,27 @@ describe('revealElement', () => {
   });
 });
 
-describe('revealMatch', () => {
-  it('wraps the matched run in a mark, case-insensitively', () => {
-    expect(revealMatch(4, 'LINKS BACK')).toBe(true);
-    const mark = root.querySelector('mark.marklet-flash');
-    expect(mark?.textContent).toBe('Links back');
-  });
-
-  it('puts the document back exactly as it was when the flash expires', () => {
-    // The document is `innerHTML` the renderer owns. A leftover `<mark>`, or
-    // a paragraph left split into three text nodes, is damage.
-    revealMatch(4, 'links back');
-    vi.advanceTimersByTime(2000);
-    expect(root.innerHTML).toBe(HTML);
-    expect(root.querySelector<HTMLElement>('[data-l="4"]')!.childNodes.length).toBe(1);
-  });
-
-  it('falls back to the whole block when the text is not in it', () => {
-    // A regex query, a line that moved, or a match spanning two elements.
-    expect(revealMatch(4, 'nothing like this')).toBe(true);
-    expect(root.querySelector('mark')).toBe(null);
-    expect(root.querySelector<HTMLElement>('[data-l="4"]')!.classList.contains('marklet-flash')).toBe(
-      true,
-    );
-  });
-
-  it('falls back to the block for an empty term rather than marking nothing', () => {
-    expect(revealMatch(9, '   ')).toBe(true);
-    expect(root.querySelector('mark')).toBe(null);
-  });
-});
-
 describe('revealLine', () => {
-  it('flashes the block that holds the line', () => {
+  it('flashes the whole block that holds the line, not a run inside it', () => {
     expect(revealLine(9)).toBe(true);
     expect(root.querySelector<HTMLElement>('[data-l="9"]')!.classList.contains('marklet-flash')).toBe(
+      true,
+    );
+    // No wrapper anywhere: the markup is the renderer's and stays untouched.
+    expect(root.querySelector('mark')).toBe(null);
+  });
+
+  it('leaves the document byte-identical once the flash expires', () => {
+    revealLine(4);
+    vi.advanceTimersByTime(2000);
+    expect(root.innerHTML).toBe(HTML);
+  });
+
+  it('answers the nearest block above a line with no anchor of its own', () => {
+    // A hit on a line inside a multi-line paragraph: the block is the passage
+    // the search row showed, which is the thing worth landing on.
+    expect(revealLine(6)).toBe(true);
+    expect(root.querySelector<HTMLElement>('[data-l="4"]')!.classList.contains('marklet-flash')).toBe(
       true,
     );
   });

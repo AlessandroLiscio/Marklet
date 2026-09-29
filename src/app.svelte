@@ -11,14 +11,7 @@
   import { onDestroy, onMount } from 'svelte';
 
   import ActivityBar, { type PanelId } from './lib/chrome/activity-bar.svelte';
-  import {
-    currentDocument,
-    revealLine,
-    revealMatch,
-    scrollToLine,
-    setDocument,
-    visibleLine,
-  } from './lib/doc';
+  import { currentDocument, revealLine, scrollToLine, setDocument, visibleLine } from './lib/doc';
   import { createEditController, type EditController, type EditMode } from './lib/edit';
   import Outline from './lib/outline.svelte';
   import SettingsPanel from './lib/settings/panel.svelte';
@@ -286,15 +279,17 @@
   /**
    * Opens a note the sidebar asked for, and points at what was asked about.
    *
-   * A search hit carries the line **and** the matched text: scrolling to the
-   * line is half an answer, because a line in a wrapped paragraph is not a
-   * place the eye can find. The match is highlighted for a moment instead.
+   * A search hit carries the line it was found on, and the block holding that
+   * line is highlighted for a moment on arrival — the whole passage, which is
+   * what the row in the search panel showed. Marking only the search term
+   * inside it lit three characters in the middle of a paragraph and left the
+   * reader to work out what they belonged to.
    *
    * Two frames before revealing, not one: the first commits the new document,
    * the second lets layout settle so the anchor positions being read are the
    * ones that will be on screen.
    */
-  async function openFromSidebar(path: string, line?: number, match?: string): Promise<void> {
+  async function openFromSidebar(path: string, line?: number): Promise<void> {
     try {
       await show((await openNote(path)) as OpenedDocument);
     } catch (error) {
@@ -303,12 +298,7 @@
     }
     if (line === undefined || line <= 0) return;
 
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        if (match !== undefined && match !== '') revealMatch(line, match);
-        else revealLine(line);
-      })
-    );
+    requestAnimationFrame(() => requestAnimationFrame(() => revealLine(line)));
   }
 
   /**
@@ -532,7 +522,7 @@
             {vaultPath}
             active={doc?.rel ?? null}
             onindexed={() => void resolveWikiLinks()}
-            onopen={(path, line, match) => void openFromSidebar(path, line, match)}
+            onopen={(path, line) => void openFromSidebar(path, line)}
           />
         {:else}
           <div class="empty-panel">

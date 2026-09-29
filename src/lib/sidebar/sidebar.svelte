@@ -32,12 +32,8 @@
     vaultPath?: string | null;
     /** The open note, vault-relative — highlighted, and its backlinks shown. */
     active?: string | null;
-    /**
-     * Opens a note. `line` scrolls to it; `match` is the text to point at once
-     * there — a search term, so the hit is highlighted rather than merely
-     * scrolled past.
-     */
-    onopen?: (path: string, line?: number, match?: string) => void;
+    /** Opens a note. `line` scrolls to it and highlights the block it is in. */
+    onopen?: (path: string, line?: number) => void;
     /**
      * The wiki-link index has been built.
      *
@@ -212,7 +208,7 @@
   {:else}
     <SearchPanel
       enabled={info !== null}
-      onopen={(path, line, match) => onopen?.(path, line, match)}
+      onopen={(path, line) => onopen?.(path, line)}
     />
   {/if}
 
