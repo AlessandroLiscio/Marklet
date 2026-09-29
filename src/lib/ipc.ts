@@ -474,6 +474,14 @@ export function closeVault(): Promise<void> {
  * Subscribe before calling, or the first batches are lost — which on a small
  * vault is all of them.
  */
+/**
+ * Streams the whole tree.
+ *
+ * **No panel consumes this.** The Search tab ran it before its first query for
+ * one release, and nothing used the result: `vault::search::search` takes the
+ * root and walks it itself, per query. On a large folder that was over a
+ * second of I/O, thrown away. The command is still correct; it has no caller.
+ */
 export function scanVault(): Promise<ScanStats> {
   return invoke<ScanStats>('scan_vault');
 }

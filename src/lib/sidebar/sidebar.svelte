@@ -15,16 +15,7 @@
   import Links from './links.svelte';
   import SearchPanel from './search.svelte';
   import Tree from './tree.svelte';
-  import {
-    indexVault,
-    listDir,
-    onScanDone,
-    openVault,
-    scanVault,
-    subscribeAll,
-    type Entry,
-    type VaultInfo,
-  } from '../ipc';
+  import { listDir, openVault, type Entry, type VaultInfo } from '../ipc';
   import { spliceChildren } from './tree';
 
   interface Props {
@@ -35,29 +26,19 @@
     /** Opens a note. `line` scrolls to it and highlights the block it is in. */
     onopen?: (path: string, line?: number) => void;
     /**
-     * The wiki-link index has been built.
+     * The wiki-link index is being built, by the app shell.
      *
-     * The open document may have been rendered before there was one — every
-     * document opened at launch was, because `lib.rs` renders it before a
-     * vault exists — and a `[[link]]` rendered without an index is unresolved
-     * for good unless the document is rendered again. The app shell is what
-     * can do that, so it is told.
+     * Shown here because this is where the folder is, and an application that
+     * looks idle while it is working is one the reader assumes is broken.
      */
-    onindexed?: () => void;
+    indexing?: boolean;
   }
 
-  let { vaultPath = null, active = null, onopen, onindexed }: Props = $props();
+  let { vaultPath = null, active = null, onopen, indexing = false }: Props = $props();
 
   let info = $state<VaultInfo | null>(null);
   let entries = $state<Entry[]>([]);
   let scanning = $state(false);
-  /**
-   * The wiki-link index is being built.
-   *
-   * Shown, because on a large folder it is seconds of work and an application
-   * that looks idle while it is busy is one the reader assumes is broken.
-   */
-  let indexing = $state(false);
   let error = $state<string | null>(null);
   let tab = $state<'files' | 'search'>('files');
 
@@ -70,22 +51,6 @@
    */
   let listed = $state<Set<string>>(new Set());
 
-  /**
-   * The full walk has run, so the Rust-side index Search queries is built.
-   *
-   * It says nothing about this component's `entries`, and must not: the walk
-   * used to be streamed into that array, which wiped the lazily-listed tree
-   * the moment the Search tab was opened and left the Files tab showing the
-   * walk's own flat output when the user came back to it. The tree is lazy
-   * now; the walk exists for the index and for nothing on this side.
-   */
-  let walked = $state(false);
-
-  // One subscription for the component's life. `vault-scan-progress` batches
-  // are deliberately NOT consumed — see `walked`. What is still worth knowing
-  // is when the walk stops, because the header says it is running.
-  $effect(() => subscribeAll([onScanDone(() => (scanning = false))]));
-
   $effect(() => {
     const path = vaultPath;
     if (path === null) {
@@ -97,7 +62,6 @@
     let current = true;
     entries = [];
     listed = new Set();
-    walked = false;
     error = null;
     scanning = true;
 
@@ -115,25 +79,6 @@
         entries = top;
         listed = new Set(['']);
 
-        // The wiki-link index, in the background.
-        //
-        // Not awaited — the tree is already on screen and this walks the whole
-        // folder and parses every note in it. On the Rust side it now runs off
-        // the main thread as well, which is what stopped the window freezing
-        // while it ran; here it only has to not block the rows that are
-        // already painted.
-        indexing = true;
-        void indexVault()
-          .then(() => {
-            if (current) onindexed?.();
-          })
-          .catch(() => {
-            // An unreadable note, a folder that vanished. Wiki-links stay
-            // unresolved, which is what they were before this ran.
-          })
-          .finally(() => {
-            if (current) indexing = false;
-          });
       } catch (e) {
         if (!current) return;
         error = e instanceof Object && 'message' in e ? String(e.message) : 'Could not open that folder';
@@ -160,24 +105,6 @@
     }
   }
 
-  /**
-   * Runs the full walk, once, when the Search tab is first opened.
-   *
-   * Deferred to here rather than done on open because this is the only thing
-   * that needs it, and it is the expensive thing — see `vault::scan::list_dir`.
-   */
-  async function ensureWalked(): Promise<void> {
-    if (walked || info === null) return;
-    scanning = true;
-    try {
-      await scanVault();
-      walked = true;
-    } catch {
-      // Search reports its own failure; the tree keeps the rows it has.
-    } finally {
-      scanning = false;
-    }
-  }
 </script>
 
 <aside class="sidebar" aria-label="Vault">
@@ -185,9 +112,9 @@
     <span class="name" title={info?.root ?? ''}>{info?.name ?? 'No vault'}</span>
     <!-- Not a row count: the tree is listed lazily and its size is not what is
          being waited for. What is worth saying is that something is still
-         running, and which of the two things it is. -->
+         running. -->
     {#if scanning || indexing}
-      <span class="counting" title={scanning ? 'Walking the folder for search' : 'Building the wiki-link index'}>
+      <span class="counting" title={indexing ? 'Building the wiki-link index' : 'Opening the folder'}>
         &hellip;
       </span>
     {/if}
@@ -195,14 +122,11 @@
 
   <nav class="tabs">
     <button type="button" class:on={tab === 'files'} onclick={() => (tab = 'files')}>Files</button>
-    <button
-      type="button"
-      class:on={tab === 'search'}
-      onclick={() => {
-        tab = 'search';
-        void ensureWalked();
-      }}
-    >
+    <!-- No walk here any more. Opening this tab used to run `scan_vault` over
+         the whole tree first, and nothing consumed it: `vault::search::search`
+         takes the root and walks it itself, per query. It was 1.4 s of I/O on
+         a large folder, thrown away. -->
+    <button type="button" class:on={tab === 'search'} onclick={() => (tab = 'search')}>
       Search
     </button>
   </nav>

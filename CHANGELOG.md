@@ -10,6 +10,17 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+### Changed
+
+- **Opening a folder walks nothing.** It listed the top level lazily and then
+  did two things that were not lazy at all: it built the wiki-link index, and
+  the Search tab ran a full walk before its first query. Neither is needed when
+  a folder is opened. The index is built when a document on screen turns out to
+  contain a wiki-link that did not resolve — once per vault, and never for a
+  note that has no `[[link]]` in it. The Search tab's walk is gone outright:
+  nothing consumed it, because `vault::search::search` takes the root and walks
+  it itself, per query. Opening a folder is now one directory listing.
+
 ### Fixed
 
 - **Opening a folder no longer freezes the window.** The directory listing was

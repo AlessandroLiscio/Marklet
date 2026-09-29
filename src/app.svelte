@@ -20,6 +20,7 @@
     exportHtml,
     exportPdf,
     isIpcError,
+    indexVault,
     openDocument,
     openExternal,
     openNote,
@@ -120,6 +121,10 @@
     await enrich(root);
 
     if (resume) await edit?.setMode(resume);
+
+    // Not awaited: it may walk the whole folder, and the document is already
+    // on screen. It re-renders when it has something better to say.
+    void ensureWikiLinks();
   }
 
   /**
@@ -299,6 +304,53 @@
     if (line === undefined || line <= 0) return;
 
     requestAnimationFrame(() => requestAnimationFrame(() => revealLine(line)));
+  }
+
+  /**
+   * The vault whose wiki-link index has been built, if any.
+   *
+   * One build per vault, and only when something has actually asked for it —
+   * see {@link ensureWikiLinks}.
+   */
+  let indexedVault: string | null = null;
+
+  /** True while that build is running, so the sidebar can say so. */
+  let indexing = $state(false);
+
+  /**
+   * Builds the wiki-link index — but only when a document needs it.
+   *
+   * It used to run when a folder was *opened*, which meant walking the tree
+   * and parsing every note in it before anything had asked a question the
+   * index answers. On a folder of 1 976 notes that is seconds of work for a
+   * reader who wanted to look at one file, and most files have no `[[link]]`
+   * in them at all.
+   *
+   * So the trigger is the document: if what is on screen contains a wiki-link
+   * that did not resolve, and this vault has not been indexed yet, build it
+   * and render the document again. A note with no wiki-links never pays, and
+   * a vault pays once.
+   *
+   * `indexedVault` is set *before* the await, so a second document opened
+   * while the build is running does not start a second one.
+   */
+  async function ensureWikiLinks(): Promise<void> {
+    const root = document.getElementById('doc');
+    if (root === null || vaultPath === null || indexedVault === vaultPath) return;
+    if (root.querySelector('a.wikilink.unresolved') === null) return;
+
+    indexedVault = vaultPath;
+    indexing = true;
+    try {
+      await indexVault();
+    } catch {
+      // An unreadable note, a folder that vanished. Wiki-links stay
+      // unresolved, which is what they already were.
+      return;
+    } finally {
+      indexing = false;
+    }
+    await resolveWikiLinks();
   }
 
   /**
@@ -521,7 +573,7 @@
           <Sidebar
             {vaultPath}
             active={doc?.rel ?? null}
-            onindexed={() => void resolveWikiLinks()}
+            {indexing}
             onopen={(path, line) => void openFromSidebar(path, line)}
           />
         {:else}
