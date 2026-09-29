@@ -11,7 +11,7 @@
   import { onDestroy, onMount } from 'svelte';
 
   import ActivityBar, { type PanelId } from './lib/chrome/activity-bar.svelte';
-  import { currentDocument, setDocument } from './lib/doc';
+  import { currentDocument, scrollToLine, setDocument, visibleLine } from './lib/doc';
   import { createEditController, type EditController, type EditMode } from './lib/edit';
   import Outline from './lib/outline.svelte';
   import SettingsPanel from './lib/settings/panel.svelte';
@@ -276,6 +276,36 @@
     panel = 'explorer';
   }
 
+  /**
+   * Renders the open document again, now that wiki-links can resolve.
+   *
+   * A document rendered before the vault index existed has every `[[link]]`
+   * in the unresolved state permanently — resolution happens in Rust when the
+   * HTML is built, not when the link is clicked. Every document opened at
+   * launch is in that state, because `lib.rs` renders it before a vault is
+   * opened, and so is any document opened in the seconds before the index
+   * finishes. Opening the explorer on a file therefore showed a panel of
+   * struck-through links that pointed at notes sitting right beside it.
+   *
+   * Guarded on there actually being an unresolved link, so a document with
+   * none costs nothing and does not flicker. The reading position is carried
+   * across by source line, the same way a reflow carries it.
+   */
+  async function resolveWikiLinks(): Promise<void> {
+    const root = document.getElementById('doc');
+    if (!doc || !root || root.querySelector('a.wikilink.unresolved') === null) return;
+
+    const line = visibleLine();
+    try {
+      await show(await openDocument(doc.path));
+    } catch {
+      // The file moved or became unreadable between the two reads. What is on
+      // screen is still the document; only its links stay unresolved.
+      return;
+    }
+    requestAnimationFrame(() => requestAnimationFrame(() => scrollToLine(line)));
+  }
+
   /** The top-right split toggle. `F3` does the same thing. */
   function toggleSplit(): void {
     void edit?.setMode(mode === 'split' ? 'read' : 'split');
@@ -466,6 +496,7 @@
           <Sidebar
             {vaultPath}
             active={doc?.rel ?? null}
+            onindexed={() => void resolveWikiLinks()}
             onopen={(path) =>
               void openNote(path)
                 .then((d) => show(d as OpenedDocument))
@@ -539,9 +570,15 @@
   ></div>
 {/if}
 
-{#if !doc}
-  <!-- Launched with nothing. An empty window with no explanation is the worst
-       version of this; the OS file picker is the one people already know. -->
+{#if !doc && vaultPath === null}
+  <!-- Launched with nothing, and still pointed at nothing. An empty window
+       with no explanation is the worst version of that; the OS file picker is
+       the one people already know.
+
+       It goes as soon as a folder is chosen, before any note is opened: the
+       explorer that appears beside it *is* the answer to "open a Markdown
+       file, or a folder to browse", and leaving the invitation standing next
+       to it reads as though the choice had not registered. -->
   <div class="welcome">
     <h1>Marklet</h1>
     <p>Open a Markdown file, or a folder to browse.</p>

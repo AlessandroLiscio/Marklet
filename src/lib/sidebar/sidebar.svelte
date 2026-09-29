@@ -33,9 +33,19 @@
     /** The open note, vault-relative — highlighted, and its backlinks shown. */
     active?: string | null;
     onopen?: (path: string, line?: number) => void;
+    /**
+     * The wiki-link index has been built.
+     *
+     * The open document may have been rendered before there was one — every
+     * document opened at launch was, because `lib.rs` renders it before a
+     * vault exists — and a `[[link]]` rendered without an index is unresolved
+     * for good unless the document is rendered again. The app shell is what
+     * can do that, so it is told.
+     */
+    onindexed?: () => void;
   }
 
-  let { vaultPath = null, active = null, onopen }: Props = $props();
+  let { vaultPath = null, active = null, onopen, onindexed }: Props = $props();
 
   let info = $state<VaultInfo | null>(null);
   let entries = $state<Entry[]>([]);
@@ -116,7 +126,9 @@
         // parsing every note. The panel fills in when it finishes.
         void indexVault()
           .then(() => {
-            if (current) indexed += 1;
+            if (!current) return;
+            indexed += 1;
+            onindexed?.();
           })
           .catch(() => {
             // An unreadable note, a folder that vanished. Backlinks stay empty,
