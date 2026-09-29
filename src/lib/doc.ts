@@ -87,10 +87,35 @@ export function anchorForLine(line: number): HTMLElement | null {
   return anchors[found] ?? null;
 }
 
+/**
+ * Announced on `document` just before a deliberate jump moves the preview.
+ *
+ * `detail.line` is the source line being jumped to. Split view listens: the
+ * two columns are linked by an echo-suppressed scroll handler with a 150 ms
+ * window, and a *smooth* scroll outlives that window by hundreds of
+ * milliseconds. Mid-animation the link would see the preview move, push the
+ * editor after it, then see the editor move and pull the preview back with an
+ * `auto` scroll — which cancels the animation and parks the preview where the
+ * editor still was. The jump is therefore announced rather than inferred, so
+ * the link can mute itself and move the editor to the target directly.
+ */
+export const JUMP_EVENT = 'marklet-jump';
+
 /** Scrolls to a heading by its GitHub-compatible slug. */
 export function scrollToSlug(root: HTMLElement, slug: string): boolean {
   const el = root.querySelector<HTMLElement>(`#${CSS.escape(slug)}`);
   if (!el) return false;
+
+  // The heading carries `data-l` itself under the `data-l` contract, but the
+  // slug's element is whatever the renderer gave the id to, so the nearest
+  // one at or above it is what is asked for. Line 0 means nothing was found,
+  // and announcing it would send the editor to the top of the file.
+  const anchor = el.closest<HTMLElement>('[data-l]');
+  const line = anchor === null ? 0 : lineOf(anchor);
+  if (line > 0) {
+    document.dispatchEvent(new CustomEvent(JUMP_EVENT, { detail: { line } }));
+  }
+
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   return true;
 }

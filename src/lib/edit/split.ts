@@ -13,7 +13,7 @@
  * DOM — `setDocument()` keeps its anchor list, `app.svelte` keeps finding
  * `#doc` by id, and leaving split mode is removing one class.
  */
-import { scrollToLine, visibleLine } from '../doc';
+import { JUMP_EVENT, scrollToLine, visibleLine } from '../doc';
 import type { Session } from './session';
 
 /**
@@ -26,6 +26,19 @@ import type { Session } from './session';
  * immediately afterwards is still honoured.
  */
 export const ECHO_MS = 150;
+
+/**
+ * How long the link stays muted after a deliberate jump.
+ *
+ * `scrollToSlug` scrolls smoothly, and a smooth scroll in Chromium runs for
+ * several hundred milliseconds — longer for a longer distance. {@link ECHO_MS}
+ * is sized for the settle after one programmatic call and expires in the
+ * middle of an animation, at which point the link starts arbitrating between
+ * two positions that are both still moving. This window covers the animation
+ * instead. A real scroll during it is ignored, which is the cost; the
+ * alternative is the preview snapping back to where the editor was.
+ */
+export const JUMP_MS = 700;
 
 export interface ScrollLink {
   /**
@@ -68,7 +81,22 @@ export function linkScroll(docRoot: HTMLElement): ScrollLink {
     session.goToLine(visibleLine(docRoot));
   }
 
+  /**
+   * Somebody jumped the preview on purpose — the outline, for now.
+   *
+   * The editor is moved to the same line here rather than being allowed to
+   * follow the preview, because following means reading a position that is
+   * still animating.
+   */
+  function onJump(event: Event): void {
+    const line = (event as CustomEvent<{ line?: number }>).detail?.line;
+    if (!alive || session === null || line === undefined || line <= 0) return;
+    quietUntil = stamp() + JUMP_MS;
+    session.goToLine(line);
+  }
+
   window.addEventListener('scroll', onWindowScroll, { passive: true });
+  document.addEventListener(JUMP_EVENT, onJump);
 
   return {
     onEditorScroll(line) {
@@ -94,6 +122,7 @@ export function linkScroll(docRoot: HTMLElement): ScrollLink {
       alive = false;
       session = null;
       window.removeEventListener('scroll', onWindowScroll);
+      document.removeEventListener(JUMP_EVENT, onJump);
     },
   };
 }
