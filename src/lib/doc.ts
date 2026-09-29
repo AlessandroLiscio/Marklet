@@ -36,10 +36,19 @@ export function lineMap(): BlockSpan[] {
  * inserts, so the two defences are independent rather than stacked.
  */
 export function setDocument(root: HTMLElement, doc: OpenedDocument): void {
+  clearFlash();
   root.innerHTML = doc.html;
   current = doc;
   anchors = Array.from(root.querySelectorAll<HTMLElement>('[data-l]'));
+  // Announced because the document is outside the Svelte tree: a panel showing
+  // something *about* the document — the links in it — has no other way to
+  // learn that the document under it was replaced. Re-rendering to resolve
+  // wiki-links is exactly that case, and the panel read the old DOM without it.
+  document.dispatchEvent(new CustomEvent(DOCUMENT_EVENT));
 }
+
+/** Raised on `document` after {@link setDocument} has replaced the markup. */
+export const DOCUMENT_EVENT = 'marklet-document';
 
 /**
  * The source line of the block nearest the top of the viewport.
@@ -117,6 +126,113 @@ export function anchorForLine(line: number): HTMLElement | null {
  * the link can mute itself and move the editor to the target directly.
  */
 export const JUMP_EVENT = 'marklet-jump';
+
+/** The class `content.css` animates. One element carries it at a time. */
+const FLASH_CLASS = 'marklet-flash';
+
+/** How long the highlight stays up. Long enough to find with your eye, short
+ *  enough that it is gone before it becomes decoration. */
+const FLASH_MS = 1600;
+
+/** Undoes whatever the last flash did — a class, or a wrapper element. */
+let undoFlash: (() => void) | null = null;
+
+/** Removes the highlight currently showing, if any. */
+export function clearFlash(): void {
+  undoFlash?.();
+  undoFlash = null;
+}
+
+function flash(el: HTMLElement, undo: () => void): void {
+  clearFlash();
+  el.classList.add(FLASH_CLASS);
+  const timer = setTimeout(clearFlash, FLASH_MS);
+  undoFlash = () => {
+    clearTimeout(timer);
+    el.classList.remove(FLASH_CLASS);
+    undo();
+  };
+}
+
+/**
+ * Scrolls an element into view and highlights it.
+ *
+ * `block: 'center'` rather than `'start'`: this is "look at this", not "read
+ * on from here", and a thing pinned to the top edge of the window is harder to
+ * find than one in the middle. The jump is announced so split view mutes its
+ * scroll link — see {@link JUMP_EVENT}.
+ */
+export function revealElement(el: HTMLElement, line: number): void {
+  if (line > 0) {
+    document.dispatchEvent(new CustomEvent(JUMP_EVENT, { detail: { line } }));
+  }
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  flash(el, () => {});
+}
+
+/**
+ * Scrolls to a source line and highlights the block that holds it.
+ *
+ * The fallback for "go here" when there is nothing finer to point at.
+ */
+export function revealLine(line: number): boolean {
+  const el = anchorForLine(line);
+  if (el === null) return false;
+  revealElement(el, line);
+  return true;
+}
+
+/**
+ * Scrolls to a source line and highlights the first occurrence of `text`
+ * inside it — a search hit, pointed at rather than merely scrolled to.
+ *
+ * The match is wrapped in a `<mark>` and unwrapped again when the highlight
+ * expires, with `normalize()` putting the split text nodes back together, so
+ * the document is byte-identical afterwards. The alternative, the CSS Custom
+ * Highlight API, needs no mutation at all but is not old enough to rely on in
+ * WebKitGTK, which is the development platform.
+ *
+ * Falls back to {@link revealLine} when the text is not found — the line moved,
+ * the match spans an element boundary, or the query was a regex whose source
+ * text is not what the document says.
+ */
+export function revealMatch(line: number, text: string): boolean {
+  const block = anchorForLine(line);
+  const needle = text.trim().toLowerCase();
+  if (block === null || needle === '') return revealLine(line);
+
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+    const value = node.nodeValue ?? '';
+    const at = value.toLowerCase().indexOf(needle);
+    if (at === -1) continue;
+
+    const target = node as Text;
+    const rest = target.splitText(at);
+    rest.splitText(needle.length);
+
+    const mark = document.createElement('mark');
+    const parent = rest.parentNode;
+    if (parent === null) return revealLine(line);
+    parent.replaceChild(mark, rest);
+    mark.append(rest);
+
+    revealElement(mark, line);
+    // Re-wrap the undo so it also unwraps the <mark>; `revealElement` only
+    // knows how to take a class off.
+    const takeClassOff = undoFlash;
+    undoFlash = () => {
+      takeClassOff?.();
+      const owner = mark.parentNode;
+      if (owner === null) return;
+      owner.replaceChild(rest, mark);
+      owner.normalize();
+    };
+    return true;
+  }
+
+  return revealLine(line);
+}
 
 /** Scrolls to a heading by its GitHub-compatible slug. */
 export function scrollToSlug(root: HTMLElement, slug: string): boolean {

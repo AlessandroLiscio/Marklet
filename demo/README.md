@@ -29,7 +29,7 @@ what *this* file points at, in the order the links appear:
 - [[A note nobody has written]], struck through and inert, because nothing in this folder
   answers to that name.
 
-Clicking a **row** scrolls this document to the line the link is written on. Following a
+Clicking a **row** scrolls this document to the link and flashes it for a moment. Following a
 link is the small button on the right — Ctrl+click it for a second window, and a web link
 goes to your browser either way. Two destinations, two targets: a stray click on a list of
 links should not replace what you are reading.

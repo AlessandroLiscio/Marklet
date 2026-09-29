@@ -11,7 +11,14 @@
   import { onDestroy, onMount } from 'svelte';
 
   import ActivityBar, { type PanelId } from './lib/chrome/activity-bar.svelte';
-  import { currentDocument, scrollToLine, setDocument, visibleLine } from './lib/doc';
+  import {
+    currentDocument,
+    revealLine,
+    revealMatch,
+    scrollToLine,
+    setDocument,
+    visibleLine,
+  } from './lib/doc';
   import { createEditController, type EditController, type EditMode } from './lib/edit';
   import Outline from './lib/outline.svelte';
   import SettingsPanel from './lib/settings/panel.svelte';
@@ -277,6 +284,34 @@
   }
 
   /**
+   * Opens a note the sidebar asked for, and points at what was asked about.
+   *
+   * A search hit carries the line **and** the matched text: scrolling to the
+   * line is half an answer, because a line in a wrapped paragraph is not a
+   * place the eye can find. The match is highlighted for a moment instead.
+   *
+   * Two frames before revealing, not one: the first commits the new document,
+   * the second lets layout settle so the anchor positions being read are the
+   * ones that will be on screen.
+   */
+  async function openFromSidebar(path: string, line?: number, match?: string): Promise<void> {
+    try {
+      await show((await openNote(path)) as OpenedDocument);
+    } catch (error) {
+      say(reason(error), true);
+      return;
+    }
+    if (line === undefined || line <= 0) return;
+
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (match !== undefined && match !== '') revealMatch(line, match);
+        else revealLine(line);
+      })
+    );
+  }
+
+  /**
    * Renders the open document again, now that wiki-links can resolve.
    *
    * A document rendered before the vault index existed has every `[[link]]`
@@ -497,10 +532,7 @@
             {vaultPath}
             active={doc?.rel ?? null}
             onindexed={() => void resolveWikiLinks()}
-            onopen={(path) =>
-              void openNote(path)
-                .then((d) => show(d as OpenedDocument))
-                .catch((error: unknown) => say(reason(error), true))}
+            onopen={(path, line, match) => void openFromSidebar(path, line, match)}
           />
         {:else}
           <div class="empty-panel">

@@ -32,6 +32,16 @@ describe('collectLinks', () => {
     ]);
   });
 
+  it('percent-decodes the path out of the href', () => {
+    // `index.rs` percent-encodes the path into the `marklet://` URL, so a note
+    // with a space in its name arrives as `%20` — and `open_note` takes the
+    // real path, not the encoded one.
+    const root = render(
+      '<p data-l="5"><a class="wikilink" href="marklet://vault/my%20notes/a%20b.md">A B</a></p>',
+    );
+    expect(collectLinks(root)[0]?.target).toBe('my notes/a b.md');
+  });
+
   it('reads an unresolved wiki-link as the name that answered to nothing', () => {
     const root = render(
       '<p data-l="3"><a class="wikilink unresolved" data-target="Missing Note">Missing Note</a></p>',
