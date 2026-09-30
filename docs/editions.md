@@ -46,14 +46,14 @@ its bytes there.
 | **Palettes** | the default accent hue | **four extra accent hues** — teal, amber, forest, violet, via `[data-palette]`. They recolour **only the accent**; background, foreground and border are identical across all of them, deliberately — reading comfort over decoration |
 | **Motion** | CSS state changes only | ✅ **considered transitions**, honouring `prefers-reduced-motion` |
 | **Tabs** | ✅ same | ✅ **several documents open at once** — every way of opening a note opens a tab, `Ctrl+W` closes, `Ctrl+Tab` cycles. A tab is a record, not a parsed document: only the active one's markup is in the DOM and switching re-renders, so memory is flat however long the session runs. It was budgeted as full-only, on the reasoning that lite spends nothing on convenience; measured, the strip is under 2 KB of the bundle, which is not a trade lite has to make |
-| **Settings** | panel inside the main window | ⏳ **dedicated window** (~40 MB RSS for a second webview) |
-| **Export** | PDF, standalone HTML, diagram SVG and PNG | ✅ same, plus richer print themes ⏳ |
-| **Auto-update** | ✗ — download manually | ⏳ `tauri-plugin-updater`, ~200 KB plus a signing key |
+| **Settings** | panel inside the main window | ⏳ **dedicated window** (~40 MB RSS for a second webview) — [#36](https://github.com/AlessandroLiscio/Marklet/issues/36) |
+| **Export** | PDF, standalone HTML, diagram SVG and PNG | ✅ same, plus richer print themes ⏳ — [#37](https://github.com/AlessandroLiscio/Marklet/issues/37) |
+| **Auto-update** | ✗ — download manually | ⏳ `tauri-plugin-updater`, ~200 KB plus a signing key — [#38](https://github.com/AlessandroLiscio/Marklet/issues/38) |
 
 **⏳ means designed and budgeted for, not written.** It is in this table because the full
 edition's ceiling was set with room for it, so a later pull request adding it is not a
-surprise — not because it is in a build you can download. Everything marked ✅ is in the
-tree and covered by tests.
+surprise — not because it is in a build you can download. Each ⏳ row links the issue
+tracking it. Everything marked ✅ is in the tree and covered by tests.
 
 Where a row says ✅ on both sides, the two editions run the same code. The difference is never
 a worse implementation in lite; it is the absence of a feature, or a narrower one that is

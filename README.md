@@ -89,16 +89,16 @@ deliberately not bound by it and is allowed to spend bytes on being good.
 | **Encoding** | BOM, UTF-8, UTF-16, cp1252 | ✅ plus CJK auto-detection |
 | **Typography** | system fonts only | ✅ curated bundled pairings, multiple palettes |
 | **Motion** | CSS state changes only | ✅ considered transitions |
-| **Tabs** | ✗ | ⏳ |
-| **Settings** | panel in the main window | ⏳ dedicated window |
-| **Auto-update** | ✗ | ⏳ |
+| **Tabs** | ✅ | ✅ several documents at once |
+| **Settings** | panel in the main window | ⏳ dedicated window ([#36](https://github.com/AlessandroLiscio/Marklet/issues/36)) |
+| **Auto-update** | ✗ | ⏳ ([#38](https://github.com/AlessandroLiscio/Marklet/issues/38)) |
 
 Where a row is ✅ on both sides, the two editions run the same code. Lite is never a worse
 implementation — it is the absence of a feature, or a narrower one that says so.
 
 **⏳ means planned and budgeted for, not written.** The full edition's ceiling was set with
-room for these; they are listed so a later release adding one is not a surprise. Everything
-marked ✅ is in the tree.
+room for these; they are listed so a later release adding one is not a surprise, and each
+one has an issue. Everything marked ✅ is in the tree.
 
 **Marklet is the default download.** Choose Lite deliberately: when you want something small
 and fast, or your Markdown never contains a diagram.
