@@ -188,6 +188,7 @@ marklet --help
 | `F3` | Split — plain source on the left, rendered preview on the right, scroll-synced both ways |
 | `F4` / `Ctrl+E` | Open the file in your own editor at the cursor |
 | `Esc` | Back to reading |
+| `Ctrl+O` / `Ctrl+Shift+O` | Open a file / a folder, at any time |
 | `Ctrl+W` | Close the current tab |
 | `Ctrl+Shift+T` | Reopen the last closed tab |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab |

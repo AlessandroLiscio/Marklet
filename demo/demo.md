@@ -429,7 +429,8 @@ document without them.
 | `Ctrl` `+` / `-` / `0` | Zoom in, out, back to 100% |
 
 Open the HTML in a browser **with the network disabled**. Every image, font and style
-is inlined; it should look the same offline. Open the PDF and check that internal
+is inlined; it should look the same offline. Both exports also have buttons, in the
+document's top-right corner beside the split toggle. Open the PDF and check that internal
 links to headings still work, no code block is cut across a page break, and the maths
 and diagrams rendered.
 
@@ -484,7 +485,9 @@ Things to try, in order:
 ## 16. Explorer and vault
 
 The **Explorer** button at the top of the activity bar opens the folder tree, rooted at this
-file's own folder — no need to have launched on a directory. Folders list their contents
+file's own folder — no need to have launched on a directory. Beside the folder's name there
+are two buttons for opening a different file or a different folder, and `Ctrl+O` /
+`Ctrl+Shift+O` do the same from anywhere. Folders list their contents
 when you expand them, one level at a time, so opening a note inside a large folder does not
 read everything underneath it.
 
