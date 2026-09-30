@@ -131,6 +131,15 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Fixed
 
+- **A file opened from the picker had no place in the vault.** `rel`, the
+  vault-relative path, is filled by Rust from the vault that was open *when the
+  document was rendered* — so a file opened before any folder existed kept
+  `rel: null` for good. That is the identity everything vault-shaped is keyed
+  on: the Links panel was handed `null` and said "No note open", and the
+  explorer had nothing to highlight. Double-clicking the same file in the tree
+  worked, because there the vault was already open. The document is now
+  re-read once `open_vault` returns.
+
 - **Wiki-links are no longer all struck through in the "Links" panel, and
   clicking one in the document works.** Two faults, one cause: the webview was
   reading a URL prefix that does not exist. `AssetRoot::url_prefix()` is

@@ -31,6 +31,7 @@
     cycle,
     EMPTY,
     openTab,
+    popClosed,
     rememberLine,
     type TabState,
   } from './lib/tabs';
@@ -69,7 +70,7 @@
   function seedTabs(): TabState {
     const boot = currentDocument();
     if (boot === null) return EMPTY;
-    return { tabs: [{ path: boot.path, rel: boot.rel, title: boot.title, line: 0 }], active: 0 };
+    return { tabs: [{ path: boot.path, title: boot.title, line: 0 }], active: 0, closed: [] };
   }
 
   /** Published for `content.css` and the split toggle, which sit under it. */
@@ -170,7 +171,6 @@
     const line = options.line ?? 0;
     tabState = openTab(rememberLine(tabState, doc === null ? 0 : visibleLine()), {
       path: opened.path,
-      rel: opened.rel,
       title: opened.title,
       line,
     });
@@ -425,6 +425,32 @@
   }
 
   /**
+   * Re-reads the open document once a vault exists, so it learns its place in it.
+   *
+   * `rel` — the vault-relative path — is filled by Rust when the document is
+   * rendered, from the vault that was open *at that moment*. A file opened
+   * before any vault existed therefore has `rel: null` for good, and that is
+   * the identity everything vault-shaped is keyed on: the Links panel is
+   * handed `null` and says "No note open", and the tree has nothing to
+   * highlight. Opening a file from the picker and then pressing Explorer hit
+   * exactly that, while double-clicking the same file in the tree did not —
+   * there the vault was already open.
+   *
+   * Called by the sidebar once `open_vault` has returned, not when `vaultPath`
+   * is assigned: the Rust side has to know about the vault before a re-render
+   * can pick it up.
+   */
+  async function adoptVault(): Promise<void> {
+    if (doc === null || doc.rel !== null) return;
+    try {
+      await show(await openDocument(doc.path));
+    } catch {
+      // The file moved between the two reads. What is on screen is still the
+      // document; it just stays outside the vault's idea of itself.
+    }
+  }
+
+  /**
    * Opens a note the sidebar asked for, and points at what was asked about.
    *
    * A search hit carries the line it was found on, and the block holding that
@@ -449,7 +475,6 @@
     const line = options.line ?? 0;
     tabState = openTab(rememberLine(tabState, doc === null ? 0 : visibleLine()), {
       path: opened.path,
-      rel: opened.rel,
       title: opened.title,
       line,
     });
@@ -636,6 +661,15 @@
       void switchTo(next.active);
       return true;
     }
+    if (event.shiftKey && event.key.toLowerCase() === 't') {
+      event.preventDefault();
+      const back = popClosed(tabState);
+      if (back !== null) {
+        tabState = back.state;
+        void openInTab(back.tab.path, { line: back.tab.line });
+      }
+      return true;
+    }
     return false;
   }
 
@@ -753,6 +787,7 @@
             {vaultPath}
             active={doc?.rel ?? null}
             {indexing}
+            onvaultopen={() => void adoptVault()}
             onopen={(path, options) => void openFromSidebar(path, options)}
           />
         {:else}
