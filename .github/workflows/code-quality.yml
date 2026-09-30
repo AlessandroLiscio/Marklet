@@ -65,5 +65,11 @@ jobs:
       - name: IPC argument names match their commands
         run: npm run check:ipc
 
+      # Catches a chrome selector in print.css that no longer names anything.
+      # Also silent: a selector that matches nothing hides nothing, and the
+      # only way to see the result is to open an exported PDF on Windows.
+      - name: Print stylesheet hides chrome that exists
+        run: npm run check:print
+
       - name: Contrast (WCAG AA)
         run: npm run contrast

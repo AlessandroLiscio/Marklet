@@ -34,11 +34,10 @@
  *   code.language-xxx inside <pre>
  *   .math-inline / .math-block, .mermaid
  *
- * NEEDS WIRING (not this file's job, reported at wave close): a
- * `<link rel="stylesheet" href="/src/styles/print.css" media="print">` in
- * `src/main.ts` alongside the existing `content.css` import, so the live app
- * picks this up for Ctrl+P and so `pdf.rs` has something to point the native
- * engine at.
+ * Reaching the page: `runExport` in `src/app.svelte` does `await
+ * import('./styles/print.css')` before it prints. Not a boot import — this is
+ * ~5 KiB gzipped of rules entirely inside `@media print`, and nobody who is
+ * merely reading should download it.
  */
 
 @media print {
@@ -49,12 +48,68 @@
 
   /* ------------------------------ chrome, gone ----------------------------- */
   /* Not "hidden" via visibility — removed from layout entirely, so nothing
-     reserves blank space for it on the page. */
-  .sidebar,
-  .outline,
+     reserves blank space for it on the page.
+     
+     The first PDF anyone actually opened had the application's left rail
+     printed down the edge of the page and a 260px column of empty panel
+     background beside the text. The list hid `.sidebar` and `.outline` but not
+     `.chrome-layer`, the fixed shell that *holds* them, so hiding the panels
+     only emptied the shell instead of removing it. Hiding the container rather
+     than its contents is also what keeps this honest as panels come and go: a
+     new panel inside `.chrome-layer` is covered the day it is written, and
+     `.sidebar` and `.outline` no longer need to be named here at all.
+     
+     `.tabbar`, `.doc-actions`, `.divider`, `.welcome`, `.notice` and the split
+     editor were simply never listed. Each is `position: fixed`, so each landed
+     on the page wherever the viewport had put it.
+     
+     The fences are read by `tests/unit/print-chrome.test.ts`, which fails if
+     any selector here stops naming a real element. */
+  /* chrome-selectors:start */
+  .chrome-layer,
+  .tabbar,
+  .doc-actions,
+  .divider,
+  .status,
   .settings,
-  .status {
+  .welcome,
+  .notice,
+  #editor {
     display: none !important;
+  }
+  /* chrome-selectors:end */
+
+  /* Every inset the reading column carries is a custom property, published to
+     `:root` by `app.svelte` and read by `content.css`, `editor.css` and the
+     tab strip. Zeroing them here is the whole layout reset: without it the
+     document keeps a left margin the width of an activity bar that is no
+     longer on the page, and in split mode keeps the half-width column it had
+     beside an editor that is no longer on the page either. */
+  :root {
+    --chrome-inset: 0px;
+    --activity-bar-size: 0px;
+    --tabbar-height: 0px;
+  }
+
+  /* Live edit puts CodeMirror where the reading column was and hides `#doc`
+     outright (`editor.css`). With `#editor` gone from the page too, that
+     leaves nothing to print — so the reading column comes back.
+
+     Printing the editor instead would be the wrong answer even though it is
+     what is on screen: the export is of the document, and the document is the
+     rendered one. It can be a keystroke or two behind the editor mid-edit,
+     which is the same staleness the preview beside it has in split mode and is
+     resolved the same way, by the save that re-renders it. */
+  body.marklet-mode-live #doc {
+    display: block !important;
+  }
+
+  /* `body.marklet-mode-split` sets `padding-inline-start: var(--split-left)`
+     from `--split-ratio`, which the zeroing above does not reach. */
+  body,
+  body.marklet-mode-split {
+    padding-inline-start: 0 !important;
+    padding-block-start: 0 !important;
   }
 
   /* ------------------------------- the page -------------------------------- */
