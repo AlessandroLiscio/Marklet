@@ -7,7 +7,7 @@ date: 2026-09-25
 
 # Marklet demo
 
-Everything Marklet does, in one file, arranged so you can work down it and see each
+Everything Marklet does, in one fi\le, arranged so you can work down it and see each
 thing happen. The frontmatter above should be a **table** at the top of this page, one
 row per key, in the order the file wrote them — not raw `title: Marklet demo` text, and
 not missing. That block is the whole of what an agent definition, a skill or a prompt

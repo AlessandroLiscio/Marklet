@@ -168,6 +168,17 @@ lightweight care about that number, and publishing it keeps us honest.
   beside it, which is not what the activity bar is for.
 
 ### Fixed
+- **The installer says `Marklet` where it used to say `{product_name}`.**
+  Reinstalling with the application open raises a dialog asking you to close
+  it; in Italian that dialog read *"Chiudi {product_name} e riprova."* The
+  placeholder is not a template — `utils.nsh` inside `tauri-bundler` does a
+  literal runtime substitution of `{{product_name}}`, and Tauri's Italian
+  translation writes the second occurrence of each string with one brace
+  instead of two, so the substitution never matches it. English has two braces
+  throughout, which is why nothing looked wrong until someone reinstalled on an
+  Italian system. Marklet now ships its own corrected copy of the file; when
+  upstream fixes it, ours goes away rather than becoming a permanent fork of a
+  translation we do not own.
 - **A PDF export is the document, not a photograph of the application.** The
   first PDF anyone opened had the activity bar printed down the left edge of
   the page, a column of empty panel background beside it, the tab strip, the
