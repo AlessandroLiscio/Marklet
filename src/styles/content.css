@@ -21,6 +21,18 @@
   box-sizing: border-box;
 }
 
+/* The scrollbar's width is reserved whether or not there is a scrollbar.
+   Without this the right-hand chrome jumps: entering live preview hides `#doc`
+   (`edit/editor.css`), the page stops being scrollable, its scrollbar goes
+   away, and every `position: fixed` element anchored to the right edge moves
+   outward by exactly that width — the export buttons, the split toggle and the
+   settings card all shifted together, and landed on top of the editor's own
+   scrollbar. A reserved gutter costs the same pixels in every mode, so nothing
+   moves. */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   margin: 0;
   /* Cleared by the fixed chrome layer on the left. Set from `app.svelte`, which
