@@ -12,9 +12,11 @@ import {
   activateTab,
   activeTab,
   closeTab,
+  CLOSED_CAP,
   cycle,
   EMPTY,
   openTab,
+  popClosed,
   rememberLine,
   tabLabel,
   type Tab,
@@ -22,7 +24,7 @@ import {
 } from '../../src/lib/tabs';
 
 function tab(path: string, title = path): Tab {
-  return { path, rel: path, title, line: 0 };
+  return { path, title, line: 0 };
 }
 
 /** A strip of three with the middle one showing. */
@@ -89,8 +91,11 @@ describe('closeTab', () => {
     expect(activeTab(s)?.path).toBe('b');
   });
 
-  it('closing the only tab empties the strip', () => {
-    expect(closeTab(openTab(EMPTY, tab('a')), 0)).toEqual(EMPTY);
+  it('closing the only tab empties the strip, but not the history', () => {
+    const s = closeTab(openTab(EMPTY, tab('a')), 0);
+    expect(s.tabs).toEqual([]);
+    expect(s.active).toBe(-1);
+    expect(s.closed.map((t) => t.path)).toEqual(['a']);
   });
 
   it('ignores an index that is not there', () => {
@@ -113,11 +118,58 @@ describe('cycle', () => {
 
 describe('tabLabel', () => {
   it('uses the title when there is one', () => {
-    expect(tabLabel({ path: '/a/b.md', rel: 'b.md', title: 'Runbook', line: 0 })).toBe('Runbook');
+    expect(tabLabel({ path: '/a/b.md', title: 'Runbook', line: 0 })).toBe('Runbook');
   });
 
   it('falls back to the file name, on either separator', () => {
-    expect(tabLabel({ path: '/a/b.md', rel: null, title: '', line: 0 })).toBe('b.md');
-    expect(tabLabel({ path: 'C:\\a\\b.md', rel: null, title: '', line: 0 })).toBe('b.md');
+    expect(tabLabel({ path: '/a/b.md', title: '', line: 0 })).toBe('b.md');
+    expect(tabLabel({ path: 'C:\\a\\b.md', title: '', line: 0 })).toBe('b.md');
+  });
+});
+
+describe('the closed-tab history', () => {
+  it('reopens the most recently closed tab', () => {
+    const after = closeTab(three(), 1);
+    const back = popClosed(after);
+    expect(back?.tab.path).toBe('b');
+  });
+
+  it('keeps the history when the last tab is closed', () => {
+    // The whole point of reopening is that it works after you have closed
+    // everything; wiping the history there would be the one case it is for.
+    let s = closeTab(three(), 2);
+    s = closeTab(s, 1);
+    s = closeTab(s, 0);
+    expect(s.tabs).toEqual([]);
+    expect(s.closed.map((t) => t.path)).toEqual(['c', 'b', 'a']);
+  });
+
+  it('remembers where you were in a tab you closed', () => {
+    const s = closeTab(rememberLine(three(), 88), 1);
+    expect(popClosed(s)?.tab.line).toBe(88);
+  });
+
+  it('takes the tab off the history so a second press goes further back', () => {
+    let s = closeTab(three(), 2);
+    s = closeTab(s, 1);
+
+    const first = popClosed(s);
+    expect(first?.tab.path).toBe('b');
+    const second = popClosed(first!.state);
+    expect(second?.tab.path).toBe('c');
+    expect(popClosed(second!.state)).toBe(null);
+  });
+
+  it('answers null when nothing has been closed', () => {
+    expect(popClosed(three())).toBe(null);
+  });
+
+  it('forgets the oldest beyond the cap', () => {
+    let s = EMPTY;
+    for (let i = 0; i < CLOSED_CAP + 3; i += 1) s = openTab(s, tab(`n${i}`));
+    for (let i = 0; i < CLOSED_CAP + 3; i += 1) s = closeTab(s, 0);
+
+    expect(s.closed.length).toBe(CLOSED_CAP);
+    expect(s.closed[0]?.path).toBe('n3');
   });
 });

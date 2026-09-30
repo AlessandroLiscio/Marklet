@@ -32,9 +32,18 @@
      * looks idle while it is working is one the reader assumes is broken.
      */
     indexing?: boolean;
+    /**
+     * `open_vault` has returned, so Rust knows about this folder.
+     *
+     * The app shell re-reads the open document on this, because a document
+     * rendered before a vault existed has no vault-relative path and that is
+     * what the tree's highlight and the Links panel are keyed on.
+     */
+    onvaultopen?: () => void;
   }
 
-  let { vaultPath = null, active = null, onopen, indexing = false }: Props = $props();
+  let { vaultPath = null, active = null, onopen, indexing = false, onvaultopen }: Props =
+    $props();
 
   let info = $state<VaultInfo | null>(null);
   let entries = $state<Entry[]>([]);
@@ -74,6 +83,7 @@
         const opened = await openVault(path);
         if (!current) return;
         info = opened;
+        onvaultopen?.();
         const top = await listDir('', 0);
         if (!current) return;
         entries = top;

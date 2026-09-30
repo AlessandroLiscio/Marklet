@@ -19,8 +19,6 @@
 export interface Tab {
   /** The absolute path. The identity: one tab per file, never two. */
   path: string;
-  /** The vault-relative path, or `null` outside a vault. */
-  rel: string | null;
   /** What the tab is labelled with. */
   title: string;
   /**
@@ -39,9 +37,22 @@ export interface TabState {
   tabs: Tab[];
   /** Index into `tabs`, or `-1` when nothing is open. */
   active: number;
+  /**
+   * Recently closed tabs, oldest first, for `Ctrl+Shift+T`.
+   *
+   * Records, not documents — a closed tab is four small fields, so a bound of
+   * {@link CLOSED_CAP} is about not growing without limit over a long session
+   * rather than about cost. Reopening re-reads the file, which is what makes
+   * this correct rather than a cache: a note edited elsewhere while its tab was
+   * closed comes back as it is now, not as it was.
+   */
+  closed: Tab[];
 }
 
-export const EMPTY: TabState = { tabs: [], active: -1 };
+/** How many closed tabs are remembered. */
+export const CLOSED_CAP = 10;
+
+export const EMPTY: TabState = { tabs: [], active: -1, closed: [] };
 
 /** The active tab, or `null`. */
 export function activeTab(state: TabState): Tab | null {
@@ -76,11 +87,12 @@ export function openTab(state: TabState, tab: Tab): TabState {
     // it is left alone unless the caller asked for a specific one.
     const tabs =
       tab.line > 0 ? state.tabs.map((t, i) => (i === at ? { ...t, line: tab.line } : t)) : state.tabs;
-    return { tabs, active: at };
+    return { ...state, tabs, active: at };
   }
 
   const insert = state.active === -1 ? state.tabs.length : state.active + 1;
   return {
+    ...state,
     tabs: [...state.tabs.slice(0, insert), tab, ...state.tabs.slice(insert)],
     active: insert,
   };
@@ -95,16 +107,35 @@ export function openTab(state: TabState, tab: Tab): TabState {
  * why the active index is recomputed from the tab rather than from the number.
  */
 export function closeTab(state: TabState, index: number): TabState {
-  if (index < 0 || index >= state.tabs.length) return state;
+  const gone = state.tabs[index];
+  if (gone === undefined) return state;
 
+  const closed = [...state.closed, gone].slice(-CLOSED_CAP);
   const wasActive = state.tabs[state.active] ?? null;
   const tabs = state.tabs.filter((_, i) => i !== index);
-  if (tabs.length === 0) return EMPTY;
+
+  // Closing the last tab empties the strip but **not** the history: the whole
+  // point of reopening is that it works after you have closed everything.
+  if (tabs.length === 0) return { tabs: [], active: -1, closed };
 
   if (index !== state.active && wasActive !== null) {
-    return { tabs, active: tabs.indexOf(wasActive) };
+    return { tabs, active: tabs.indexOf(wasActive), closed };
   }
-  return { tabs, active: Math.min(index, tabs.length - 1) };
+  return { tabs, active: Math.min(index, tabs.length - 1), closed };
+}
+
+/**
+ * Takes the most recently closed tab back off the history.
+ *
+ * Returns the tab to reopen and the state with it removed from the history,
+ * or `null` when nothing has been closed. The caller re-reads the file — a
+ * tab is a record, and reopening one is opening the file again, not restoring
+ * a snapshot of it.
+ */
+export function popClosed(state: TabState): { state: TabState; tab: Tab } | null {
+  const tab = state.closed[state.closed.length - 1];
+  if (tab === undefined) return null;
+  return { state: { ...state, closed: state.closed.slice(0, -1) }, tab };
 }
 
 /** Shows a tab by index; out of range is ignored rather than clearing. */

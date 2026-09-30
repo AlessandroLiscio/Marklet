@@ -446,8 +446,9 @@ and diagrams rendered.
 
 Every way of opening a note opens a tab: the explorer, a search hit, a wiki-link in the
 document, the Links panel. Nothing replaces what you were reading. The strip appears at the
-top from the second tab onwards — `Ctrl+W` closes one, `Ctrl+Tab` cycles, middle-click
-closes — and opening something already open reveals its tab rather than making a second.
+top from the second tab onwards — `Ctrl+W` closes one, `Ctrl+Shift+T` brings the last one
+back, `Ctrl+Tab` and `Ctrl+Shift+Tab` cycle either way, middle-click closes — and opening
+something already open reveals its tab rather than making a second.
 
 Split view also has a button, in the document's **top-right** corner: filled when it is
 on, outlined when it is off. It is not in the activity bar, because it changes how the
