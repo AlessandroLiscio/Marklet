@@ -40,14 +40,6 @@
      * what the tree's highlight and the Links panel are keyed on.
      */
     onvaultopen?: () => void;
-    /**
-     * Asks for the OS picker again.
-     *
-     * Choosing a folder used to be a one-way door: the welcome screen offered
-     * it, and once anything was open the offer was gone — changing your mind
-     * meant restarting the application.
-     */
-    onpick?: (kind: 'file' | 'folder') => void;
   }
 
   let {
@@ -56,7 +48,6 @@
     onopen,
     indexing = false,
     onvaultopen,
-    onpick,
   }: Props = $props();
 
   let info = $state<VaultInfo | null>(null);
@@ -142,40 +133,6 @@
         &hellip;
       </span>
     {/if}
-
-    <!-- Inline SVG per the icon rule: no icon font, no icon package. Beside
-         the folder's name because that is where "which folder am I in" is
-         answered, so it is where "a different one" should be asked. -->
-    <span class="pick">
-      <button type="button" title="Open a file… (Ctrl+O)" aria-label="Open a file" onclick={() => onpick?.('file')}>
-        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-          <path
-            d="M4 1.75h5L12.25 5v9.25H4z"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.3"
-            stroke-linejoin="round"
-          />
-          <path d="M8.75 2v3.25H12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" />
-        </svg>
-      </button>
-      <button
-        type="button"
-        title="Open a different folder… (Ctrl+Shift+O)"
-        aria-label="Open a different folder"
-        onclick={() => onpick?.('folder')}
-      >
-        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-          <path
-            d="M1.75 4a.75.75 0 0 1 .75-.75h3l1.1 1.5h7.65a.75.75 0 0 1 .75.75v7a.75.75 0 0 1-.75.75H2.5a.75.75 0 0 1-.75-.75z"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.3"
-            stroke-linejoin="round"
-          />
-        </svg>
-      </button>
-    </span>
   </header>
 
   <nav class="tabs">

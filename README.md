@@ -192,13 +192,14 @@ marklet --help
 | `Ctrl+W` | Close the current tab |
 | `Ctrl+Shift+T` | Reopen the last closed tab |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab |
-| `Ctrl+P` | Export a PDF beside the document |
-| `Ctrl+Shift+S` | Export a standalone HTML file beside the document |
+| `Ctrl+P` | Export a PDF |
+| `Ctrl+Shift+S` | Export a standalone HTML file |
 
-Exports are named after the document and written next to it. There is no save dialog: a
-native one costs roughly 300 KB of plugin for a choice almost everyone makes the same way.
-Both formats are produced from what is on screen, so diagrams and maths are in them —
-`MD_HTML=1` renders the same document without a webview and therefore without either.
+Both exports are also on the activity bar, under the **Export** button at the bottom, which
+asks for the format and then opens your system's save dialog pre-filled with the document's
+own name — so the file is yours to name and to place. Both formats are produced from what
+is on screen, so diagrams and maths are in them; `MD_HTML=1` renders the same document
+without a webview and therefore without either.
 
 A Mermaid diagram opens fullscreen on click, with wheel-zoom and drag-pan; **Save SVG** and
 **Save PNG** write it into `assets/` beside the note.

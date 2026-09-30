@@ -260,33 +260,40 @@ export function revealInEditor(path: string, line: number, column: number): Prom
 }
 
 /**
- * Prints the document on screen to a PDF beside it, and answers with the file
- * it wrote.
+ * Prints the document on screen to a PDF, and answers with the file it wrote.
  *
  * The *live* document: KaTeX and Mermaid have already run in this webview, and
- * printing what is on screen is the only way the PDF contains them. There is
- * no save dialog — no `tauri-plugin-dialog`, roughly 300 KB for a choice
- * almost everyone makes the same way — so the output is `<document>.pdf` in
- * the document's own folder.
+ * printing what is on screen is the only way the PDF contains them. The caller
+ * may name a `target` — the path `pickSave` returned; without one the output is
+ * `<document>.pdf` beside the document, which is what the keyboard shortcut
+ * uses.
  */
-export function exportPdf(path: string): Promise<string> {
-  return invoke<string>('export_pdf', { path });
+export function exportPdf(path: string, target?: string | null): Promise<string> {
+  return invoke<string>('export_pdf', { path, target: target ?? null });
 }
 
 /**
- * Writes the document on screen as one standalone HTML file beside it, and
- * answers with the file it wrote.
+ * Writes the document on screen as one standalone HTML file, and answers with
+ * the file it wrote.
  *
  * `bodyHtml` is the enriched DOM, serialized by `src/lib/rich/export.ts`;
  * `extraCss` is whatever stylesheet that markup needs to lay out (KaTeX's).
  * Images are inlined in Rust, against the document's own directory — the
- * webview has no filesystem permission and must not grow one.
+ * webview has no filesystem permission and must not grow one. The caller may
+ * name a `target` — the path `pickSave` returned; without one the file lands
+ * beside the document.
  */
-export function exportHtml(path: string, bodyHtml: string, extraCss: string): Promise<string> {
+export function exportHtml(
+  path: string,
+  bodyHtml: string,
+  extraCss: string,
+  target?: string | null,
+): Promise<string> {
   return invoke<string>('export_html', {
     path,
     body_html: bodyHtml,
     extra_css: extraCss,
+    target: target ?? null,
   });
 }
 
@@ -354,6 +361,16 @@ export function pickFile(): Promise<string | null> {
 /** Asks the OS for a folder to browse. `null` when the user cancels. */
 export function pickFolder(): Promise<string | null> {
   return invoke<string | null>('pick_folder');
+}
+
+/**
+ * Asks the OS where to save an export, with `name` pre-filled and the dialog
+ * filtered to `extension` (no leading dot). `null` when the user cancels — a
+ * normal answer, not an error. The path that comes back is what `exportPdf`
+ * and `exportHtml` take as their `target`.
+ */
+export function pickSave(name: string, extension: string): Promise<string | null> {
+  return invoke<string | null>('pick_save', { name, extension });
 }
 
 /** Mirrors `vault::VaultInfo`. */

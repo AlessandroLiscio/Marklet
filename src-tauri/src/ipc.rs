@@ -775,12 +775,10 @@ pub fn reveal_in_editor(
     })
 }
 
-/// The file an export writes, derived from the document rather than chosen in a
-/// dialog.
+/// The default file an export writes: beside the document, named after it.
 ///
-/// No `tauri-plugin-dialog`: a native save dialog is roughly 300 KB of plugin
-/// for a decision the user almost always makes the same way, and "it is next to
-/// the note, named after the note" needs no explaining. See docs/editions.md.
+/// This is what an export falls back to when the caller has not asked the user
+/// where to save, so the keyboard shortcuts keep working without a dialog.
 fn export_target(doc: &Path, extension: &str) -> Result<PathBuf, IpcError> {
     let stem = doc.file_stem().and_then(|s| s.to_str()).ok_or_else(|| {
         IpcError::new(
@@ -799,7 +797,73 @@ fn export_target(doc: &Path, extension: &str) -> Result<PathBuf, IpcError> {
     Ok(parent.join(format!("{stem}.{extension}")))
 }
 
-/// Prints the live, already-enriched document to a PDF beside it.
+/// The path [`pick_save`] last handed out, and the only one an export may be
+/// asked to write to.
+///
+/// Both export commands write content the webview supplies, to a path the
+/// webview supplies. Trusting `target` on its own would mean script execution
+/// inside a rendered document could write a file of its choosing anywhere the
+/// user can write — a shell profile, a startup entry — which is precisely what
+/// invariant 4 exists to stop. The consent that makes an arbitrary path
+/// acceptable is the *dialog*, not the argument, so what is remembered here is
+/// the dialog's own answer.
+///
+/// Taken rather than read: one dialog authorises one write. A second export to
+/// the same place asks again, which costs a keypress and removes the window in
+/// which a remembered path is a capability lying around.
+#[derive(Default)]
+pub struct PickedSave(pub std::sync::Mutex<Option<PathBuf>>);
+
+impl PickedSave {
+    /// Remembers where the user just said to write.
+    ///
+    /// A poisoned lock is recovered from rather than panicked on: the only
+    /// thing it guards is one `Option<PathBuf>`, which cannot be left half
+    /// written, and an export is not worth taking the process down for.
+    fn remember(&self, path: PathBuf) {
+        *self.0.lock().unwrap_or_else(|e| e.into_inner()) = Some(path);
+    }
+
+    fn take(&self) -> Option<PathBuf> {
+        self.0.lock().unwrap_or_else(|e| e.into_inner()).take()
+    }
+}
+
+/// Where an export is written: the path the user picked, or the default beside
+/// the document.
+///
+/// A picked `target` is used verbatim and is deliberately *not* passed through
+/// `resolve_inside` — the OS save dialog is the user's consent to that
+/// location, and confining an export to the vault would make "choose where to
+/// save" impossible. This is the one place the vault confinement is not
+/// applied, which is exactly why it is not enough on its own: the path must
+/// also be the one [`PickedSave`] is holding, so that the location came from a
+/// dialog the user answered rather than from a string the webview composed.
+/// The *source* `path` of both export commands is still `resolve_inside`-checked
+/// as before.
+fn export_destination(
+    doc: &Path,
+    extension: &str,
+    target: Option<String>,
+    picked: &PickedSave,
+) -> Result<PathBuf, IpcError> {
+    let Some(chosen) = target else {
+        return export_target(doc, extension);
+    };
+
+    let chosen = PathBuf::from(chosen);
+    match picked.take() {
+        Some(allowed) if allowed == chosen => Ok(chosen),
+        _ => Err(IpcError::new(
+            IpcErrorKind::Denied,
+            "that export location was not the one the save dialog returned",
+            Some(&chosen),
+        )),
+    }
+}
+
+/// Prints the live, already-enriched document to a PDF, at `target` when the
+/// caller has one from the save dialog and beside the document otherwise.
 ///
 /// `async` deliberately: a synchronous Tauri command runs on the main thread,
 /// and both platform print calls below must run *on* the webview's thread while
@@ -810,10 +874,12 @@ fn export_target(doc: &Path, extension: &str) -> Result<PathBuf, IpcError> {
 pub async fn export_pdf(
     window: tauri::WebviewWindow,
     path: String,
+    target: Option<String>,
     root: tauri::State<'_, AssetRoot>,
+    picked: tauri::State<'_, PickedSave>,
 ) -> Result<String, IpcError> {
     let resolved = resolve_inside(&root, &PathBuf::from(path))?;
-    let target = export_target(&resolved, "pdf")?;
+    let target = export_destination(&resolved, "pdf", target, &picked)?;
 
     let (tx, rx) = std::sync::mpsc::channel();
     let output = target.clone();
@@ -872,8 +938,9 @@ fn print_platform_pdf(
     crate::export::pdf::print_to_pdf()
 }
 
-/// Writes the live, already-enriched document as one standalone HTML file
-/// beside it.
+/// Writes the live, already-enriched document as one standalone HTML file, at
+/// `target` when the caller has one from the save dialog and beside the
+/// document otherwise.
 ///
 /// The body arrives from the webview because that is the only place KaTeX and
 /// Mermaid have run — `export_file` in `export/html.rs` renders the same
@@ -885,10 +952,12 @@ pub fn export_html(
     path: String,
     body_html: String,
     extra_css: String,
+    target: Option<String>,
     root: tauri::State<'_, AssetRoot>,
+    picked: tauri::State<'_, PickedSave>,
 ) -> Result<String, IpcError> {
     let resolved = resolve_inside(&root, &PathBuf::from(path))?;
-    let target = export_target(&resolved, "html")?;
+    let target = export_destination(&resolved, "html", target, &picked)?;
 
     let title = resolved
         .file_stem()
@@ -1049,6 +1118,41 @@ pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, IpcErr
         .blocking_pick_folder();
 
     Ok(picked.and_then(|p| p.into_path().ok()).map(path_string))
+}
+
+/// Asks the OS where to save an export, with `name` pre-filled and the dialog
+/// filtered to `extension`.
+///
+/// `async` for the same reason as `pick_file`: a synchronous command runs on
+/// the main thread, which is the thread the dialog needs in order to appear.
+///
+/// Returns `None` when the user cancels — a normal answer, not an error. The
+/// path that comes back is what `export_pdf` and `export_html` take as their
+/// `target`, and it is also remembered in [`PickedSave`]: an export is allowed
+/// to write outside the vault *because* a dialog answered here said so, and
+/// remembering the answer is what lets the export commands tell the two apart.
+#[tauri::command]
+pub async fn pick_save(
+    app: tauri::AppHandle,
+    name: String,
+    extension: String,
+    picked: tauri::State<'_, PickedSave>,
+) -> Result<Option<String>, IpcError> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let chosen = app
+        .dialog()
+        .file()
+        .set_file_name(&name)
+        .add_filter(extension.to_uppercase(), &[extension.as_str()])
+        .set_title("Save export")
+        .blocking_save_file();
+
+    let Some(path) = chosen.and_then(|p| p.into_path().ok()) else {
+        return Ok(None);
+    };
+    picked.remember(path.clone());
+    Ok(Some(path_string(path)))
 }
 
 /// A picked path as the string the rest of the boundary speaks.
@@ -1412,6 +1516,59 @@ mod paste_and_export_tests {
     fn an_export_lands_beside_the_document_with_its_name() {
         let target = export_target(Path::new("/vault/notes/Release Plan.md"), "pdf").unwrap();
         assert_eq!(target, PathBuf::from("/vault/notes/Release Plan.pdf"));
+    }
+
+    #[test]
+    fn a_picked_export_target_is_used_verbatim_even_outside_the_document_folder() {
+        let doc = Path::new("/vault/notes/Release Plan.md");
+        let chosen = "/home/someone/Desktop/handout.pdf".to_string();
+        let picked = PickedSave::default();
+        picked.remember(PathBuf::from(&chosen));
+        assert_eq!(
+            export_destination(doc, "pdf", Some(chosen.clone()), &picked).unwrap(),
+            PathBuf::from(chosen)
+        );
+    }
+
+    #[test]
+    fn without_a_picked_target_an_export_falls_back_to_beside_the_document() {
+        let doc = Path::new("/vault/notes/Release Plan.md");
+        assert_eq!(
+            export_destination(doc, "html", None, &PickedSave::default()).unwrap(),
+            PathBuf::from("/vault/notes/Release Plan.html")
+        );
+    }
+
+    #[test]
+    fn an_export_target_the_save_dialog_never_returned_is_refused() {
+        // The whole point: `target` arrives from the webview, and a rendered
+        // document that got script execution must not be able to name its own
+        // file. Only what a dialog answered is writable.
+        let doc = Path::new("/vault/notes/Release Plan.md");
+        let picked = PickedSave::default();
+        picked.remember(PathBuf::from("/home/someone/Desktop/handout.pdf"));
+
+        let error = export_destination(
+            doc,
+            "pdf",
+            Some("/home/someone/.bashrc".to_string()),
+            &picked,
+        )
+        .unwrap_err();
+        assert!(matches!(error.kind, IpcErrorKind::Denied));
+    }
+
+    #[test]
+    fn one_save_dialog_authorises_one_export() {
+        // Taken, not read: a remembered path left lying around is a capability
+        // the next document to run script inherits.
+        let doc = Path::new("/vault/notes/Release Plan.md");
+        let chosen = "/home/someone/Desktop/handout.pdf".to_string();
+        let picked = PickedSave::default();
+        picked.remember(PathBuf::from(&chosen));
+
+        assert!(export_destination(doc, "pdf", Some(chosen.clone()), &picked).is_ok());
+        assert!(export_destination(doc, "pdf", Some(chosen), &picked).is_err());
     }
 
     #[test]

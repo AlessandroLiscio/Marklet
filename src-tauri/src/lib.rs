@@ -141,6 +141,7 @@ pub fn run(job: cli::WindowJob, started: Instant) {
         ))
         // The watcher handle has to outlive `setup`, or `notify` stops watching
         // the moment the function returns and live reload silently never fires.
+        .manage(ipc::PickedSave::default())
         .manage(std::sync::Mutex::new(Option::<watch::Watch>::None))
         .register_uri_scheme_protocol("marklet", move |_ctx, request| {
             protocol::handle(&protocol_root, &request)
@@ -170,6 +171,7 @@ pub fn run(job: cli::WindowJob, started: Instant) {
             ipc::list_dir,
             ipc::pick_file,
             ipc::pick_folder,
+            ipc::pick_save,
         ])
         .setup(move |app| {
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
