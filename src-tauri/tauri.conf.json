@@ -42,7 +42,10 @@
         "installMode": "currentUser",
         "installerHooks": "installer/hooks.nsh",
         "displayLanguageSelector": false,
-        "languages": ["English", "Italian"]
+        "languages": ["English", "Italian"],
+        "customLanguageFiles": {
+          "Italian": "installer/Italian.nsh"
+        }
       }
     },
     "linux": {

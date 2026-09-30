@@ -110,6 +110,36 @@ reg query HKCU\Software\Classes /f marklet /s   # must return nothing
 Two copies of a registry key list drift. One always gets updated and the other does not, and
 the symptom is orphaned keys that nobody notices for months.
 
+## The Italian installer strings are ours, and why
+
+`src-tauri/installer/Italian.nsh` overrides Tauri's own Italian translation through
+`bundle.windows.nsis.customLanguageFiles`. It exists for one reason: three strings in
+Tauri's file write the product-name placeholder with one brace instead of two.
+
+The placeholder is not a template. `utils.nsh` inside `tauri-bundler` performs a literal
+runtime substitution:
+
+```nsis
+nsis_tauri_utils::StrReplace "$(appRunning)" "{{product_name}}" "${productName}"
+```
+
+Italian writes the first occurrence in each string with two braces and the second with one
+(`{product_name}`, and once `{product_name}}`), so the second reaches the dialog verbatim —
+reinstalling with the app open showed *"Chiudi {product_name} e riprova."* English has two
+braces throughout, which is why it was invisible until someone reinstalled in Italian.
+Confirmed against `tauri-cli` 2.11.4 and still present upstream at the time of writing.
+
+Two things follow, both load-bearing:
+
+- **A custom language file replaces Tauri's entirely.** The bundler writes it verbatim; it
+  does not merge. A `LangString` left out is a dialog with no text. Ours carries every
+  string Tauri's file defines.
+- **It has to be re-checked on every Tauri upgrade.** If upstream adds a string, ours is
+  missing it; if upstream fixes the braces, ours should be deleted rather than kept as a
+  fork of a translation we do not own. Diff it against
+  `crates/tauri-bundler/src/bundle/windows/nsis/languages/Italian.nsh` at the tag matching
+  the CLI version.
+
 ## Context menu: legacy verb, and why
 
 Windows 11's top-level context menu requires a packaged `IExplorerCommand` COM extension with
