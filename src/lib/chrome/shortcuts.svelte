@@ -17,10 +17,10 @@
    * the rule for everything that is not reading (`CLAUDE.md`, architecture
    * invariant 3).
    *
-   * Its *styles* are not lazy, and no component's are: Vite collects every
-   * scoped block into the one boot stylesheet. This one costs about 0.1 KiB
-   * gzipped of the 6.0 KiB budget, which is why the sheet is laid out with the
-   * tokens already there rather than bringing any of its own.
+   * Its styles ride with it, in a `shortcuts-*.css` of their own that the
+   * chunk pulls in — so a session that never opens the sheet downloads neither
+   * half. It is laid out entirely with tokens that already exist, and brings
+   * no new one.
    *
    * The content is `src/lib/shortcuts.ts` and the snippet table itself; nothing
    * is written twice. `scripts/check-shortcuts.mjs` fails the build when the
@@ -44,7 +44,21 @@
     })),
   );
 
-  const words = Object.keys(SNIPPETS);
+  /**
+   * Each trigger word beside the first line of what it writes.
+   *
+   * A bare list of eighteen words answers "what can I type" and not "why would
+   * I" — `fn` and `hr` say nothing at all on their own. The preview is taken
+   * from the template rather than written out again, so it cannot describe
+   * something the snippet does not do: `$0` is where the cursor lands and is
+   * dropped, and a multi-line template shows its first line with an ellipsis,
+   * which for every one of them is the line that identifies it.
+   */
+  const snippetRows = Object.entries(SNIPPETS).map(([word, body]) => {
+    const [first = '', ...rest] = body.split('\n');
+    const preview = first.replace('$0', '').trimEnd();
+    return { word, preview: rest.length > 0 ? `${preview} …` : preview };
+  });
 
   let card = $state<HTMLElement>();
 
@@ -105,11 +119,12 @@
         {#if group.blurb}<p class="blurb">{group.blurb}</p>{/if}
 
         {#if group.snippets}
-          <ul class="words">
-            {#each words as word (word)}
-              <li><kbd>{word}</kbd></li>
+          <dl>
+            {#each snippetRows as row (row.word)}
+              <dt><kbd>{row.word}</kbd> <span class="or">⇥</span></dt>
+              <dd><code>{row.preview}</code></dd>
             {/each}
-          </ul>
+          </dl>
         {:else}
           <dl>
             {#each group.items as item (item.keys)}
@@ -273,12 +288,11 @@
     margin-inline: 0.25em;
   }
 
-  .words {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-    margin: var(--space-2) 0 0;
-    padding: 0;
-    list-style: none;
+  /* The templates are markdown, and markdown read as prose is noise — the
+     preview is the literal text the snippet writes, so it is set as code. */
+  dd code {
+    font-family: var(--font-code);
+    font-size: 0.85em;
+    white-space: pre;
   }
 </style>

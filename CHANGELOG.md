@@ -188,6 +188,21 @@ lightweight care about that number, and publishing it keeps us honest.
   beside it, which is not what the activity bar is for.
 
 ### Fixed
+- **The floating controls no longer jump when you start editing.** Entering
+  live preview hides the reading column, so the page stops being scrollable,
+  its scrollbar goes away, and the viewport gets that much wider — which moved
+  every `position: fixed` control anchored to the right edge outward by exactly
+  a scrollbar: Edit, Split, and the settings card, all together, onto the
+  editor's own scrollbar. The gutter is now reserved whether or not there is
+  anything to scroll, so the width is the same in every mode. The editor draws
+  no bar of its own in live preview either, which is the rule split view has
+  followed since it was written: one strip at the right of the window, never
+  two beside each other.
+- **The snippet list says what each snippet writes.** Eighteen bare words
+  answered "what can I type" and not "why would I" — `fn` and `hr` say nothing
+  on their own. Each now shows the first line of what it inserts, taken from
+  the template itself rather than written out again, so the sheet cannot
+  describe something the snippet does not do.
 - **Nine documentation claims that were not true.** The README promised reading
   position remembered per file: the IPC for it exists and has no callers, and
   what ships is a per-tab line that lasts the session. It promised a backlinks

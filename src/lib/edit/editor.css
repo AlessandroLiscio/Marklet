@@ -56,17 +56,27 @@ body.marklet-mode-split {
   transition: none;
 }
 
-/* One scrollbar for the pair, at the window's right edge.
-   The editor still scrolls — by wheel, by keyboard, and by the line link — it
-   just does not draw a second bar down the middle of the window for a view
-   that is showing the same document as the one beside it. The columns are
-   divided by the border and the drag handle, which is the division that
-   carries meaning. */
-body.marklet-mode-split .marklet-editor .cm-scroller {
+/* One scrollbar for the window, in both editing modes.
+
+   In split that is the page's, down the right-hand edge, showing the preview.
+   In live the page has nothing to scroll — `#doc` is hidden below — so what is
+   there is `content.css`'s reserved gutter, empty. Either way the editor does
+   not draw a second bar beside it, and the floating controls in the corner
+   have one strip to sit clear of rather than one in some modes and two in
+   others.
+
+   The editor still scrolls, by wheel, by keyboard and by the line link. What
+   it loses is the bar, and in split that bar would have run down the middle of
+   the window for a view showing the same document as the one beside it. The
+   columns are divided by the border and the drag handle, which is the division
+   that carries meaning. */
+body.marklet-mode-split .marklet-editor .cm-scroller,
+body.marklet-mode-live .marklet-editor .cm-scroller {
   scrollbar-width: none;
 }
 
-body.marklet-mode-split .marklet-editor .cm-scroller::-webkit-scrollbar {
+body.marklet-mode-split .marklet-editor .cm-scroller::-webkit-scrollbar,
+body.marklet-mode-live .marklet-editor .cm-scroller::-webkit-scrollbar {
   display: none;
 }
 
