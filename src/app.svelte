@@ -392,10 +392,17 @@
   /**
    * Export shortcuts, checked **after** the editor has had the keystroke.
    *
-   * `Ctrl+P` is the one everyone already knows, and Marklet's answer to it is
-   * a file rather than a dialog. `Ctrl+Shift+S` is "save a copy that works
-   * anywhere". Neither fires while a text field has focus — the settings
-   * panel and the search box both have inputs.
+   * `Ctrl+P` is the one everyone already knows, and Marklet answers it with a
+   * PDF of what is on screen rather than the browser's print dialog.
+   * `Ctrl+Shift+S` is "save a copy that works anywhere". Both now ask where to
+   * write before they start.
+   *
+   * Neither fires while a text field has focus — the settings panel and the
+   * search box have inputs, and CodeMirror's editing surface is
+   * `contentEditable`, so with the editor open these two keys do nothing and
+   * the Export button on the rail is the way. That is a real limitation rather
+   * than an oversight: a reader typing `Ctrl+P` inside an editor usually means
+   * it for the editor.
    */
   function exportShortcut(event: KeyboardEvent): boolean {
     if (!event.ctrlKey || event.altKey || event.metaKey) return false;
@@ -597,6 +604,40 @@
   }
 
   /**
+   * The live-preview toggle. `F2` does the same thing.
+   *
+   * This button is the answer to a specific complaint: live preview existed
+   * for months and nobody found it, because Split had a control in the
+   * document's corner and its sibling had nothing. An audit put a number on
+   * it — 34 of 66 capabilities had no on-screen control at all — and of those
+   * 34 this is the one with an obvious place to go, because the place already
+   * exists and already holds the other half of the pair.
+   */
+  function toggleLive(): void {
+    void edit?.setMode(mode === 'live' ? 'read' : 'live');
+  }
+
+  /**
+   * The keyboard sheet, loaded the first time it is asked for.
+   *
+   * `import()` rather than a static import, like every other thing that is not
+   * reading: a session that opens a note and reads it must not download a list
+   * of keys it never opened. The component is held afterwards, so the second
+   * press is instant.
+   */
+  let sheet = $state<typeof import('./lib/chrome/shortcuts.svelte').default | null>(null);
+  let sheetOpen = $state(false);
+
+  async function toggleShortcuts(): Promise<void> {
+    if (sheetOpen) {
+      sheetOpen = false;
+      return;
+    }
+    sheet ??= (await import('./lib/chrome/shortcuts.svelte')).default;
+    sheetOpen = true;
+  }
+
+  /**
    * Where the divider sits, as a fraction of the space left of the chrome.
    *
    * Published to `:root` rather than held as a style on one element, because
@@ -713,6 +754,14 @@
   }
 
   function onKeyDown(event: KeyboardEvent): void {
+    // First, and unconditionally: `F1` is what someone presses when they do
+    // not know what else to press, which includes while typing in the editor.
+    // Nothing else in the application wants it.
+    if (event.key === 'F1') {
+      event.preventDefault();
+      void toggleShortcuts();
+      return;
+    }
     if (tabShortcut(event)) return;
     if (edit?.handleKey(event)) return;
     exportShortcut(event);
@@ -816,6 +865,7 @@
     onpick={(kind) => void openFromDialog(kind)}
     onexport={(format) => void runExport(format)}
     canExport={doc !== null}
+    onshortcuts={() => void toggleShortcuts()}
   />
 
   {#if panel !== null}
@@ -854,6 +904,11 @@
      view of the document the way the explorer and the outline are. -->
 <SettingsPanel />
 
+{#if sheetOpen && sheet}
+  {@const Sheet = sheet}
+  <Sheet onclose={() => (sheetOpen = false)} />
+{/if}
+
 <TabBar
   tabs={tabState.tabs}
   active={tabState.active}
@@ -875,6 +930,25 @@
   <div class="doc-actions">
     <!-- Pressed by fill, not by colour alone — the rule the activity bar
          follows too. -->
+    <button
+      type="button"
+      class="action"
+      class:on={mode === 'live'}
+      aria-pressed={mode === 'live'}
+      title="Live preview — edit with the markdown hidden (F2)"
+      onclick={toggleLive}
+    >
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path
+          d="M12.6 4.4l3 3L7.9 15.1 4 16l.9-3.9z"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linejoin="round"
+        />
+      </svg>
+      <span>Edit</span>
+    </button>
+
     <button
       type="button"
       class="action"

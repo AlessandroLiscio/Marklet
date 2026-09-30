@@ -17,6 +17,7 @@
     "check:imports": "node scripts/check-imports.mjs",
     "check:ipc": "node scripts/check-ipc-args.mjs",
     "check:print": "node scripts/check-print-chrome.mjs",
+    "check:shortcuts": "node scripts/check-shortcuts.mjs",
     "size": "node scripts/size-report.mjs"
   },
   "devDependencies": {

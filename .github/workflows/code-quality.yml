@@ -71,5 +71,12 @@ jobs:
       - name: Print stylesheet hides chrome that exists
         run: npm run check:print
 
+      # Catches a keyboard sheet that has drifted from the keymap in either
+      # direction: a key listed but no longer bound, or bound but unlisted.
+      # Both are silent, and the second is how the application became a third
+      # discoverable in the first place.
+      - name: Keyboard sheet matches the keymap
+        run: npm run check:shortcuts
+
       - name: Contrast (WCAG AA)
         run: npm run contrast
