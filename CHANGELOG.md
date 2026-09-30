@@ -12,6 +12,18 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Added
 
+- **A way back to the picker.** Choosing a file or a folder used to be a
+  one-way door: the welcome screen offered it, and the welcome screen is gone
+  the moment anything is open — so changing your mind about which folder you
+  were in meant restarting the application. The explorer's header now carries
+  an *open file* and an *open folder* button beside the folder's name, which is
+  where "which folder am I in" is answered; `Ctrl+O` and `Ctrl+Shift+O` do the
+  same from anywhere.
+- **The two exports have buttons.** `Ctrl+P` and `Ctrl+Shift+S` worked and
+  nothing on screen said so, which for a feature nobody can guess is the same
+  as not having it. They sit in the document's top-right corner beside the
+  split toggle, which is where a document's own controls already were.
+
 - **Frontmatter is rendered, as a table at the top of the document.** It was
   parsed for the note's title and then dropped, so a file whose first fifteen
   lines say what it *is* — an agent definition, a skill, a prompt — opened on

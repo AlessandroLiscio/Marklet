@@ -661,6 +661,14 @@
       void switchTo(next.active);
       return true;
     }
+    if (event.key.toLowerCase() === 'o') {
+      // The picker, at any time. It used to be reachable only from the welcome
+      // screen, which is gone the moment anything is open — so changing your
+      // mind about which folder you were in meant restarting the application.
+      event.preventDefault();
+      void openFromDialog(event.shiftKey ? 'folder' : 'file');
+      return true;
+    }
     if (event.shiftKey && event.key.toLowerCase() === 't') {
       event.preventDefault();
       const back = popClosed(tabState);
@@ -789,12 +797,16 @@
             {indexing}
             onvaultopen={() => void adoptVault()}
             onopen={(path, options) => void openFromSidebar(path, options)}
+            onpick={(kind) => void openFromDialog(kind)}
           />
         {:else}
           <div class="empty-panel">
             <p>No folder open.</p>
             <button type="button" onclick={() => void openFromDialog('folder')}>
               Open a folder…
+            </button>
+            <button type="button" class="secondary" onclick={() => void openFromDialog('file')}>
+              Open a file…
             </button>
           </div>
         {/if}
@@ -817,25 +829,71 @@
 />
 
 {#if doc}
-  <!-- The split toggle sits in the document's own top-right corner, not in
-       the activity bar: it changes how the document is shown rather than what
-       is beside it, which is where every editor puts its view controls. It
-       reads as pressed by fill, not by colour alone — the same rule the
-       activity bar follows. -->
-  <button
-    type="button"
-    class="split-toggle"
-    class:on={mode === 'split'}
-    aria-pressed={mode === 'split'}
-    title="Split editor (F3)"
-    onclick={toggleSplit}
-  >
-    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <rect x="3" y="4" width="14" height="12" rx="1" stroke="currentColor" stroke-width="1.4" />
-      <path d="M10 4v12" stroke="currentColor" stroke-width="1.4" />
-    </svg>
-    <span>Split</span>
-  </button>
+  <!-- The document's own controls, in its top-right corner rather than in the
+       activity bar: they change how *this* document is shown or what comes out
+       of it, not what sits beside it — which is where every editor puts view
+       and export controls.
+
+       The two exports had no control at all until now: `Ctrl+P` and
+       `Ctrl+Shift+S` worked and nothing on screen said so, which for a feature
+       nobody can guess is the same as not having it. -->
+  <div class="doc-actions">
+    <button
+      type="button"
+      class="action"
+      title="Export a PDF beside this document (Ctrl+P)"
+      aria-label="Export a PDF"
+      onclick={() => void runExport('pdf')}
+    >
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path
+          d="M6 3.5h5L14.5 7v9.5h-8.5z"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linejoin="round"
+        />
+        <path d="M10.5 3.8V7.2h3.4" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+        <path d="M8 13.5h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+      </svg>
+      <span>PDF</span>
+    </button>
+
+    <button
+      type="button"
+      class="action"
+      title="Export a standalone HTML file beside this document (Ctrl+Shift+S)"
+      aria-label="Export standalone HTML"
+      onclick={() => void runExport('html')}
+    >
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path
+          d="M7.5 6.5L4 10l3.5 3.5M12.5 6.5L16 10l-3.5 3.5"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+      <span>HTML</span>
+    </button>
+
+    <!-- Pressed by fill, not by colour alone — the rule the activity bar
+         follows too. -->
+    <button
+      type="button"
+      class="action"
+      class:on={mode === 'split'}
+      aria-pressed={mode === 'split'}
+      title="Split editor (F3)"
+      onclick={toggleSplit}
+    >
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect x="3" y="4" width="14" height="12" rx="1" stroke="currentColor" stroke-width="1.4" />
+        <path d="M10 4v12" stroke="currentColor" stroke-width="1.4" />
+      </svg>
+      <span>Split</span>
+    </button>
+  </div>
 {/if}
 
 {#if mode === 'split'}
@@ -985,16 +1043,23 @@
     cursor: pointer;
   }
 
-  .welcome button.secondary {
+  .welcome button.secondary,
+  .empty-panel button.secondary {
     background: transparent;
     color: var(--accent);
   }
 
-  .split-toggle {
+  .doc-actions {
     position: fixed;
     /* Under the tab strip when there is one, so the two never overlap. */
     inset-block-start: calc(var(--space-3) + var(--tabbar-height, 0px));
     inset-inline-end: var(--space-3);
+    display: flex;
+    gap: var(--space-2);
+    z-index: 30;
+  }
+
+  .action {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
@@ -1007,21 +1072,20 @@
     border-radius: var(--radius-md);
     backdrop-filter: blur(6px);
     cursor: pointer;
-    z-index: 30;
   }
 
-  .split-toggle:hover {
+  .action:hover {
     color: var(--fg);
     border-color: var(--fg-muted);
   }
 
-  .split-toggle.on {
+  .action.on {
     color: var(--on-accent);
     background: var(--accent);
     border-color: var(--accent);
   }
 
-  .split-toggle:focus-visible {
+  .action:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
