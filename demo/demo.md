@@ -452,8 +452,10 @@ back, `Ctrl+Tab` and `Ctrl+Shift+Tab` cycle either way, middle-click closes — 
 something already open reveals its tab rather than making a second.
 
 Split view also has a button, in the document's **top-right** corner: filled when it is
-on, outlined when it is off. It is not in the activity bar, because it changes how the
-document is shown rather than what sits beside it.
+on, outlined when it is off. It is the one control that is not on the activity bar, because
+it changes how the document is shown rather than what sits beside it. The two exports are
+on the bar, under **Export** at the bottom: pick PDF or HTML, then name the file and choose
+where it goes in your system's own save dialog.
 
 Things to try, in order:
 
@@ -485,9 +487,10 @@ Things to try, in order:
 ## 16. Explorer and vault
 
 The **Explorer** button at the top of the activity bar opens the folder tree, rooted at this
-file's own folder — no need to have launched on a directory. Beside the folder's name there
-are two buttons for opening a different file or a different folder, and `Ctrl+O` /
-`Ctrl+Shift+O` do the same from anywhere. Folders list their contents
+file's own folder — no need to have launched on a directory. At the **bottom** of that same
+bar, the **Open** button asks whether you mean a file or a folder and then hands you the
+system picker, and `Ctrl+O` / `Ctrl+Shift+O` do the same from anywhere. Folders list their
+contents
 when you expand them, one level at a time, so opening a note inside a large folder does not
 read everything underneath it.
 

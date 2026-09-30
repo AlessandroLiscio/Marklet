@@ -45,6 +45,7 @@
     openNote,
     pickFile,
     pickFolder,
+    pickSave,
     readSource,
     revealInEditor,
     savePastedImage,
@@ -321,6 +322,20 @@
   }
 
   /**
+   * What the save dialog is pre-filled with: the document's own name, with the
+   * export's extension in place of `.md`.
+   *
+   * A dialog that opens on an empty name asks the reader to invent one for a
+   * file they did not choose to name, every single time.
+   */
+  function exportName(path: string, extension: string): string {
+    const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+    const base = cut === -1 ? path : path.slice(cut + 1);
+    const dot = base.lastIndexOf('.');
+    return `${dot > 0 ? base.slice(0, dot) : base}.${extension}`;
+  }
+
+  /**
    * PDF and standalone HTML, both from **what is on screen**.
    *
    * Not from the file on disk: KaTeX and Mermaid have run in this webview and
@@ -332,6 +347,22 @@
   async function runExport(format: 'pdf' | 'html'): Promise<void> {
     const root = document.getElementById('doc');
     if (!doc || !root || exporting) return;
+    const source = doc.path;
+
+    // Where to save is asked **first**, before any of the work. It is the one
+    // step that can end the export, and loading `print.css` and serializing an
+    // enriched document only to be cancelled is work thrown away. It also has
+    // to happen before `export_pdf`: that command drives the webview's own
+    // print engine on the webview's thread, and a native dialog opened while
+    // that is running is a dialog opened on the thread doing the printing.
+    let target: string | null;
+    try {
+      target = await pickSave(exportName(source, format), format);
+    } catch (error) {
+      say(reason(error), true);
+      return;
+    }
+    if (target === null) return; // cancelled, which is a normal answer
 
     exporting = true;
     say(format === 'pdf' ? 'Printing to PDF…' : 'Writing standalone HTML…');
@@ -345,11 +376,11 @@
       await import('./styles/print.css');
 
       if (format === 'pdf') {
-        say(`Saved ${await exportPdf(doc.path)}`);
+        say(`Saved ${await exportPdf(source, target)}`);
       } else {
         const { serializeEnrichedDocument } = await import('./lib/rich/export');
         const { bodyHtml, extraCss } = await serializeEnrichedDocument(root);
-        say(`Saved ${await exportHtml(doc.path, bodyHtml, extraCss)}`);
+        say(`Saved ${await exportHtml(source, bodyHtml, extraCss, target)}`);
       }
     } catch (error) {
       say(reason(error), true);
@@ -782,6 +813,9 @@
   <ActivityBar
     {panel}
     onpanel={(next) => (next === 'explorer' ? showExplorer() : (panel = next))}
+    onpick={(kind) => void openFromDialog(kind)}
+    onexport={(format) => void runExport(format)}
+    canExport={doc !== null}
   />
 
   {#if panel !== null}
@@ -797,7 +831,6 @@
             {indexing}
             onvaultopen={() => void adoptVault()}
             onopen={(path, options) => void openFromSidebar(path, options)}
-            onpick={(kind) => void openFromDialog(kind)}
           />
         {:else}
           <div class="empty-panel">
@@ -829,54 +862,17 @@
 />
 
 {#if doc}
-  <!-- The document's own controls, in its top-right corner rather than in the
-       activity bar: they change how *this* document is shown or what comes out
-       of it, not what sits beside it — which is where every editor puts view
-       and export controls.
+  <!-- The split toggle, in the document's own top-right corner. It is the one
+       control that belongs to *this* document's view rather than to the
+       application: it changes how the document is shown, not what sits beside
+       it, which is why it is not on the rail with the panels and the two
+       actions.
 
-       The two exports had no control at all until now: `Ctrl+P` and
-       `Ctrl+Shift+S` worked and nothing on screen said so, which for a feature
-       nobody can guess is the same as not having it. -->
+       The exports used to be here too, as a row of three. They moved to the
+       activity bar because they are not a property of the view — and because a
+       control that only appears once a document is open cannot be how you
+       learn the feature exists. -->
   <div class="doc-actions">
-    <button
-      type="button"
-      class="action"
-      title="Export a PDF beside this document (Ctrl+P)"
-      aria-label="Export a PDF"
-      onclick={() => void runExport('pdf')}
-    >
-      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-        <path
-          d="M6 3.5h5L14.5 7v9.5h-8.5z"
-          stroke="currentColor"
-          stroke-width="1.4"
-          stroke-linejoin="round"
-        />
-        <path d="M10.5 3.8V7.2h3.4" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-        <path d="M8 13.5h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
-      </svg>
-      <span>PDF</span>
-    </button>
-
-    <button
-      type="button"
-      class="action"
-      title="Export a standalone HTML file beside this document (Ctrl+Shift+S)"
-      aria-label="Export standalone HTML"
-      onclick={() => void runExport('html')}
-    >
-      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-        <path
-          d="M7.5 6.5L4 10l3.5 3.5M12.5 6.5L16 10l-3.5 3.5"
-          stroke="currentColor"
-          stroke-width="1.4"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-      <span>HTML</span>
-    </button>
-
     <!-- Pressed by fill, not by colour alone — the rule the activity bar
          follows too. -->
     <button

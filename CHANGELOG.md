@@ -12,17 +12,30 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Added
 
-- **A way back to the picker.** Choosing a file or a folder used to be a
-  one-way door: the welcome screen offered it, and the welcome screen is gone
-  the moment anything is open — so changing your mind about which folder you
-  were in meant restarting the application. The explorer's header now carries
-  an *open file* and an *open folder* button beside the folder's name, which is
-  where "which folder am I in" is answered; `Ctrl+O` and `Ctrl+Shift+O` do the
-  same from anywhere.
-- **The two exports have buttons.** `Ctrl+P` and `Ctrl+Shift+S` worked and
-  nothing on screen said so, which for a feature nobody can guess is the same
-  as not having it. They sit in the document's top-right corner beside the
-  split toggle, which is where a document's own controls already were.
+- **A way back to the picker, and the two exports, both on the activity bar.**
+  Choosing a file or a folder used to be a one-way door: the welcome screen
+  offered it, and the welcome screen is gone the moment anything is open — so
+  changing your mind about which folder you were in meant restarting the
+  application. `Ctrl+P` and `Ctrl+Shift+S` had the opposite problem: they
+  worked, and nothing on screen said so, which for a feature nobody can guess
+  is the same as not having it.
+
+  Both now live at the **bottom of the activity bar**, below the panel
+  toggles — an **Open** button and an **Export** button, each opening a
+  two-row menu. Two rows rather than one action, because each is genuinely two
+  commands: no native dialog picks a file *or* a folder in one call (Windows'
+  folder mode is folder-only), and an export cannot start before it knows the
+  format. `Ctrl+O` and `Ctrl+Shift+O` do the same from anywhere. They were
+  briefly in the explorer's header and in the document's top-right corner,
+  where neither could be found before you already had something open.
+- **The exports ask where to save.** They used to write `<document>.pdf` and
+  `<document>.html` into the document's own folder with no say in it, on the
+  argument that a native dialog costs 300 KB of plugin — an argument that
+  stopped being true when the file and folder pickers brought
+  `tauri-plugin-dialog` in anyway. Both formats now open your system's save
+  dialog, pre-filled with the document's name, and write wherever you point
+  them. The dialog comes first, before `print.css` loads and before the
+  document is serialized: cancelling should cost nothing.
 
 - **Frontmatter is rendered, as a table at the top of the document.** It was
   parsed for the note's title and then dropped, so a file whose first fifteen
@@ -44,6 +57,19 @@ lightweight care about that number, and publishing it keeps us honest.
 - **A draggable divider between the split columns.** Double-click, `Home` or
   `Enter` re-centres it; with it focused the arrow keys move it (`Shift` for
   larger steps).
+
+### Security
+
+- **An export writes where the save dialog said, and nowhere else.** Letting
+  the exports take a destination turned `target` into a path chosen by the
+  webview, while both commands already write content the webview supplies — so
+  a rendered document that got script execution could have written a file of
+  its choosing anywhere the user can write, a shell profile or a startup entry
+  included. The consent that makes a path outside the vault acceptable is the
+  *dialog*, not the argument, so Rust now remembers what the dialog answered
+  and refuses any other destination. One dialog authorises one write: the path
+  is taken rather than read, so a remembered location is never left lying
+  around for whatever renders next.
 
 ### Changed
 
