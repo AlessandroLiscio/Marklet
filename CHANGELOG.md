@@ -168,6 +168,28 @@ lightweight care about that number, and publishing it keeps us honest.
   beside it, which is not what the activity bar is for.
 
 ### Fixed
+- **A PDF export is the document, not a photograph of the application.** The
+  first PDF anyone opened had the activity bar printed down the left edge of
+  the page, a column of empty panel background beside it, the tab strip, the
+  export buttons, the status bar, and — from split view — the markdown source
+  in one half and the rendered document squeezed into the other.
+
+  `print.css` hid `.sidebar` and `.outline` but not `.chrome-layer`, the fixed
+  shell that *holds* them, so hiding the panels only emptied the shell instead
+  of removing it. `.tabbar`, `.doc-actions`, `.divider`, `.welcome`, `.notice`
+  and the editor were never listed at all, and every one of them is
+  `position: fixed`, so each landed on the page wherever the viewport had put
+  it. Nothing failed and nothing could: a CSS selector that matches nothing is
+  silent by design, and PDF export needs a live webview, so no machine that
+  runs the tests ever renders one.
+
+  The chrome is now hidden by its container, which also covers whatever panel
+  is added next; the insets the reading column carries are zeroed, so the
+  document has the whole page instead of a margin the width of a rail that is
+  no longer on it; and printing from live edit brings the reading column back,
+  because `editor.css` hides it there and hiding the editor too would have
+  left an empty page. `npm run check:print` fails the build if any of those
+  selectors stops naming a real element.
 
 - **A file opened from the picker had no place in the vault.** `rel`, the
   vault-relative path, is filled by Rust from the vault that was open *when the

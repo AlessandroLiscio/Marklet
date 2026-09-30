@@ -16,6 +16,7 @@
     "contrast": "node scripts/check-contrast.mjs",
     "check:imports": "node scripts/check-imports.mjs",
     "check:ipc": "node scripts/check-ipc-args.mjs",
+    "check:print": "node scripts/check-print-chrome.mjs",
     "size": "node scripts/size-report.mjs"
   },
   "devDependencies": {
