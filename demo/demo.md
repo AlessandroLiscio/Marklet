@@ -41,12 +41,13 @@ Three levels of nesting, so the outline has something to indent.
 
 ## 2. Reading position
 
-Scroll to the bottom of this file, close Marklet, and open it again. You should come
-back to where you were, not to the top.
+Open a second note, then come back to this tab. You should return to where you were
+reading, not to the top — each tab remembers its line for as long as the window is
+open. Closing Marklet forgets it; nothing is written to disk.
 
 Then change the zoom or the column width in settings — the gear in the bottom-right
-corner — and reload. You should *still* be near the same paragraph: the position is
-anchored to a source line, not to a pixel offset, so it survives the reflow.
+corner. You should *still* be near the same paragraph: the position is anchored to a
+source line, not to a pixel offset, so it survives the reflow.
 
 ---
 
@@ -423,16 +424,17 @@ document without them.
 
 | Key | Result |
 |---|---|
-| `Ctrl+P` | `demo.pdf`, beside this file |
-| `Ctrl+Shift+S` | `demo.html`, beside this file |
+| `Ctrl+P` | Save dialog for a PDF, pre-filled with `demo.pdf` — you choose the name and folder |
+| `Ctrl+Shift+S` | Save dialog for a standalone HTML file, pre-filled with `demo.html` |
 | `Ctrl` + wheel | Zoom this column in and out |
 | `Ctrl` `+` / `-` / `0` | Zoom in, out, back to 100% |
 
 Open the HTML in a browser **with the network disabled**. Every image, font and style
-is inlined; it should look the same offline. Both exports also have buttons, in the
-document's top-right corner beside the split toggle. Open the PDF and check that internal
-links to headings still work, no code block is cut across a page break, and the maths
-and diagrams rendered.
+is inlined; it should look the same offline. Both exports are also on the activity bar,
+under **Export** at the bottom, which offers PDF or HTML and then opens the same save
+dialog. The shortcuts do nothing while a text field or the editor has focus; the button
+does not care. Open the PDF and check that internal links to headings still work, no code
+block is cut across a page break, and the maths and diagrams rendered.
 
 ---
 
@@ -442,8 +444,13 @@ and diagrams rendered.
 |---|---|
 | `F2` | Live preview — syntax hides on lines the cursor is not on |
 | `F3` | Split — source left, preview right, scroll-synced both ways |
-| `F4` / `Ctrl+E` | Open this file in your own editor at the cursor |
+| `F4` | Open this file in your own editor at the cursor — works with the editor focused |
+| `Ctrl+E` | The same, but not while the editor or another text field has focus |
 | `Esc` | Back to reading |
+
+The editing surface of `F2` and `F3` is itself a text field, so once you are typing `Ctrl+E`
+does nothing — and neither do `Ctrl+P` or `Ctrl+Shift+S` from section 14. `F4` is the key
+that always works.
 
 Every way of opening a note opens a tab: the explorer, a search hit, a wiki-link in the
 document, the Links panel. Nothing replaces what you were reading. The strip appears at the
@@ -495,16 +502,19 @@ when you expand them, one level at a time, so opening a note inside a large fold
 read everything underneath it.
 
 One click selects; one click on a folder also opens or closes it. **Double-click** a
-Markdown file to open it — the same gesture every file explorer uses, and the reason
-arrowing through a folder no longer re-renders the document once per row. `Enter` does the
-same from the keyboard.
+Markdown file to open it — the same gesture every file explorer uses, and it means a single
+click never swaps the document you are reading. The tree has no arrow-key navigation:
+`Tab` moves from row to row, `Enter` opens a note (on a folder it opens or closes it), and
+`Space` selects the row, which on a folder also opens or closes it.
 
 Files that are not Markdown are listed, dimmed. They are there so a folder looks like
 itself; double-clicking one does nothing, and the Rust side refuses to open it regardless.
 
 The **Search** tab is the exception: it runs the full walk, because a directory listing
-cannot answer a search. Switching to it and back leaves the tree exactly as you left it —
-expanded folders included.
+cannot answer a search. Switching to it unmounts the tree, so switching back does not
+leave it as you left it: which folders were open, the selected row and the scroll position
+are gone, and only the folders leading to the note you have open are expanded again. The
+search box and its hits are cleared in the same way when you switch away from them.
 
 Open the `demo/` folder rather than this file, and you should also get:
 

@@ -31,13 +31,13 @@ its bytes there.
 |---|---|---|
 | **Installer ceiling** | 2.8 MiB — a promise | 12 MiB — a tripwire |
 | **Cold start** | ~0.6 s measured, 1200 ms ceiling | ~0.6 s measured, 1800 ms ceiling |
-| **Reading core** — outline with scroll sync, live reload, reading position per file, font/density/column controls with real reflow | ✅ | ✅ |
+| **Reading core** — outline with scroll sync, live reload, each tab remembering its reading line until the window closes (session only, never written to disk), font/density/column controls with real reflow | ✅ | ✅ |
 | **Markdown** — aligned tables, footnotes with backlinks, task lists, YAML frontmatter, local images | ✅ | ✅ |
 | **GFM alerts** — `> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`, each with its own colour and generated label | ✅ | ✅ |
 | **Syntax highlighting** | ✅ highlight.js, ~22 languages | ✅ same |
 | **KaTeX math** | ✅ | ✅ |
 | **Mermaid diagrams** | ✗ — 750 KB, 27% of the lite ceiling for one feature | ✅ with fullscreen zoom and pan |
-| **Vault** — folder tree, `[[wiki-links]]`, backlinks panel | ✅ | ✅ |
+| **Vault** — folder tree, `[[wiki-links]]`, Links panel listing the open note's outgoing links | ✅ | ✅ |
 | **Vault search** | literal, multi-term AND | ✅ **plus full regex** (`regex-search`, +1.2–1.8 MB) |
 | **Encoding** | BOM, UTF-8, UTF-16, Windows-1252 | ✅ **plus CJK auto-detection** (`full-encodings`, +500 KB) |
 | **Editing** — F2 live preview, F3 dual column, F4 external editor, paste-image | ✅ CodeMirror 6, loaded on first keypress | ✅ same |

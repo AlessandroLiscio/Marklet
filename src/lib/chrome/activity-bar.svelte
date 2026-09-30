@@ -38,9 +38,11 @@
     onexport: (format: 'pdf' | 'html') => void;
     /** False with no document open. The button stays, dimmed, so the rail does not jump. */
     canExport: boolean;
+    /** Opens the keyboard sheet. No menu: it is one thing, not two. */
+    onshortcuts: () => void;
   }
 
-  let { panel, onpanel, onpick, onexport, canExport }: Props = $props();
+  let { panel, onpanel, onpick, onexport, canExport, onshortcuts }: Props = $props();
 
   /** Clicking the open panel closes it — the same affordance as VS Code. */
   function choose(id: PanelId): void {
@@ -228,6 +230,26 @@
         {@render menu('Export', EXPORT_ROWS)}
       {/if}
     </div>
+    <!-- Last, and deliberately the plainest of the three: it is the answer to
+         "what else is there", so it belongs where you look after you have
+         tried everything visible. No menu — it is one thing. -->
+    <button
+      type="button"
+      class="item"
+      title="Keyboard shortcuts (F1)"
+      aria-label="Keyboard shortcuts"
+      onclick={onshortcuts}
+    >
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect x="2.5" y="5" width="15" height="10" rx="2" stroke="currentColor" stroke-width="1.4" />
+        <path
+          d="M5.75 8h.01M8.25 8h.01M10.75 8h.01M13.25 8h.01M6.75 11.75h6.5"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linecap="round"
+        />
+      </svg>
+    </button>
   </div>
 
   <!-- The split-editor toggle is NOT here. It switches how the document is

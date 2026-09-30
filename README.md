@@ -48,12 +48,17 @@ Three things are worth knowing before you build it yourself:
 ## What it does
 
 **Reading** — outline panel with scroll sync, live reload when an external editor saves,
-reading position remembered per file, light and dark themes with an accent generator,
-adjustable font, density and column width with real reflow, aligned tables, footnotes with
-backlinks, local images, task lists, YAML frontmatter, syntax-highlighted code.
+each open tab remembering the source line you left it at (for the session only — nothing
+is written to disk, so it is gone when the window closes), light and dark themes with an
+accent generator, adjustable font, density and column width with real reflow, aligned
+tables, footnotes with backlinks, local images, task lists, YAML frontmatter,
+syntax-highlighted code.
 
 **Vault** — folder tree, full-text search across thousands of notes, `[[wiki-links]]` and a
-backlinks panel. This is the part `mdview` does not have.
+Links panel listing what the open note points at, notes and web links together (a panel for
+the notes pointing back is tracked as
+[#39](https://github.com/AlessandroLiscio/Marklet/issues/39)). This is the part `mdview`
+does not have.
 
 **Rich content** — KaTeX math in both editions; Mermaid diagrams with fullscreen zoom and pan
 in the full edition only, because Mermaid alone is 27% of Lite's entire ceiling. Both are
@@ -78,12 +83,12 @@ deliberately not bound by it and is allowed to spend bytes on being good.
 |---|---|---|
 | Installer ceiling | **2.8 MiB** — a promise | **12 MiB** — a tripwire for accidents |
 | Cold start ceiling | 1200 ms median | 1800 ms median |
-| Reading core, outline, live reload, position memory, reflow | ✅ | ✅ |
+| Reading core, outline, live reload, per-tab position, reflow | ✅ | ✅ |
 | Tables, footnotes, task lists, frontmatter, local images | ✅ | ✅ |
 | Syntax highlighting, KaTeX math | ✅ | ✅ |
 | Editing — F2 live preview, F3 dual column, F4 external editor | ✅ | ✅ |
 | Export — PDF, standalone HTML, diagram SVG and PNG | ✅ | ✅ |
-| Vault — tree, `[[wiki-links]]`, backlinks | ✅ | ✅ |
+| Vault — tree, `[[wiki-links]]`, Links panel (outgoing links) | ✅ | ✅ |
 | **Mermaid diagrams** | ✗ | ✅ with fullscreen zoom and pan |
 | **Vault search** | literal, multi-term | ✅ plus full regex |
 | **Encoding** | BOM, UTF-8, UTF-16, cp1252 | ✅ plus CJK auto-detection |
@@ -186,18 +191,23 @@ marklet --help
 |---|---|
 | `F2` | Live preview — edit the markdown with its syntax hidden on lines your cursor is not on |
 | `F3` | Split — plain source on the left, rendered preview on the right, scroll-synced both ways |
-| `F4` / `Ctrl+E` | Open the file in your own editor at the cursor |
+| `F4` | Open the file in your own editor at the cursor — works from anywhere, including with the editor focused |
+| `Ctrl+E` | The same, but not while a text field or the editor has focus |
 | `Esc` | Back to reading |
 | `Ctrl+O` / `Ctrl+Shift+O` | Open a file / a folder, at any time |
 | `Ctrl+W` | Close the current tab |
 | `Ctrl+Shift+T` | Reopen the last closed tab |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab |
-| `Ctrl+P` | Export a PDF |
-| `Ctrl+Shift+S` | Export a standalone HTML file |
+| `Ctrl+P` | Export a PDF — not while a text field or the editor has focus |
+| `Ctrl+Shift+S` | Export a standalone HTML file — same restriction |
+
+`Ctrl+E`, `Ctrl+P` and `Ctrl+Shift+S` step aside whenever a text field has focus, so that a
+shortcut never eats keystrokes in a form. The editing surface of `F2` and `F3` is a text
+field too, which is why only `F4` reaches your editor while you are typing.
 
 Both exports are also on the activity bar, under the **Export** button at the bottom, which
 asks for the format and then opens your system's save dialog pre-filled with the document's
-own name — so the file is yours to name and to place. Both formats are produced from what
+own name — so the file is yours to name and to place, and it works with the editor focused. Both formats are produced from what
 is on screen, so diagrams and maths are in them; `MD_HTML=1` renders the same document
 without a webview and therefore without either.
 

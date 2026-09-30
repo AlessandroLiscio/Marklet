@@ -11,6 +11,26 @@ lightweight care about that number, and publishing it keeps us honest.
 ## [Unreleased]
 
 ### Added
+- **An Edit button, and a sheet with every key on it.** Live-preview editing
+  had existed for months and nobody had found it, because Split had a button
+  in the document's corner and its sibling had nothing. An audit of the whole
+  window put a number on the general case: of 66 things Marklet can do, 34 had
+  no on-screen control of any kind — image paste, the snippets, most of the tab
+  commands, opening a file in your own editor. The application showed about a
+  third of itself.
+
+  Two answers, because 34 buttons would be a worse window than 34 secrets.
+  **Edit** joins Split in the document's top-right corner, filled when on,
+  because that is the one control with an obvious home already built. Everything
+  else goes on a **keyboard sheet**, on the activity bar under Export and on
+  `F1`, grouped by what you are doing rather than by which file binds it. The
+  snippet group is rendered from the snippet table itself, so the list of
+  trigger words cannot be wrong.
+
+  The sheet loads only when it is opened — 2.4 KiB of its own chunk, nothing on
+  the boot path. `npm run check:shortcuts` fails the build when the sheet and
+  the keymap disagree in either direction: a key listed but no longer bound, or
+  bound but unlisted. The second is how this happened in the first place.
 
 - **A way back to the picker, and the two exports, both on the activity bar.**
   Choosing a file or a folder used to be a one-way door: the welcome screen
@@ -168,6 +188,21 @@ lightweight care about that number, and publishing it keeps us honest.
   beside it, which is not what the activity bar is for.
 
 ### Fixed
+- **Nine documentation claims that were not true.** The README promised reading
+  position remembered per file: the IPC for it exists and has no callers, and
+  what ships is a per-tab line that lasts the session. It promised a backlinks
+  panel: the panel lists *outgoing* links, and backlinks remain
+  [#39](https://github.com/AlessandroLiscio/Marklet/issues/39). `demo.md` told
+  you to scroll to the bottom, restart, and find your place — a test step that
+  fails. It described the export buttons in a corner they left this morning, and
+  the exports as landing beside the file when both now ask where to go. It
+  claimed the explorer tree survives a switch to Search, which unmounts it, and
+  offered arrow keys the tree has never had. `--help` said `--settings` opens a
+  settings window; it opens a panel.
+
+  Every one of them was found by checking the docs against the source rather
+  than the other way round. Two were written this morning and left stale by the
+  change that moved the exports.
 - **The installer says `Marklet` where it used to say `{product_name}`.**
   Reinstalling with the application open raises a dialog asking you to close
   it; in Italian that dialog read *"Chiudi {product_name} e riprova."* The

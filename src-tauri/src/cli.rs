@@ -70,7 +70,7 @@ pub enum HeadlessJob {
 pub struct WindowJob {
     /// File to open, if any: `marklet file.md`, or a shell double-click.
     pub file: Option<PathBuf>,
-    /// `--settings`: open the settings window.
+    /// `--settings`: open with the settings panel showing.
     pub settings: bool,
     /// `MD_EDITOR` — external editor path for F4.
     pub editor: Option<String>,
@@ -432,7 +432,7 @@ fn help_text() -> String {
          \x20   --install            Register the .md file association (HKCU)\n\
          \x20   --uninstall          Remove the file association and context menu\n\
          \x20   --unbind             Remove the file association only\n\
-         \x20   --settings           Open the settings window\n\
+         \x20   --settings           Open with the settings panel showing\n\
          \x20   --benchmark <FILE>   Render FILE once, print boot-ms=<n> to stderr, exit\n\
          \x20   --silent             Suppress status output (used by the installer hooks)\n\
          \x20   --help               Show this help\n\

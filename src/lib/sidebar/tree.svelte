@@ -81,7 +81,8 @@
    *
    * Opening a file takes a **double** click, asked for directly and the
    * convention every file explorer follows. A single click that swapped the
-   * document made arrowing through a folder re-render it once per row.
+   * document would re-render the whole page every time the selection moved,
+   * which is what selecting a row down a long folder does.
    */
   function select(row: Row): void {
     selected = row.path;
