@@ -181,7 +181,13 @@ Rust to frontend, `kebab-case`:
 ```
 file-changed        vault-scan-progress    vault-scan-done
 search-result       search-done            theme-changed
+open-file           open-folder
 ```
+
+`open-file` and `open-folder` carry the path a second launch forwarded to the running
+window. Which of the two is decided in Rust (`forwarded_open` in `lib.rs`), because the
+webview cannot ask whether a path is a directory — and a folder sent as `open-file` is
+read as a document and fails.
 
 Emit events for things the user did not ask for right now (a file changed on disk, a scan
 progressed). Use a command's return value for things the user is waiting on. A command that

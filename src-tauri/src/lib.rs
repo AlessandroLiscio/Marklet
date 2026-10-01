@@ -117,13 +117,13 @@ pub fn run(job: cli::WindowJob, started: Instant) {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
             // A second WebView2 instance costs roughly 40 MB RSS. Forward the
             // path to the window that already exists instead of spawning one.
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_focus();
-                if let Some(path) = argv.iter().skip(1).find(|a| !a.starts_with('-')) {
-                    let _ = window.emit("open-file", path);
+                if let Some((event, path)) = forwarded_open(&cwd, &argv) {
+                    let _ = window.emit(event, path);
                 }
             }
         }))
@@ -253,6 +253,32 @@ fn boot_error_script(err: &ipc::IpcError) -> String {
     }
 }
 
+/// What a second launch asked for, as the event the running window should get.
+///
+/// **A folder is not a file.** Every forwarded path used to be emitted as
+/// `open-file`, and the frontend opened each one as a document — so with
+/// Marklet already running, Explorer's *Open folder as Vault* tried to read a
+/// directory as markdown and failed, while the same verb with Marklet closed
+/// opened the vault. Deciding here, rather than in the webview, is not a
+/// preference: the webview has no filesystem permission and cannot ask whether
+/// a path is a directory.
+///
+/// **A relative path is relative to the second launch.** `marklet .` typed in
+/// a terminal means *that* terminal's directory, which the plugin hands over
+/// as `cwd`; resolving it against the first instance's directory instead opened
+/// whatever folder Marklet had happened to start in. `Path::join` leaves an
+/// absolute path untouched, which is what Explorer always sends.
+fn forwarded_open(cwd: &str, argv: &[String]) -> Option<(&'static str, String)> {
+    let arg = argv.iter().skip(1).find(|a| !a.starts_with('-'))?;
+    let path = std::path::Path::new(cwd).join(arg);
+    let event = if path.is_dir() {
+        "open-folder"
+    } else {
+        "open-file"
+    };
+    Some((event, path.display().to_string()))
+}
+
 /// U+2028 and U+2029 are legal inside a JSON string and were, historically,
 /// line terminators inside a JavaScript one. Escaping them costs nothing and
 /// removes a class of "works everywhere except one webview" bug.
@@ -264,6 +290,47 @@ fn escape_js_literal(json: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn argv(args: &[&str]) -> Vec<String> {
+        std::iter::once("marklet")
+            .chain(args.iter().copied())
+            .map(String::from)
+            .collect()
+    }
+
+    #[test]
+    fn a_forwarded_folder_opens_as_a_folder() {
+        // The reported case: Open folder as Vault while Marklet is running.
+        let dir = std::env::temp_dir();
+        let (event, path) = forwarded_open("/", &argv(&[dir.to_str().unwrap()])).unwrap();
+        assert_eq!(event, "open-folder");
+        assert_eq!(path, dir.display().to_string());
+    }
+
+    #[test]
+    fn a_forwarded_file_still_opens_as_a_file() {
+        let file = std::env::temp_dir().join("marklet-forwarded-open-test.md");
+        std::fs::write(&file, "# x").unwrap();
+        let (event, _) = forwarded_open("/", &argv(&[file.to_str().unwrap()])).unwrap();
+        std::fs::remove_file(&file).ok();
+        assert_eq!(event, "open-file");
+    }
+
+    #[test]
+    fn a_relative_path_resolves_against_the_second_launch() {
+        // `marklet .` means the terminal it was typed in, not wherever the
+        // first instance happened to start.
+        let here = std::env::temp_dir();
+        let (event, path) = forwarded_open(here.to_str().unwrap(), &argv(&["."])).unwrap();
+        assert_eq!(event, "open-folder");
+        assert_eq!(path, here.join(".").display().to_string());
+    }
+
+    #[test]
+    fn flags_are_not_paths() {
+        assert!(forwarded_open("/", &argv(&["--settings"])).is_none());
+        assert!(forwarded_open("/", &argv(&[])).is_none());
+    }
 
     #[test]
     fn line_separators_are_escaped_for_javascript() {
