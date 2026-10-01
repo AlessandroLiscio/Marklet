@@ -188,6 +188,22 @@ lightweight care about that number, and publishing it keeps us honest.
   beside it, which is not what the activity bar is for.
 
 ### Fixed
+- **Opening a diagram fullscreen now makes it bigger.** It made it smaller. A
+  Mermaid `<svg>` carries `width="100%"` and a `max-width` of its own natural
+  size; in the document that resolves against the reading column and the
+  diagram fills it, but the viewer's stage is sized by its content, so there
+  was nothing for `width: 100%` to resolve against and the SVG fell back to its
+  intrinsic size — the layout engine's own units, usually much smaller than the
+  column it had just been filling. The viewer then opened at 1× of that and
+  called it 100%.
+
+  It now measures the diagram and the window once, before anything is
+  transformed, and opens at the scale that fills one against the other. That
+  scale is what **Reset**, `0` and a double-click return to, and what the
+  readout calls 100% — an SVG's intrinsic size is not a size anyone chose, so
+  it is not a useful baseline. The zoom limits moved with it: eight times in
+  and four times out from what you are looking at, rather than from a number
+  that happens to be 1.
 - **An overlay that covers the page now takes the keyboard with it.** Three
   reports, one cause: the diagram viewer and the keyboard sheet both drew a
   backdrop over the document and then let every keystroke through to it. One

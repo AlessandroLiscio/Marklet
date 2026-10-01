@@ -37,6 +37,7 @@
  * `.claude/skills/size-budget/SKILL.md`'s already-rejected list.
  */
 import { captureKeys } from '../modal';
+import { clampScale, fitScale, zoomPercent } from './zoom';
 import type { EnrichResult } from './types';
 import './mermaid.css';
 
@@ -193,7 +194,18 @@ function openViewer(svg: string): void {
       void saveDiagram(svg, button.dataset['format'] === 'png' ? 'png' : 'svg');
     });
   }
-  let scale = 1;
+  /**
+   * The scale at which the diagram fills the overlay, measured once, before
+   * anything is transformed.
+   *
+   * Measured rather than assumed, and measured *here* because this is the only
+   * moment the stage's box is the diagram's own size: every later read would
+   * be of a scaled box. `fitScale` says why the natural size is the wrong
+   * thing to open at.
+   */
+  const fit = fitScale(stage.getBoundingClientRect(), overlay.getBoundingClientRect());
+
+  let scale = fit;
   let x = 0;
   let y = 0;
   let dragging = false;
@@ -204,21 +216,29 @@ function openViewer(svg: string): void {
 
   const apply = () => {
     stage.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-    level.textContent = `${Math.round(scale * 100)}%`;
+    level.textContent = `${zoomPercent(scale, fit)}%`;
   };
+
+  /** Back to the size it opened at, and centred. Reset, `0`, double-click. */
+  function reset(): void {
+    scale = fit;
+    x = 0;
+    y = 0;
+    apply();
+  }
 
   /**
    * Zooms by `factor`, keeping the point `(cx, cy)` — measured from the centre
    * of the overlay — under the cursor.
    *
    * Extracted from the wheel handler so the buttons and the keyboard drive the
-   * exact same arithmetic. `zoom.test.ts` covers it directly; the event
-   * plumbing around it cannot be unit-tested and, on the evidence, cannot be
-   * relied on either (see `onWheel`).
+   * exact same arithmetic. The arithmetic itself is in `zoom.ts` and is tested
+   * there; the event plumbing around it cannot be unit-tested and, on the
+   * evidence, cannot be relied on either (see `onWheel`).
    */
   function zoomBy(factor: number, cx = 0, cy = 0): void {
     const prev = scale;
-    scale = Math.min(8, Math.max(0.25, scale * factor));
+    scale = clampScale(scale * factor, fit);
     if (scale === prev) return;
     x -= cx * (scale / prev - 1);
     y -= cy * (scale / prev - 1);
@@ -299,10 +319,7 @@ function openViewer(svg: string): void {
       zoomBy(1 / 1.2);
     } else if (e.key === '0') {
       e.preventDefault();
-      scale = 1;
-      x = 0;
-      y = 0;
-      apply();
+      reset();
     }
   };
   const onOverlayClick = (e: MouseEvent) => {
@@ -329,12 +346,7 @@ function openViewer(svg: string): void {
       const step = button.dataset['step'];
       if (step === 'in') zoomBy(1.2);
       else if (step === 'out') zoomBy(1 / 1.2);
-      else {
-        scale = 1;
-        x = 0;
-        y = 0;
-        apply();
-      }
+      else reset();
     });
   }
 
@@ -343,12 +355,7 @@ function openViewer(svg: string): void {
   stage.addEventListener('wheel', onWheel, { passive: false, capture: true });
   // Double-click resets, which is the gesture people try first when a diagram
   // has ended up somewhere unhelpful.
-  stage.addEventListener('dblclick', () => {
-    scale = 1;
-    x = 0;
-    y = 0;
-    apply();
-  });
+  stage.addEventListener('dblclick', reset);
   apply();
   stage.addEventListener('pointerdown', onPointerDown);
   stage.addEventListener('pointermove', onPointerMove);
