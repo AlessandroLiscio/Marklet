@@ -58,6 +58,10 @@ if (entries.length < 30) {
  */
 const NAMED = {
   Esc: ['Escape'],
+  // The space bar reports itself as a single space. A sheet that printed that
+  // would show an empty key, so the sheet writes the word and the map carries
+  // the translation — the one place the two spellings are allowed to differ.
+  Space: [' '],
   '←': ['ArrowLeft'],
   '→': ['ArrowRight'],
   '↑': ['ArrowUp'],
@@ -125,10 +129,6 @@ for (const file of walk(src)) {
 const listed = new Set(entries.flatMap(({ keys }) => keysOf(keys)));
 
 for (const [key, file] of bound) {
-  // A space is `event.key` for the space bar, which the tree uses to select a
-  // row. It is the one key with no way to write it on a sheet that a reader
-  // would recognise, so the sheet spells it out in prose instead.
-  if (key === ' ') continue;
   if (listed.has(key)) continue;
   problems.push(`'${key}' is handled in ${file} and is on no list — the sheet will not mention it`);
 }

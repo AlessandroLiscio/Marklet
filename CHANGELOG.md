@@ -11,6 +11,16 @@ lightweight care about that number, and publishing it keeps us honest.
 ## [Unreleased]
 
 ### Added
+- **The keyboard sheet covers the rest of the audit.** The explorer tree's own
+  keys (`Enter` opens, `Space` selects), the editing keys that were left off
+  (`Shift+Tab`, `Ctrl+[` / `Ctrl+]`, `Alt+L`, `Ctrl+Enter`), clicking outside a
+  diagram to close it, and that `F2` and `F3` swap straight to each other
+  keeping the cursor and the undo history.
+
+  A closing group covers what Marklet does without being asked — the document
+  reloading when the file changes, each tab holding the line you left it on,
+  a note opened from Explorer joining this window as a tab. None of those is a
+  shortcut, and nothing else on screen says they happen.
 - **An Edit button, and a sheet with every key on it.** Live-preview editing
   had existed for months and nobody had found it, because Split had a button
   in the document's corner and its sibling had nothing. An audit of the whole
@@ -188,6 +198,13 @@ lightweight care about that number, and publishing it keeps us honest.
   beside it, which is not what the activity bar is for.
 
 ### Fixed
+- **Launching on a folder no longer shows an empty window.** `marklet .`, and
+  Explorer's *Open folder as Vault*, set the vault and open no document. The
+  welcome panel is guarded on there being no vault either, so with a vault and
+  no document neither it nor any side panel rendered — the folder was open, the
+  tree was one click away, and the window was blank. It now opens on the
+  explorer, which is what launching on a folder was asking for.
+  ([#57](https://github.com/AlessandroLiscio/Marklet/issues/57))
 - **Opening a diagram fullscreen now makes it bigger.** It made it smaller. A
   Mermaid `<svg>` carries `width="100%"` and a `max-width` of its own natural
   size; in the document that resolves against the reading column and the

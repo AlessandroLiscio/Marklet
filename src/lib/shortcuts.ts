@@ -64,6 +64,7 @@ const SESSION = 'src/lib/edit/session.ts';
 const SETTINGS = 'src/lib/settings/panel.svelte';
 const MERMAID = 'src/lib/rich/mermaid.ts';
 const SHEET = 'src/lib/chrome/shortcuts.svelte';
+const TREE = 'src/lib/sidebar/tree.svelte';
 
 export const GROUPS: Group[] = [
   {
@@ -75,6 +76,14 @@ export const GROUPS: Group[] = [
       { keys: 'Ctrl+=, Ctrl+-', what: 'zoom in, zoom out', where: SETTINGS },
       { keys: 'Ctrl+0', what: 'back to 100%', where: SETTINGS },
       { keys: 'Double-click', what: 'open a note from the explorer — a single click only selects', where: null },
+    ],
+  },
+  {
+    title: 'The explorer tree',
+    blurb: 'Tab walks the rows one at a time; the arrow keys do not move between them yet.',
+    items: [
+      { keys: 'Enter', what: 'open the note, or open and close the folder', where: TREE },
+      { keys: 'Space', what: 'select the row, and open or close a folder', where: TREE },
     ],
   },
   {
@@ -90,7 +99,8 @@ export const GROUPS: Group[] = [
   },
   {
     title: 'Editing',
-    blurb: 'Your changes are written to the file 100 ms after you stop typing. There is no save key because there is nothing to save.',
+    blurb:
+      'Your changes are written to the file 100 ms after you stop typing — there is no save key because there is nothing to save. F2 and F3 also swap straight to each other, keeping the cursor and the undo history.',
     items: [
       { keys: 'F2', what: 'live preview — edit with the markdown hidden on every line but the one you are on', where: EDIT },
       { keys: 'F3', what: 'split — source on the left, preview on the right, scrolling together', where: EDIT },
@@ -118,6 +128,10 @@ export const GROUPS: Group[] = [
       { keys: 'Ctrl+/', what: 'comment out the selection', where: null },
       { keys: 'Ctrl+click', what: 'add another cursor', where: null },
       { keys: 'Alt + drag', what: 'select a rectangle', where: null },
+      { keys: 'Shift+Tab', what: 'outdent', where: null },
+      { keys: 'Ctrl+[, Ctrl+]', what: 'indent less, indent more', where: null },
+      { keys: 'Alt+L', what: 'select the whole line', where: null },
+      { keys: 'Ctrl+Enter', what: 'open a blank line below, wherever the cursor is', where: null },
       { keys: 'Ctrl+M', what: 'let Tab leave the editor instead of indenting', where: null },
     ],
   },
@@ -142,6 +156,7 @@ export const GROUPS: Group[] = [
       { keys: '0', what: 'back to fit', where: MERMAID, full: true },
       { keys: 'Double-click', what: 'back to fit', where: null, full: true },
       { keys: 'Esc', what: 'close the viewer', where: MERMAID, full: true },
+      { keys: 'Click outside', what: 'close the viewer', where: null, full: true },
     ],
   },
   {
@@ -150,6 +165,15 @@ export const GROUPS: Group[] = [
     items: [
       { keys: 'Ctrl+P', what: 'export a PDF of what is on screen', where: APP },
       { keys: 'Ctrl+Shift+S', what: 'export one standalone HTML file', where: APP },
+    ],
+  },
+  {
+    title: 'No key needed',
+    blurb: 'Marklet does these on its own. They are here because nothing else on screen says so.',
+    items: [
+      { keys: '—', what: 'the document reloads when the file changes on disk, keeping your place', where: null },
+      { keys: '—', what: 'each tab remembers the line you left it on, until the window closes', where: null },
+      { keys: '—', what: 'opening a note from Explorer while Marklet is running adds a tab here', where: null },
     ],
   },
   {
