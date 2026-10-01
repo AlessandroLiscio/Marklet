@@ -100,8 +100,18 @@
     typeof window !== 'undefined' ? (window.__MARKLET_VAULT__ ?? null) : null
   );
 
-  /** Which side panel is showing, or `null` for the document at full width. */
-  let panel = $state<PanelId | null>(null);
+  /**
+   * Which side panel is showing, or `null` for the document at full width.
+   *
+   * Open on the explorer when the application was launched on a *folder* and
+   * so has no document to show. Without this the window came up completely
+   * empty: the welcome panel is guarded on there being no vault either, so a
+   * vault with no document rendered neither — the folder was open, the tree
+   * was one click away, and nothing on screen said so.
+   */
+  let panel = $state<PanelId | null>(
+    typeof window !== 'undefined' && window.__MARKLET_VAULT__ ? 'explorer' : null,
+  );
 
   /**
    * How much room the fixed chrome takes, published to `:root` for
