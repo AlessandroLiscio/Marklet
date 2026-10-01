@@ -188,6 +188,25 @@ lightweight care about that number, and publishing it keeps us honest.
   beside it, which is not what the activity bar is for.
 
 ### Fixed
+- **An overlay that covers the page now takes the keyboard with it.** Three
+  reports, one cause: the diagram viewer and the keyboard sheet both drew a
+  backdrop over the document and then let every keystroke through to it. One
+  `Escape` closed the diagram *and* threw you out of live edit behind it
+  ([#48](https://github.com/AlessandroLiscio/Marklet/issues/48)); `+` zoomed
+  the diagram and the document underneath at the same time, because the viewer
+  never checked for a modifier and the settings panel was listening for the
+  same characters with one
+  ([#49](https://github.com/AlessandroLiscio/Marklet/issues/49)); and
+  `Ctrl+W`, `Ctrl+Tab`, `Ctrl+O` and `Ctrl+P` all still acted on the
+  application while a diagram was open fullscreen over it
+  ([#50](https://github.com/AlessandroLiscio/Marklet/issues/50)).
+
+  Both overlays now claim the keyboard on the way *down* from the window,
+  before the page's own handlers — which all listen on the way back up — can
+  see anything. `Tab` still moves focus and `Enter` still presses a button,
+  because the browser performs those itself rather than through a listener.
+  `F1` closes the sheet from inside the sheet, since the application can no
+  longer hear it.
 - **The floating controls no longer jump when you start editing.** Entering
   live preview hides the reading column, so the page stops being scrollable,
   its scrollbar goes away, and the viewport gets that much wider — which moved
