@@ -83,6 +83,20 @@ jobs:
             throw "HKCU:\Software\Classes\.md\OpenWithProgids\Marklet.Document was not written by --install"
           }
 
+          # Every context-menu verb carries the executable's icon. Without it the
+          # entry is the one line in Explorer's menu with a blank where its
+          # neighbours have pictures — and nothing else would ever notice.
+          foreach ($verb in @(
+            'HKCU:\Software\Classes\SystemFileAssociations\.md\shell\marklet',
+            'HKCU:\Software\Classes\Directory\shell\marklet_vault',
+            'HKCU:\Software\Classes\Directory\Background\shell\marklet_vault'
+          )) {
+            $icon = (Get-ItemProperty -Path $verb -Name 'Icon' -ErrorAction SilentlyContinue).Icon
+            if (-not $icon -or $icon -notmatch 'marklet\.exe",0$') {
+              throw "$verb has no Icon pointing at marklet.exe (got: '$icon')"
+            }
+          }
+
           & $exe --unbind --silent
           if ($LASTEXITCODE -ne 0) { throw "marklet --unbind exited $LASTEXITCODE" }
 

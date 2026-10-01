@@ -20,13 +20,22 @@
 //! HKCU\Software\Classes\.mkd\OpenWithProgids\Marklet.Document
 //!
 //! HKCU\Software\Classes\SystemFileAssociations\.md\shell\marklet           = "Open with Marklet"
+//!                                                                 Icon = "<exe>",0
 //! HKCU\Software\Classes\SystemFileAssociations\.md\shell\marklet\command   = "<exe>" "%1"
 //!
 //! HKCU\Software\Classes\Directory\shell\marklet_vault                     = "Open folder as Vault"
+//!                                                                 Icon = "<exe>",0
 //! HKCU\Software\Classes\Directory\shell\marklet_vault\command             = "<exe>" "%1"
 //! HKCU\Software\Classes\Directory\Background\shell\marklet_vault          = "Open folder as Vault"
+//!                                                                 Icon = "<exe>",0
 //! HKCU\Software\Classes\Directory\Background\shell\marklet_vault\command  = "<exe>" "%V"
 //! ```
+//!
+//! `Icon` is a named value on the verb key itself, not a new key, so the list of
+//! keys is unchanged and `unbind` needs nothing new: deleting the verb key takes
+//! its values with it. Without it the entry is the only line in Explorer's menu
+//! with a blank where every neighbour has a picture, which reads as something
+//! half-installed.
 //!
 //! The `(Default)` values on the two verb keys and the two `\command` keys
 //! under `SystemFileAssociations`/`Directory` are not spelled out with `=`
@@ -104,7 +113,7 @@ pub fn install(silent: bool) -> io::Result<()> {
     progid
         .create("DefaultIcon")
         .map_err(reg_err)?
-        .set_string("", format!("\"{exe}\",0"))
+        .set_string("", icon_value(&exe))
         .map_err(reg_err)?;
     progid
         .create("shell\\open\\command")
@@ -124,6 +133,7 @@ pub fn install(silent: bool) -> io::Result<()> {
         .create(format!("SystemFileAssociations\\.md\\shell\\{ASSOC_VERB}"))
         .map_err(reg_err)?;
     verb.set_string("", ASSOC_VERB_LABEL).map_err(reg_err)?;
+    verb.set_string("Icon", icon_value(&exe)).map_err(reg_err)?;
     verb.create("command")
         .map_err(reg_err)?
         .set_string("", open_command(&exe))
@@ -134,6 +144,7 @@ pub fn install(silent: bool) -> io::Result<()> {
             .create(format!("{base}\\{VAULT_VERB}"))
             .map_err(reg_err)?;
         verb.set_string("", VAULT_VERB_LABEL).map_err(reg_err)?;
+        verb.set_string("Icon", icon_value(&exe)).map_err(reg_err)?;
         verb.create("command")
             .map_err(reg_err)?
             .set_string("", format!("\"{exe}\" \"{arg}\""))
@@ -194,6 +205,15 @@ pub fn unbind(silent: bool) -> io::Result<()> {
 
 fn open_classes() -> io::Result<Key> {
     CURRENT_USER.create(CLASSES_ROOT).map_err(reg_err)
+}
+
+/// The executable's own icon, as every `Icon` and `DefaultIcon` value names it.
+///
+/// Index 0 is the application icon the Tauri bundler embeds as the first icon
+/// resource. Quoted, because the install directory is under the user's
+/// profile and a profile path with a space in it is ordinary.
+fn icon_value(exe: &str) -> String {
+    format!("\"{exe}\",0")
 }
 
 fn current_exe_string() -> io::Result<String> {

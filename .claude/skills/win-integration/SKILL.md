@@ -29,14 +29,18 @@ HKCU\Software\Classes\.markdown\OpenWithProgids\Marklet.Document
 HKCU\Software\Classes\.mdown\OpenWithProgids\Marklet.Document
 HKCU\Software\Classes\.mkd\OpenWithProgids\Marklet.Document
 
-HKCU\Software\Classes\SystemFileAssociations\.md\shell\marklet
+HKCU\Software\Classes\SystemFileAssociations\.md\shell\marklet            Icon = "<exe>",0
 HKCU\Software\Classes\SystemFileAssociations\.md\shell\marklet\command
 
-HKCU\Software\Classes\Directory\shell\marklet_vault
+HKCU\Software\Classes\Directory\shell\marklet_vault                      Icon = "<exe>",0
 HKCU\Software\Classes\Directory\shell\marklet_vault\command
-HKCU\Software\Classes\Directory\Background\shell\marklet_vault
+HKCU\Software\Classes\Directory\Background\shell\marklet_vault           Icon = "<exe>",0
 HKCU\Software\Classes\Directory\Background\shell\marklet_vault\command
 ```
+
+`Icon` is a value on each verb key, not a key of its own — the list of keys is the same,
+and `--unbind` removes it with the key. The CI round-trip asserts all three exist and
+point at `marklet.exe`, because a missing icon is invisible to every other check.
 
 `OpenWithProgids` rather than overwriting `.md`'s default handler: it adds Marklet to the
 "Open with" list without silently stealing an association the user chose. Making Marklet the
