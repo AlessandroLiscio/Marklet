@@ -36,6 +36,7 @@
  * events plus a CSS transform) rather than a `panzoom` dependency — see
  * `.claude/skills/size-budget/SKILL.md`'s already-rejected list.
  */
+import { captureKeys } from '../modal';
 import type { EnrichResult } from './types';
 import './mermaid.css';
 
@@ -274,6 +275,16 @@ function openViewer(svg: string): void {
     dragging = false;
     stage.releasePointerCapture(e.pointerId);
   };
+  /**
+   * The viewer's own keys, reached through {@link captureKeys}, which has
+   * already stopped the event from going anywhere else.
+   *
+   * It has to: this listener used to sit on `document` and let everything
+   * through, so `Escape` closed the viewer and then left edit mode behind it,
+   * and `+` zoomed the diagram and the document underneath at once. The
+   * modifier is not checked here on purpose — `Ctrl+0` over a diagram means
+   * the diagram, because the diagram is what is on screen.
+   */
   const onKeydown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       close();
@@ -298,6 +309,9 @@ function openViewer(svg: string): void {
     if (e.target === overlay) close();
   };
 
+  /** Set when the overlay is wired up; the only thing `close` has to undo. */
+  let releaseKeys: (() => void) | null = null;
+
   function close(): void {
     overlay.removeEventListener('wheel', onWheel, { capture: true });
     stage.removeEventListener('wheel', onWheel, { capture: true });
@@ -305,7 +319,7 @@ function openViewer(svg: string): void {
     stage.removeEventListener('pointermove', onPointerMove);
     stage.removeEventListener('pointerup', onPointerUp);
     overlay.removeEventListener('click', onOverlayClick);
-    document.removeEventListener('keydown', onKeydown);
+    releaseKeys?.();
     overlay.remove();
   }
 
@@ -341,5 +355,7 @@ function openViewer(svg: string): void {
   stage.addEventListener('pointerup', onPointerUp);
   overlay.addEventListener('click', onOverlayClick);
   closeBtn.addEventListener('click', close);
-  document.addEventListener('keydown', onKeydown);
+  // Last, so nothing below can still be reached by the keyboard: the viewer
+  // covers the page, and from here it takes the keyboard too.
+  releaseKeys = captureKeys(onKeydown);
 }

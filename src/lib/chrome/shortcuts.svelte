@@ -28,6 +28,7 @@
    */
   import { GROUPS } from '../shortcuts';
   import { SNIPPETS } from '../edit/snippets';
+  import { captureKeys } from '../modal';
 
   interface Props {
     onclose: () => void;
@@ -63,25 +64,29 @@
   let card = $state<HTMLElement>();
 
   /**
-   * Escape closes, in capture with `stopPropagation`.
+   * The sheet takes the keyboard while it is open — see `lib/modal.ts`.
    *
-   * The same reason the rail's menus do it: `app.svelte` turns a bubbling
-   * Escape into "leave edit mode", and one keypress must not both dismiss this
-   * sheet and throw the reader out of the editor behind it.
+   * It has to, and the reason is written on the sheet itself: the page behind
+   * answers to `Ctrl+W`, `Ctrl+Tab`, `Ctrl+O` and `Ctrl+P`, and closing a tab
+   * from behind a list of shortcuts is not what pressing one means. `Escape`
+   * alone used to be stopped here, which fixed the one collision anybody had
+   * hit and left the rest.
+   *
+   * `F1` closes from in here rather than from `app.svelte`, which can no
+   * longer see it. The sheet claims the key, so the sheet has to honour both
+   * halves of what it says `F1` does.
    */
   function onKey(event: KeyboardEvent): void {
-    if (event.key !== 'Escape') return;
-    event.stopPropagation();
-    onclose();
+    if (event.key === 'Escape' || event.key === 'F1') onclose();
   }
 
   $effect(() => {
-    window.addEventListener('keydown', onKey, true);
+    const release = captureKeys(onKey);
     // Focus moves in so the sheet can be read and dismissed by keyboard alone
     // — it is the one panel most likely to be opened by someone who has just
     // discovered the keyboard does anything.
     card?.focus();
-    return () => window.removeEventListener('keydown', onKey, true);
+    return release;
   });
 </script>
 

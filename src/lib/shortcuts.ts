@@ -63,6 +63,7 @@ const EDIT = 'src/lib/edit/index.ts';
 const SESSION = 'src/lib/edit/session.ts';
 const SETTINGS = 'src/lib/settings/panel.svelte';
 const MERMAID = 'src/lib/rich/mermaid.ts';
+const SHEET = 'src/lib/chrome/shortcuts.svelte';
 
 export const GROUPS: Group[] = [
   {
@@ -155,7 +156,7 @@ export const GROUPS: Group[] = [
     title: 'This sheet',
     items: [
       { keys: 'F1', what: 'open and close it', where: APP },
-      { keys: 'Esc', what: 'close it', where: null },
+      { keys: 'Esc', what: 'close it', where: SHEET },
     ],
   },
 ];
