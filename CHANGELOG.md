@@ -11,6 +11,13 @@ lightweight care about that number, and publishing it keeps us honest.
 ## [Unreleased]
 
 ### Added
+- **Marklet's icon beside its entries in Explorer's right-click menu.** *Open
+  folder as Vault* and *Open with Marklet* were the only lines in the menu with
+  a blank where every neighbour — Git, VS Code, VLC — had a picture, which read
+  as something half-installed. Each verb now carries the executable's own icon.
+  It is a value on the existing key rather than a new key, so uninstalling
+  removes it with everything else, and the Windows CI round-trip now fails if
+  any of the three goes missing.
 - **The keyboard sheet covers the rest of the audit.** The explorer tree's own
   keys (`Enter` opens, `Space` selects), the editing keys that were left off
   (`Shift+Tab`, `Ctrl+[` / `Ctrl+]`, `Alt+L`, `Ctrl+Enter`), clicking outside a
