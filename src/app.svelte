@@ -849,6 +849,15 @@
           // because the user asked for that file just now.
           await openInTab(event.payload);
         }),
+        // The same, for a folder. Rust decides which of the two it was —
+        // this side cannot ask whether a path is a directory — and a folder
+        // is adopted exactly as the picker adopts one. It used to arrive as
+        // `open-file` and fail as an unreadable document, so Explorer's
+        // "Open folder as Vault" worked only when Marklet was closed.
+        await listen<string>('open-folder', (event) => {
+          vaultPath = event.payload;
+          panel = 'explorer';
+        }),
       );
     })();
 

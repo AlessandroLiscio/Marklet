@@ -198,6 +198,14 @@ lightweight care about that number, and publishing it keeps us honest.
   beside it, which is not what the activity bar is for.
 
 ### Fixed
+- **Explorer's *Open folder as Vault* works while Marklet is already open.**
+  It worked only with Marklet closed. A second launch is forwarded to the
+  running window rather than starting another process, and every forwarded
+  path was sent as a file — so a folder was read as a markdown document and
+  failed. Rust now tells the two apart and sends a folder as a folder, which
+  the window adopts exactly as the picker does. A relative path is also
+  resolved against the directory the second launch was started in: `marklet .`
+  in a terminal used to mean wherever the first instance had happened to start.
 - **Launching on a folder no longer shows an empty window.** `marklet .`, and
   Explorer's *Open folder as Vault*, set the vault and open no document. The
   welcome panel is guarded on there being no vault either, so with a vault and
