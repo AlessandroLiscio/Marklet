@@ -35,3 +35,7 @@ SHA256SUMS
 
 # Test scratch
 /tests/vault-synthetic/
+
+# Generated exports of demo/demo.md
+demo/*.html
+demo/*.pdf
