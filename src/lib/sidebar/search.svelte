@@ -130,9 +130,9 @@
     {#if __MARKLET_EDITION__ === 'full'}
       <!-- Full only: the ripgrep stack is +1.2-1.8 MB, which is 45% of lite's
            entire installer ceiling. Lite gets literal multi-term AND. -->
-      <label class="regex" title="Regular expression">
+      <label class="regex" title="Treat the search text as a regular expression">
         <input type="checkbox" bind:checked={regex} onchange={run} disabled={!enabled} />
-        <span>.*</span>
+        <span>Regex</span>
       </label>
     {/if}
   </div>
@@ -196,7 +196,7 @@
     display: flex;
     align-items: center;
     gap: 2px;
-    font-family: var(--font-code);
+    font-family: var(--font-ui);
     font-size: var(--text-small);
     color: var(--fg-muted);
   }

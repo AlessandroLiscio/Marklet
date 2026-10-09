@@ -112,6 +112,8 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Changed
 
+- **The explorer tree takes the arrow keys** — `↑ ↓ → ← Home End` — and is one tab stop instead of one per row. Moving only selects; Enter opens (#56). **The regex toggle in search reads "Regex"**, not a bare `.*` (#55).
+
 - **Edit, Split and Copy are stacked in a column** in the document's corner instead of a row (#61). **Tabs are labelled with the file name**, not the document's title (#63).
 
 - **Opening a folder walks nothing.** It listed the top level lazily and then

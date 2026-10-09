@@ -80,8 +80,12 @@ export const GROUPS: Group[] = [
   },
   {
     title: 'The explorer tree',
-    blurb: 'Tab walks the rows one at a time; the arrow keys do not move between them yet.',
+    blurb: 'The tree is one tab stop: Tab enters it, the arrow keys move inside it. Moving only selects; Enter opens.',
     items: [
+      { keys: '↑, ↓', what: 'previous or next row', where: TREE },
+      { keys: '→', what: 'open a closed folder, or step into an open one', where: TREE },
+      { keys: '←', what: 'close an open folder, or step out to its parent', where: TREE },
+      { keys: 'Home, End', what: 'first or last row', where: TREE },
       { keys: 'Enter', what: 'open the note, or open and close the folder', where: TREE },
       { keys: 'Space', what: 'select the row, and open or close a folder', where: TREE },
     ],

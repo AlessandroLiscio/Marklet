@@ -11,6 +11,7 @@
    * that changes one and not the other produces a tree that drifts as you
    * scroll, which is the hardest kind of bug here to see.
    */
+  import { tick } from 'svelte';
   import {
     ancestorsOf,
     displayName,
@@ -43,11 +44,27 @@
   let expanded = $state(new Set<string>());
   /** The row a single click highlighted. Not the open document — that is `active`. */
   let selected = $state<string | null>(null);
+  /**
+   * The row that holds the tree's one tab stop (a roving tabindex). Whatever
+   * row last took focus; the first row until anything has.
+   */
+  let cursor = $state<string | null>(null);
+  let scroller = $state<HTMLDivElement | null>(null);
   let scrollTop = $state(0);
   let viewport = $state(480);
 
   const rows = $derived(visibleRows(entries, expanded, listed));
   const slice = $derived(windowOf(rows.length, scrollTop, viewport));
+  /**
+   * The path that carries `tabindex="0"`. If the cursor row is gone or has been
+   * scrolled out of the rendered window, the first rendered row stands in, so
+   * Tab can always find the tree.
+   */
+  const tabStop = $derived.by(() => {
+    const visible = rows.slice(slice.start, slice.end);
+    const own = visible.find((r) => r.path === cursor);
+    return (own ?? visible[0])?.path ?? null;
+  });
 
   // Revealing the open note is a state change, not a render: expanding its
   // ancestors is what makes "open a note from search" leave the tree pointing
@@ -99,7 +116,77 @@
     if (row.openable) onopen?.(row.path);
   }
 
+  /**
+   * Moves the highlight and the keyboard focus to `rows[index]`, scrolling it
+   * into the window first — a virtualized row that is not rendered cannot take
+   * focus. **Selects, never opens**: the same rule a single click follows, or
+   * holding `↓` would re-render the page once per row.
+   */
+  async function goto(index: number): Promise<void> {
+    const target = rows[index];
+    if (!target || !scroller) return;
+    selected = target.path;
+    cursor = target.path;
+    const top = index * ROW_HEIGHT;
+    if (top < scroller.scrollTop) scroller.scrollTop = top;
+    else if (top + ROW_HEIGHT > scroller.scrollTop + viewport) {
+      scroller.scrollTop = top + ROW_HEIGHT - viewport;
+    }
+    scrollTop = scroller.scrollTop;
+    await tick();
+    for (const el of scroller.querySelectorAll<HTMLElement>('.row')) {
+      if (el.dataset.path === target.path) {
+        el.focus();
+        break;
+      }
+    }
+  }
+
+  /** The tree keys: `↑ ↓ → ← Home End`. Returns whether the key was one. */
+  function navigate(event: KeyboardEvent, row: Row): boolean {
+    const at = rows.findIndex((r) => r.path === row.path);
+    if (at === -1) return false;
+    switch (event.key) {
+      case 'ArrowDown':
+        void goto(Math.min(rows.length - 1, at + 1));
+        return true;
+      case 'ArrowUp':
+        void goto(Math.max(0, at - 1));
+        return true;
+      case 'Home':
+        void goto(0);
+        return true;
+      case 'End':
+        void goto(rows.length - 1);
+        return true;
+      case 'ArrowRight':
+        if (row.expandable && !row.expanded) select(row);
+        else if (row.expanded && (rows[at + 1]?.depth ?? -1) > row.depth) void goto(at + 1);
+        return true;
+      case 'ArrowLeft': {
+        if (row.expanded) {
+          select(row);
+          return true;
+        }
+        for (let i = at - 1; i >= 0; i--) {
+          if ((rows[i]?.depth ?? row.depth) < row.depth) {
+            void goto(i);
+            break;
+          }
+        }
+        return true;
+      }
+      default:
+        return false;
+    }
+  }
+
   function onKey(event: KeyboardEvent, row: Row): void {
+    if (!event.ctrlKey && !event.altKey && !event.metaKey && navigate(event, row)) {
+      // Without this the arrow keys also scroll the panel under the focus.
+      event.preventDefault();
+      return;
+    }
     if (event.key === 'Enter') {
       event.preventDefault();
       // Enter is the keyboard's double-click: it opens. A folder has no
@@ -122,6 +209,7 @@
   role="tree"
   aria-label="Vault"
   tabindex="-1"
+  bind:this={scroller}
 >
   {#if rows.length === 0}
     <p class="empty">No notes yet.</p>
@@ -139,7 +227,9 @@
         role="treeitem"
         aria-selected={row.path === active || row.path === selected}
         aria-expanded={row.expandable ? row.expanded : undefined}
-        tabindex="0"
+        tabindex={row.path === tabStop ? 0 : -1}
+        data-path={row.path}
+        onfocus={() => (cursor = row.path)}
         onclick={() => select(row)}
         ondblclick={() => open(row)}
         onkeydown={(e) => onKey(e, row)}
