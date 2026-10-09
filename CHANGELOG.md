@@ -10,6 +10,10 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-10-09
+
+Test release for the updater, signed with the project's update key. Full installer about 3.8 MB; lite unchanged. (0.1.1 was tagged but its build never completed: the signing secret was wrong, so it was never published.)
+
 ## [0.1.1] — 2026-10-09
 
 Test release for the updater: the first published build that carries one. Full installer 3,827,125 B (12 MiB ceiling); lite unchanged.
