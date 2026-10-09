@@ -8,12 +8,13 @@
    * reading, it needs no index to be built first, and it can include the
    * `https://` links, which a vault graph has no opinion about.
    *
-   * `backlinks_for` is still a command and still correct — the panel that
-   * consumed it is what changed.
+   * The other direction is back, as a second section under the same heading
+   * of edges: **Linked from**, the notes pointing at this one. It complements
+   * the outgoing list rather than replacing it.
    */
   import { onDestroy, onMount } from 'svelte';
   import { DOCUMENT_EVENT, revealElement } from '../doc';
-  import { openExternal } from '../ipc';
+  import { backlinksFor, openExternal, type Backlink } from '../ipc';
   import { collectLinkRows, type DocLink, type LinkRow } from './links';
 
   interface Props {
@@ -33,10 +34,27 @@
   let { path = null, onopen }: Props = $props();
 
   let rows = $state<LinkRow[]>([]);
+  let back = $state<Backlink[]>([]);
+  /** Drops an answer that arrives after a newer question was asked. */
+  let asked = 0;
+
+  async function loadBack(): Promise<void> {
+    const ticket = ++asked;
+    let found: Backlink[] = [];
+    if (path !== null) {
+      try {
+        found = await backlinksFor(path);
+      } catch {
+        /* no vault index yet — the section simply stays empty */
+      }
+    }
+    if (ticket === asked) back = found;
+  }
 
   function reread(): void {
     const root = document.getElementById('doc');
     rows = root === null ? [] : collectLinkRows(root);
+    void loadBack();
   }
 
   // Driven by the document being replaced, not by the `path` prop.
@@ -178,6 +196,32 @@
       {/each}
     </ul>
   {/if}
+
+  {#if path !== null}
+    <h2>
+      Linked from
+      {#if back.length > 0}<span class="count">{back.length}</span>{/if}
+    </h2>
+    {#if back.length === 0}
+      <p class="empty">No other note links here.</p>
+    {:else}
+      <ul>
+        {#each back as b, i (`${b.path}:${b.line}:${i}`)}
+          <li>
+            <button
+              type="button"
+              class="jump"
+              title={`Open ${b.path} in a new tab — it links here as ${b.target}`}
+              onclick={() => onopen?.(b.path)}
+            >
+              <span class="label">{b.title}</span>
+              {#if b.line > 0}<span class="line">:{b.line}</span>{/if}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  {/if}
 </section>
 
 <style>
@@ -185,6 +229,7 @@
     display: flex;
     flex-direction: column;
     max-block-size: 40%;
+    overflow-y: auto;
     border-block-start: 1px solid var(--border);
   }
 
@@ -213,7 +258,6 @@
   ul {
     margin: 0;
     padding: 0;
-    overflow-y: auto;
     list-style: none;
   }
 
