@@ -27,6 +27,7 @@ const createSession = vi.fn(async (_opts: { path: string; decorated: boolean }) 
   cursor: () => ({ line: 1, column: 1 }),
   setDecorated: vi.fn(),
   flush: async () => {},
+  isDirty: () => false,
   destroy: vi.fn(),
 }));
 
@@ -67,6 +68,12 @@ afterEach(() => {
 });
 
 describe('editShortcut', () => {
+  it('reads Ctrl+S as save, with no other modifier', () => {
+    expect(editShortcut(key({ key: 's', ctrlKey: true }))).toBe('save');
+    expect(editShortcut(key({ key: 's', ctrlKey: true, shiftKey: true }))).toBeNull();
+    expect(editShortcut(key({ key: 's' }))).toBeNull();
+  });
+
   it('maps the four editing keys', () => {
     expect(editShortcut(key({ key: 'F2' }))).toBe('live');
     expect(editShortcut(key({ key: 'F3' }))).toBe('split');
