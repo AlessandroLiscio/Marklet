@@ -1,0 +1,80 @@
+/*
+ * The full edition's print theme — what `print.css` leaves out on purpose.
+ *
+ * `print.css` makes an export legible and is shared by both editions. This file
+ * is the part that is only worth its bytes in the full one, so it is imported
+ * by `runExport` behind `__MARKLET_EDITION__ === 'full'`, after `print.css`,
+ * and never at boot. Lite's stylesheet budget does not see it at all.
+ *
+ * Three things, all expressible in CSS the print engines honour:
+ *
+ *   1. A light document whatever the reading theme. `print.css` paints the page
+ *      white and the text black, but syntax colours, alert tints, diagrams and
+ *      anything else that reads a token would still print in their dark-theme
+ *      values — pale text on white. The tokens are put back to their light
+ *      values instead, so every consumer of them agrees.
+ *   2. A title block: the frontmatter table, which `print.css` leaves as the
+ *      screen draws it, becomes a bordered block that stays on one page.
+ *   3. A page: wider margins and a page number, as a margin box. Engines that
+ *      do not support margin boxes ignore the rule and print without a number.
+ */
+
+@media print {
+  /* `:root:root:root` is (0,3,0): it outranks `:root[data-theme='dark']` and the
+     `:root:not([data-theme='light'])` system-dark block, which are (0,2,0),
+     without `!important` and without caring what order the sheets arrived in. */
+  :root:root:root {
+    --bg: var(--paper-000);
+    --bg-subtle: var(--paper-100);
+    --fg: var(--ink-900);
+    --fg-muted: var(--ink-600);
+    --border: var(--line-200);
+
+    --accent: oklch(0.48 var(--accent-chroma) var(--accent-hue));
+    --accent-hover: oklch(0.43 var(--accent-chroma) var(--accent-hue));
+    --accent-muted: oklch(0.94 0.03 var(--accent-hue));
+    --on-accent: #ffffff;
+
+    --link: var(--accent);
+    --link-hover: var(--accent-hover);
+
+    --alert-note: var(--accent);
+    --alert-tip: oklch(0.48 var(--accent-chroma) 142);
+    --alert-important: oklch(0.48 var(--accent-chroma) 292);
+    --alert-warning: oklch(0.48 var(--accent-chroma) 70);
+    --alert-caution: oklch(0.48 var(--accent-chroma) 25);
+
+    color-scheme: light;
+  }
+
+  @page {
+    margin: 0.75in 0.7in;
+
+    @bottom-center {
+      content: counter(page) ' / ' counter(pages);
+      font-size: 9pt;
+      color: #555;
+    }
+  }
+
+  /* The title block. Kept whole: a metadata table split across a page break is
+     the first thing a reader sees go wrong. */
+  #doc table.frontmatter {
+    break-inside: avoid;
+    margin-block-end: 1.5em;
+    border: 1px solid #999;
+    border-inline: 0;
+  }
+
+  #doc .frontmatter th[scope='row'] {
+    color: #333;
+    background: #f2f2f2 !important;
+  }
+
+  /* Paper has no horizontal scrollbar: a long line wraps instead of being cut
+     at the page edge. Whole-block `break-inside: avoid` stays in `print.css`. */
+  #doc pre code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}

@@ -14,6 +14,8 @@ lightweight care about that number, and publishing it keeps us honest.
 
 - **A *Linked from* section in the Links panel** lists the notes pointing at the open one, so `backlinks_for` has a caller again and the docs match the app (#39).
 
+- **A richer print theme in the full edition** (`src/styles/full/print-theme.css`, loaded only at export): the document always prints light whatever the reading theme, the frontmatter becomes a title block, margins widen, pages are numbered and long code lines wrap instead of being cut (#37). Lite is unchanged.
+
 - **A Copy button beside Edit and Split** puts the open document's whole markdown source on the clipboard, ready to paste into another app (#62).
 - **Marklet's icon beside its entries in Explorer's right-click menu.** *Open
   folder as Vault* and *Open with Marklet* were the only lines in the menu with

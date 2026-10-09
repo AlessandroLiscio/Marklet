@@ -384,6 +384,8 @@
       // an export costs the reader nothing and gets it into the document
       // before the native print engine looks at the page.
       await import('./styles/print.css');
+      // The richer print theme is full-only; lite's bundler drops this branch.
+      if (__MARKLET_EDITION__ === 'full') await import('./styles/full/print-theme.css');
 
       if (format === 'pdf') {
         say(`Saved ${await exportPdf(source, target)}`);
