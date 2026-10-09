@@ -10,6 +10,10 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-10-09
+
+Test release for the updater: the first published build that carries one. Full installer 3,827,125 B (12 MiB ceiling); lite unchanged.
+
 ### Added
 
 - **Updates, in the full edition**: Settings → Updates checks the release manifest and installs a newer version, verifying its signature against a key built into the app. One quiet check runs two minutes after launch, never at launch; lite has no updater (#38).
