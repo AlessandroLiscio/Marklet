@@ -24,15 +24,11 @@ import { computeSplice, utf8Length } from './splice';
 import './editor.css';
 
 /**
- * How long after the last keystroke a save runs.
- *
- * 100 ms is the number the F3 dual column needs: the preview is rendered by
- * Rust *from the file*, so the file is what has to be current, and a slower
- * save would show a preview of text the user finished typing half a second
- * ago. It is fast enough to feel continuous and slow enough that a burst of
- * typing is one write rather than forty.
+ * **Saving is explicit.** Nothing is written until the reader asks — `Ctrl+S`
+ * or the Save button — so typing never touches the file. The consequence is
+ * that the F3 preview, which Rust renders *from the file*, shows the last
+ * saved text, not the buffer; it catches up on every save.
  */
-export const SAVE_DEBOUNCE_MS = 100;
 
 /** How many times a save re-reads and retries after a `Conflict` before giving up. */
 const MAX_RETRIES = 2;
@@ -64,6 +60,8 @@ export interface SessionOptions {
   savePastedImage?: (bytes: Uint8Array, ext: string) => Promise<string>;
   /** Called after every successful save, with the file's new byte length. */
   onSaved?: (length: number) => void;
+  /** Called whenever the buffer gains or loses unsaved changes. */
+  onDirty?: (dirty: boolean) => void;
   /** Called when a save fails for a reason the user should hear about. */
   onError?: (message: string) => void;
   /** Called when the editor is scrolled, with the topmost visible source line. */
@@ -83,8 +81,10 @@ export interface Session {
   cursor(): { line: number; column: number };
   /** Turns live-preview decorations on or off without rebuilding the editor. */
   setDecorated(on: boolean): void;
-  /** Saves now, rather than waiting out the debounce. */
+  /** Writes the buffer to the file now. Resolves once the write has finished. */
   flush(): Promise<void>;
+  /** Whether the buffer holds changes the file does not. */
+  isDirty(): boolean;
   destroy(): void;
 }
 
@@ -107,8 +107,20 @@ export async function createSession(options: SessionOptions): Promise<Session> {
   let baseline = options.source;
   let baselineBytes = utf8Length(options.source);
   let saving: Promise<void> = Promise.resolve();
-  let timer: ReturnType<typeof setTimeout> | null = null;
   let destroyed = false;
+  /**
+   * Edit counter, bumped on every change; `savedRev` is the value the last
+   * save covered. Comparing two integers is how "dirty" stays O(1) per
+   * keystroke — comparing the buffer to the baseline would copy a 3 MB
+   * document on every key.
+   */
+  let rev = 0;
+  let savedRev = 0;
+
+  function setClean(upTo: number): void {
+    savedRev = upTo;
+    options.onDirty?.(rev !== savedRev);
+  }
 
   /**
    * Writes the difference between `baseline` and the buffer.
@@ -124,8 +136,12 @@ export async function createSession(options: SessionOptions): Promise<Session> {
     if (destroyed) return;
 
     const current = view.state.doc.toString();
+    const startedAt = rev;
     const splice = computeSplice(baseline, current);
-    if (splice === null) return;
+    if (splice === null) {
+      setClean(startedAt);
+      return;
+    }
 
     try {
       const result = await spliceRange(
@@ -137,6 +153,7 @@ export async function createSession(options: SessionOptions): Promise<Session> {
       );
       baseline = current;
       baselineBytes = result.len;
+      setClean(startedAt);
       options.onSaved?.(result.len);
     } catch (error) {
       if (isIpcError(error) && error.kind === 'conflict' && attempt < MAX_RETRIES) {
@@ -148,17 +165,6 @@ export async function createSession(options: SessionOptions): Promise<Session> {
       const message = isIpcError(error) ? error.message : 'could not save the document';
       options.onError?.(message);
     }
-  }
-
-  function schedule(): void {
-    if (timer !== null) clearTimeout(timer);
-    timer = setTimeout(() => {
-      timer = null;
-      // Serialized rather than concurrent: two saves in flight would compute
-      // their ranges against the same baseline and the second would be stale
-      // the instant the first succeeded.
-      saving = saving.then(() => save());
-    }, SAVE_DEBOUNCE_MS);
   }
 
   /**
@@ -240,7 +246,11 @@ export async function createSession(options: SessionOptions): Promise<Session> {
       },
     }),
     EditorView.updateListener.of((update) => {
-      if (update.docChanged) schedule();
+      if (update.docChanged) {
+        const wasClean = rev === savedRev;
+        rev += 1;
+        if (wasClean) options.onDirty?.(true);
+      }
     }),
   ];
 
@@ -279,16 +289,12 @@ export async function createSession(options: SessionOptions): Promise<Session> {
       });
     },
     async flush() {
-      if (timer !== null) {
-        clearTimeout(timer);
-        timer = null;
-      }
       saving = saving.then(() => save());
       await saving;
     },
+    isDirty: () => rev !== savedRev,
     destroy() {
       destroyed = true;
-      if (timer !== null) clearTimeout(timer);
       view.destroy();
       options.host.classList.remove('marklet-editor');
       options.host.replaceChildren();

@@ -82,6 +82,8 @@
     );
   });
   let mode = $state<EditMode>('read');
+  /** Unsaved changes in the editor. Lights the Save button. */
+  let dirty = $state(false);
   /** The one transient line of feedback: an export's result, or a refusal. */
   let notice = $state<{ text: string; bad: boolean } | null>(null);
   let noticeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -132,6 +134,11 @@
   function folderOf(path: string): string {
     const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
     return cut > 0 ? path.slice(0, cut) : path;
+  }
+
+  function fileName(path: string): string {
+    const cut = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+    return cut === -1 ? path : path.slice(cut + 1);
   }
 
   let unlisten: Array<() => void> = [];
@@ -625,6 +632,20 @@
     }
   }
 
+  /** The Save button. `Ctrl+S` goes through the editor's own key handler. */
+  function saveNow(): void {
+    if (!edit?.dirty()) {
+      say('Nothing to save');
+      return;
+    }
+    void edit.save();
+  }
+
+  // A window closed with unsaved changes asks first.
+  function guardUnload(event: BeforeUnloadEvent): void {
+    if (dirty) event.preventDefault();
+  }
+
   /** The top-right split toggle. `F3` does the same thing. */
   function toggleSplit(): void {
     void edit?.setMode(mode === 'split' ? 'read' : 'split');
@@ -814,6 +835,7 @@
         // re-rendered only by luck of ordering. This is the deterministic
         // path — the save has returned, so the bytes are on disk.
         onSaved: () => {
+          say(`Saved ${fileName(doc?.path ?? '')}`);
           if (!doc || mode === 'read') return;
           void openDocument(doc.path)
             .then(async (next) => {
@@ -827,12 +849,22 @@
               // written; a stale preview is not worth a dialog over it.
             });
         },
+        onDirty: (next) => {
+          dirty = next;
+        },
+        // Leaving the editor never writes by itself. Asked, in the one place
+        // where a reader could otherwise lose work without noticing.
+        confirmSave: () =>
+          window.confirm(
+            'You have unsaved changes.\n\nOK saves them; Cancel discards them.',
+          ),
         onMode: (next) => {
           mode = next;
         },
         onError: (message) => say(message, true),
       });
       window.addEventListener('keydown', onKeyDown);
+      window.addEventListener('beforeunload', guardUnload);
       document.addEventListener('marklet-save-asset', onSaveAsset as EventListener);
     }
     if (root) {
@@ -881,6 +913,7 @@
     return () => {
       root?.removeEventListener('click', onDocClick);
       window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('beforeunload', guardUnload);
       document.removeEventListener('marklet-save-asset', onSaveAsset as EventListener);
     };
   });
@@ -1016,6 +1049,30 @@
       </svg>
       <span>Copy</span>
     </button>
+
+    <!-- Editing only. Lit while the buffer holds changes the file does not —
+         by fill, the rule the other toggles follow. -->
+    {#if mode !== 'read'}
+      <button
+        type="button"
+        class="action"
+        class:on={dirty}
+        aria-label={dirty ? 'Save — there are unsaved changes' : 'Save — nothing to save'}
+        title="Save (Ctrl+S)"
+        onclick={saveNow}
+      >
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path
+            d="M4 4.5A1.5 1.5 0 0 1 5.5 3H13l3 3v9.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 4 15.5z"
+            stroke="currentColor"
+            stroke-width="1.4"
+            stroke-linejoin="round"
+          />
+          <path d="M7 3v4h5V3M7 17v-5h6v5" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+        </svg>
+        <span>Save</span>
+      </button>
+    {/if}
   </div>
 {/if}
 

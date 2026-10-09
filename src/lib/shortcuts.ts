@@ -104,11 +104,12 @@ export const GROUPS: Group[] = [
   {
     title: 'Editing',
     blurb:
-      'Your changes are written to the file 100 ms after you stop typing — there is no save key because there is nothing to save. F2 and F3 also swap straight to each other, keeping the cursor and the undo history.',
+      'Nothing is written to the file until you save: Ctrl+S or the Save button, which lights up while there are unsaved changes. In the split view the preview catches up on each save. F2 and F3 also swap straight to each other, keeping the cursor and the undo history.',
     items: [
       { keys: 'F2', what: 'live preview — edit with the markdown hidden on every line but the one you are on', where: EDIT },
       { keys: 'F3', what: 'split — source on the left, preview on the right, scrolling together', where: EDIT },
-      { keys: 'Esc', what: 'back to reading', where: EDIT },
+      { keys: 'Ctrl+S', what: 'save your changes to the file', where: EDIT },
+      { keys: 'Esc', what: 'back to reading — asks first if there are unsaved changes', where: EDIT },
       { keys: 'F4', what: 'open this file in your own editor, at the cursor', where: EDIT },
       { keys: 'Ctrl+E', what: 'the same, but only while reading — the editor keeps this key for itself', where: EDIT },
       { keys: 'Ctrl+V', what: 'paste an image from the clipboard into assets/ and link it here', where: null },

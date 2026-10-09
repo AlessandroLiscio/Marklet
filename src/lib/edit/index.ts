@@ -26,7 +26,7 @@ import type { ScrollLink } from './split';
 export type EditMode = 'read' | 'live' | 'split';
 
 /** What a keystroke asked for. `external` is an action, not a mode. */
-export type EditIntent = EditMode | 'external';
+export type EditIntent = EditMode | 'external' | 'save';
 
 /**
  * The keystroke-to-intent mapping, as a pure function so it can be tested
@@ -52,6 +52,8 @@ export function editShortcut(event: KeyboardEvent): EditIntent | null {
     if (event.key === 'F4') return 'external';
     if (event.key === 'Escape') return 'read';
   }
+
+  if (event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 's') return 'save';
 
   if (event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'e' && !inField) {
     return 'external';
@@ -88,6 +90,13 @@ export interface EditWiring {
   savePastedImage?: (bytes: Uint8Array, ext: string) => Promise<string>;
   /** Called after each save, so the preview can be re-rendered. */
   onSaved?: (length: number) => void;
+  /** Called when the buffer gains or loses unsaved changes. */
+  onDirty?: (dirty: boolean) => void;
+  /**
+   * Asked when the editor is about to close with unsaved changes. `true`
+   * saves them, `false` throws them away. Never silently either.
+   */
+  confirmSave?: () => boolean;
   /** Called when something the user should hear about went wrong. */
   onError?: (message: string) => void;
   /** Called whenever the mode changes, for the chrome to reflect it. */
@@ -96,6 +105,10 @@ export interface EditWiring {
 
 export interface EditController {
   mode(): EditMode;
+  /** Whether the editor holds changes the file does not. */
+  dirty(): boolean;
+  /** Writes the buffer to the file. A no-op outside an editing mode. */
+  save(): Promise<void>;
   /** Handle a `keydown`. Returns `true` when it consumed the event. */
   handleKey(event: KeyboardEvent): boolean;
   setMode(mode: EditMode): Promise<void>;
@@ -178,6 +191,7 @@ export function createEditController(wiring: EditWiring): EditController {
       readSource: wiring.readSource,
       ...(wiring.savePastedImage ? { savePastedImage: wiring.savePastedImage } : {}),
       ...(wiring.onSaved ? { onSaved: wiring.onSaved } : {}),
+      ...(wiring.onDirty ? { onDirty: wiring.onDirty } : {}),
       ...(wiring.onError ? { onError: wiring.onError } : {}),
       ...(scrollLink ? { onScroll: (l: number) => scrollLink.onEditorScroll(l) } : {}),
     });
@@ -200,7 +214,10 @@ export function createEditController(wiring: EditWiring): EditController {
     }
 
     const line = session.topLine();
-    await session.flush();
+    // Leaving never writes on its own. With unsaved changes the reader is
+    // asked; without, nothing is touched.
+    if (session.isDirty() && (wiring.confirmSave?.() ?? true)) await session.flush();
+    wiring.onDirty?.(false);
 
     link?.destroy();
     link = null;
@@ -237,10 +254,20 @@ export function createEditController(wiring: EditWiring): EditController {
 
   return {
     mode: () => mode,
+    dirty: () => session?.isDirty() ?? false,
+    save: () => run(async () => void (await session?.flush())),
 
     handleKey(event) {
       const intent = editShortcut(event);
       if (intent === null) return false;
+
+      if (intent === 'save') {
+        // Outside an editing mode Ctrl+S is not ours.
+        if (session === null) return false;
+        event.preventDefault();
+        void this.save();
+        return true;
+      }
 
       if (intent === 'external') {
         event.preventDefault();
