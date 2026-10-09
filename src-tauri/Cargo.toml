@@ -101,7 +101,7 @@ gtk = "0.18"
 default = []
 
 # The full edition. Everything the lite budget cannot afford.
-full = ["full-encodings", "regex-search"]
+full = ["full-encodings", "regex-search", "updater"]
 
 # Mermaid is NOT a cargo feature. Its 750 KB live in the frontend bundle, so the
 # edition is also carried by `MARKLET_EDITION`, which Vite reads. Gating Mermaid
@@ -119,6 +119,15 @@ full-encodings = ["dep:encoding_rs", "dep:chardetng"]
 # mode that disagreed with literal mode about which files exist would be a bug
 # factory. Measured cost of this feature: +1.25 MB raw, +386 KB xz.
 regex-search = ["dep:grep-regex", "dep:grep-searcher"]
+
+# Update check and install, full only. Never on the boot path: the first check
+# is an idle timer or the settings panel's button, never launch. Lite compiles
+# the two commands as stubs that refuse, so it carries none of this.
+updater = ["dep:tauri-plugin-updater"]
+
+[dependencies.tauri-plugin-updater]
+version = "2"
+optional = true
 
 [dependencies.encoding_rs]
 version = "0.8"

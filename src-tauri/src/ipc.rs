@@ -1634,3 +1634,86 @@ mod external_link_tests {
         );
     }
 }
+
+
+/// What a newer release offers.
+#[derive(Debug, Clone, Serialize)]
+pub struct UpdateInfo {
+    pub version: String,
+    pub notes: Option<String>,
+}
+
+/// Asks the release manifest whether a newer version exists.
+///
+/// **Never called at launch.** The webview asks from an idle timer or from the
+/// settings panel, so the network is not on the cold-start path. The manifest
+/// URL and the public key that verifies the download both live in
+/// `tauri.conf.json`, not here and not in the webview's reach: the frontend can
+/// say "check", never "check *there*".
+#[cfg(feature = "updater")]
+#[tauri::command]
+pub async fn check_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, IpcError> {
+    use tauri_plugin_updater::UpdaterExt;
+
+    let updater = app.updater().map_err(update_error)?;
+    let found = updater.check().await.map_err(update_error)?;
+    Ok(found.map(|u| UpdateInfo {
+        version: u.version,
+        notes: u.body,
+    }))
+}
+
+/// Downloads the update, verifies its signature, installs it and restarts.
+///
+/// The check is repeated rather than trusting an earlier one held by the
+/// webview: what gets installed is whatever the manifest says *now*, verified
+/// against the baked-in key, and a tampered artifact fails the verification
+/// before anything is run.
+#[cfg(feature = "updater")]
+#[tauri::command]
+pub async fn install_update(app: tauri::AppHandle) -> Result<(), IpcError> {
+    use tauri_plugin_updater::UpdaterExt;
+
+    let updater = app.updater().map_err(update_error)?;
+    let Some(update) = updater.check().await.map_err(update_error)? else {
+        return Err(IpcError::new(
+            IpcErrorKind::NotFound,
+            "there is no newer version",
+            None,
+        ));
+    };
+    update
+        .download_and_install(|_, _| {}, || {})
+        .await
+        .map_err(update_error)?;
+    // On Windows the installer ends this process itself; elsewhere it is ours to do.
+    app.restart()
+}
+
+#[cfg(feature = "updater")]
+fn update_error(e: tauri_plugin_updater::Error) -> IpcError {
+    IpcError::new(IpcErrorKind::Io, format!("update failed: {e}"), None)
+}
+
+/// Lite carries no updater. The command exists so the handler list is the same
+/// in both editions; it refuses, and the webview never calls it there.
+#[cfg(not(feature = "updater"))]
+#[tauri::command]
+pub async fn check_update() -> Result<Option<UpdateInfo>, IpcError> {
+    Err(not_in_this_edition())
+}
+
+#[cfg(not(feature = "updater"))]
+#[tauri::command]
+pub async fn install_update() -> Result<(), IpcError> {
+    Err(not_in_this_edition())
+}
+
+#[cfg(not(feature = "updater"))]
+fn not_in_this_edition() -> IpcError {
+    IpcError::new(
+        IpcErrorKind::Invalid,
+        "updates are part of the full edition",
+        None,
+    )
+}

@@ -41,6 +41,19 @@ use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use crate::protocol::AssetRoot;
 use crate::vault::VaultState;
 
+/// The updater plugin, in the full edition only. A function pair rather than a
+/// `#[cfg]` inside the builder chain, because an attribute cannot sit on one
+/// call of a method chain.
+#[cfg(feature = "updater")]
+fn with_updater<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
+    builder.plugin(tauri_plugin_updater::Builder::new().build())
+}
+
+#[cfg(not(feature = "updater"))]
+fn with_updater<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
+    builder
+}
+
 /// Boots the windowed application.
 ///
 /// **The cold-start budget lives on this function.** Two things protect it, and
@@ -115,7 +128,7 @@ pub fn run(job: cli::WindowJob, started: Instant) {
         job.file.clone()
     };
 
-    tauri::Builder::default()
+    with_updater(tauri::Builder::default())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
             // A second WebView2 instance costs roughly 40 MB RSS. Forward the
@@ -172,6 +185,8 @@ pub fn run(job: cli::WindowJob, started: Instant) {
             ipc::pick_file,
             ipc::pick_folder,
             ipc::pick_save,
+            ipc::check_update,
+            ipc::install_update,
         ])
         .setup(move |app| {
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
