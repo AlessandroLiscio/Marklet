@@ -18,6 +18,17 @@
       }
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDRGNDQyQjBDREM5MzlCREQKUldUZG01UGNEQ3RFVDJLOUx3eEo3SkRGWmtJZ0VrM051c0xkSTB1NUsrWlZ0WnNpZlluMXlGaVIK",
+      "endpoints": [
+        "https://github.com/AlessandroLiscio/Marklet/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  },
   "bundle": {
     "active": true,
     "targets": ["nsis", "appimage", "deb"],

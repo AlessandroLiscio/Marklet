@@ -617,3 +617,22 @@ export function subscribeAll(
     unlisteners.length = 0;
   };
 }
+
+/** Mirrors `ipc::UpdateInfo`. */
+export interface UpdateInfo {
+  version: string;
+  notes: string | null;
+}
+
+/**
+ * Whether a newer release exists. **Full edition only**, and never at launch:
+ * callers are an idle timer and the settings panel's button.
+ */
+export function checkUpdate(): Promise<UpdateInfo | null> {
+  return invoke<UpdateInfo | null>('check_update');
+}
+
+/** Downloads, verifies, installs and restarts. Resolves only if it failed to restart. */
+export function installUpdate(): Promise<void> {
+  return invoke<void>('install_update');
+}

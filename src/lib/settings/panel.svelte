@@ -20,7 +20,8 @@
    * see `docs/editions.md` and `.claude/skills/size-budget/SKILL.md`.
    */
   import { onMount } from 'svelte';
-  import { readSettings, writeSettings } from '../ipc';
+  import { checkUpdate, installUpdate, readSettings, writeSettings } from '../ipc';
+  import type { UpdateInfo } from '../ipc';
   import type { Density, Palette, Settings, Theme, Typeface } from '../ipc';
   import { applySettingsToRoot, clampZoom, DEFAULT_SETTINGS, MEASURE_MAX, MEASURE_MIN, preserveScrollAcrossReflow, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './model';
 
@@ -142,7 +143,42 @@
     commit({ ...settings, palette }, false);
   }
 
+  // Updates — full edition only; the branches are dead code in lite and the
+  // bundler drops them. Never checked at launch: the idle timer below waits
+  // until the reader has been looking at the window for a while, and the
+  // button asks on demand.
+  let update = $state<UpdateInfo | null>(null);
+  let updateStatus = $state('');
+  let updateBusy = $state(false);
+
+  async function lookForUpdate(quiet: boolean): Promise<void> {
+    updateBusy = true;
+    if (!quiet) updateStatus = 'Checking…';
+    try {
+      update = await checkUpdate();
+      if (!quiet) updateStatus = update ? '' : 'Marklet is up to date.';
+    } catch (err) {
+      // A quiet check that fails (offline, rate limit) says nothing at all.
+      if (!quiet) updateStatus = `Could not check: ${(err as { message?: string })?.message ?? err}`;
+    } finally {
+      updateBusy = false;
+    }
+  }
+
+  async function installNow(): Promise<void> {
+    updateBusy = true;
+    updateStatus = 'Downloading and verifying…';
+    try {
+      await installUpdate();
+    } catch (err) {
+      updateStatus = `Update failed: ${(err as { message?: string })?.message ?? err}`;
+      updateBusy = false;
+    }
+  }
+
   onMount(() => {
+    const idle =
+      EDITION === 'full' ? window.setTimeout(() => void lookForUpdate(true), 120_000) : 0;
     // `passive: false` — a passive listener cannot preventDefault, and without
     // that the webview's own Ctrl+wheel page zoom fires as well and scales the
     // chrome along with the document.
@@ -165,6 +201,7 @@
       });
 
     return () => {
+      window.clearTimeout(idle);
       window.removeEventListener('wheel', onZoomWheel);
       window.removeEventListener('keydown', onZoomKey);
     };
@@ -182,6 +219,7 @@
     title="Settings"
     onclick={() => (open = !open)}
   >
+    {#if update}<span class="dot" aria-hidden="true"></span>{/if}
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <circle cx="8" cy="8" r="2.25" stroke="currentColor" stroke-width="1.5" />
       <path
@@ -292,6 +330,28 @@
         </fieldset>
       {/if}
 
+      {#if EDITION === 'full'}
+        <fieldset>
+          <legend>Updates</legend>
+          {#if update}
+            <p class="update-note">Marklet {update.version} is available.</p>
+            <button type="button" class="update-btn" disabled={updateBusy} onclick={installNow}>
+              Install and restart
+            </button>
+          {:else}
+            <button
+              type="button"
+              class="update-btn"
+              disabled={updateBusy}
+              onclick={() => lookForUpdate(false)}
+            >
+              Check for updates
+            </button>
+          {/if}
+          {#if updateStatus}<p class="update-note" role="status">{updateStatus}</p>{/if}
+        </fieldset>
+      {/if}
+
       <fieldset>
         <legend>
           <label for="hue-range">Accent hue — {settings.accent_hue}&deg;</label>
@@ -348,6 +408,44 @@
     color: var(--on-accent);
     background: var(--accent);
     border-color: var(--accent);
+  }
+
+  .toggle {
+    position: relative;
+  }
+
+  /* An update is waiting. A shape and a position, not colour alone. */
+  .dot {
+    position: absolute;
+    inset-block-start: 4px;
+    inset-inline-end: 4px;
+    inline-size: 8px;
+    block-size: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 1px solid var(--bg);
+  }
+
+  .update-btn {
+    padding: var(--space-1) var(--space-2);
+    font-family: var(--font-ui);
+    font-size: var(--text-small);
+    color: var(--fg);
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .update-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .update-note {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-small);
+    color: var(--fg-muted);
   }
 
   .toggle:focus-visible {
