@@ -12,6 +12,8 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Added
 
+- **Updates, in the full edition**: Settings → Updates checks the release manifest and installs a newer version, verifying its signature against a key built into the app. One quiet check runs two minutes after launch, never at launch; lite has no updater (#38).
+
 - **A *Linked from* section in the Links panel** lists the notes pointing at the open one, so `backlinks_for` has a caller again and the docs match the app (#39).
 
 - **A richer print theme in the full edition** (`src/styles/full/print-theme.css`, loaded only at export): the document always prints light whatever the reading theme, the frontmatter becomes a title block, margins widen, pages are numbered and long code lines wrap instead of being cut (#37). Lite is unchanged.
