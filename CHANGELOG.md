@@ -230,6 +230,8 @@ Test release for the updater: the first published build that carries one. Full i
 
 ### Fixed
 
+- **Task-list boxes are readable in dark mode.** They were the browser's greyed-out disabled checkbox; they are now drawn with a clear border and an accent fill with a tick when checked.
+
 - **Task-list items render at the same indentation.** Only the first item of a list was pulled left, so items written at the same level looked nested.
 - **Explorer's *Open folder as Vault* works while Marklet is already open.**
   It worked only with Marklet closed. A second launch is forwarded to the
