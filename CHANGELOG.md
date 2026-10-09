@@ -12,6 +12,8 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Added
 
+- **A *Linked from* section in the Links panel** lists the notes pointing at the open one, so `backlinks_for` has a caller again and the docs match the app (#39).
+
 - **A Copy button beside Edit and Split** puts the open document's whole markdown source on the clipboard, ready to paste into another app (#62).
 - **Marklet's icon beside its entries in Explorer's right-click menu.** *Open
   folder as Vault* and *Open with Marklet* were the only lines in the menu with

@@ -37,7 +37,7 @@ its bytes there.
 | **Syntax highlighting** | ✅ highlight.js, ~22 languages | ✅ same |
 | **KaTeX math** | ✅ | ✅ |
 | **Mermaid diagrams** | ✗ — 750 KB, 27% of the lite ceiling for one feature | ✅ with fullscreen zoom and pan |
-| **Vault** — folder tree, `[[wiki-links]]`, Links panel listing the open note's outgoing links | ✅ | ✅ |
+| **Vault** — folder tree, `[[wiki-links]]`, Links panel listing the open note's outgoing links and the notes linking back | ✅ | ✅ |
 | **Vault search** | literal, multi-term AND | ✅ **plus full regex** (`regex-search`, +1.2–1.8 MB) |
 | **Encoding** | BOM, UTF-8, UTF-16, Windows-1252 | ✅ **plus CJK auto-detection** (`full-encodings`, +500 KB) |
 | **Editing** — F2 live preview, F3 dual column, F4 external editor, paste-image | ✅ CodeMirror 6, loaded on first keypress | ✅ same |

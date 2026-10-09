@@ -55,9 +55,8 @@ tables, footnotes with backlinks, local images, task lists, YAML frontmatter,
 syntax-highlighted code.
 
 **Vault** — folder tree, full-text search across thousands of notes, `[[wiki-links]]` and a
-Links panel listing what the open note points at, notes and web links together (a panel for
-the notes pointing back is tracked as
-[#39](https://github.com/AlessandroLiscio/Marklet/issues/39)). This is the part `mdview`
+Links panel listing what the open note points at, notes and web links together, with a
+*Linked from* section for the notes pointing back. This is the part `mdview`
 does not have.
 
 **Rich content** — KaTeX math in both editions; Mermaid diagrams with fullscreen zoom and pan
@@ -88,7 +87,7 @@ deliberately not bound by it and is allowed to spend bytes on being good.
 | Syntax highlighting, KaTeX math | ✅ | ✅ |
 | Editing — F2 live preview, F3 dual column, F4 external editor | ✅ | ✅ |
 | Export — PDF, standalone HTML, diagram SVG and PNG | ✅ | ✅ |
-| Vault — tree, `[[wiki-links]]`, Links panel (outgoing links) | ✅ | ✅ |
+| Vault — tree, `[[wiki-links]]`, Links panel (outgoing links and linked-from) | ✅ | ✅ |
 | **Mermaid diagrams** | ✗ | ✅ with fullscreen zoom and pan |
 | **Vault search** | literal, multi-term | ✅ plus full regex |
 | **Encoding** | BOM, UTF-8, UTF-16, cp1252 | ✅ plus CJK auto-detection |
