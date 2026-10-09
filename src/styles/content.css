@@ -415,11 +415,18 @@ body {
   list-style: none;
 }
 
-#doc li:has(> input.task):first-child {
+/* Every task item, not only the first. With `:first-child` the first row of a
+   list was pulled left and the rest stayed where the list's own padding put
+   them, so identical items rendered as if they were nested. */
+#doc li:has(> input.task) {
   margin-inline-start: calc(-1 * var(--space-4));
 }
 
+/* The box is disabled so the browser never toggles it on its own; the click is
+   read from the item instead (`app.svelte`, `onDocClick`), which is only
+   possible if the disabled input does not swallow it. */
 #doc input.task {
+  pointer-events: none;
   inline-size: 1em;
   block-size: 1em;
   margin-inline-end: var(--space-2);

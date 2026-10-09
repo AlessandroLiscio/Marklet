@@ -49,8 +49,11 @@
     readSource,
     revealInEditor,
     savePastedImage,
+    spliceRange,
     type OpenedDocument,
   } from './lib/ipc';
+  import { toggleTask } from './lib/tasks';
+  import { utf8Length } from './lib/edit/splice';
 
   let doc = $state<OpenedDocument | null>(currentDocument());
 
@@ -289,7 +292,50 @@
    * per link — keeps that out of the render core, which has no idea a window
    * exists.
    */
+  /**
+   * A click on a task-list box flips it in the file.
+   *
+   * The input is `disabled` and `pointer-events: none`, so the click lands on
+   * its `<li>`; it counts only if it fell inside the box's own rectangle, with
+   * a little slack — a click on the item's text is not a request to tick it.
+   * Reading mode only: with an editor open the buffer, not the file, is the
+   * truth, and a write from here would be stale the moment it landed.
+   */
+  async function toggleTaskAt(event: MouseEvent): Promise<boolean> {
+    const item = (event.target as HTMLElement | null)?.closest<HTMLElement>('li');
+    const box = item?.querySelector<HTMLInputElement>(':scope > input.task');
+    if (!item || !box || !doc || mode !== 'read') return false;
+
+    const r = box.getBoundingClientRect();
+    const slack = 4;
+    const inside =
+      event.clientX >= r.left - slack &&
+      event.clientX <= r.right + slack &&
+      event.clientY >= r.top - slack &&
+      event.clientY <= r.bottom + slack;
+    if (!inside) return false;
+
+    const line = Number(item.dataset.l);
+    if (!Number.isInteger(line)) return true;
+
+    try {
+      const source = await readSource(doc.path);
+      const change = toggleTask(source, line);
+      if (change === null) {
+        say('That line changed on disk — reload the document', true);
+        return true;
+      }
+      await spliceRange(doc.path, change.start, change.end, change.replacement, utf8Length(source));
+      say(`Saved ${fileName(doc.path)}`);
+      await show(await openDocument(doc.path));
+    } catch (error) {
+      say(reason(error), true);
+    }
+    return true;
+  }
+
   async function onDocClick(event: MouseEvent) {
+    if (await toggleTaskAt(event)) return;
     const anchor = (event.target as HTMLElement | null)?.closest<HTMLAnchorElement>('a[href]');
 
     // An external link must leave the application, not replace it.

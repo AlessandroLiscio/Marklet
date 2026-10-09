@@ -20,6 +20,8 @@ Test release for the updater: the first published build that carries one. Full i
 
 ### Added
 
+- **Clicking a task-list checkbox ticks or unticks it** in the file, in reading mode (#74).
+
 - **Updates, in the full edition**: Settings → Updates checks the release manifest and installs a newer version, verifying its signature against a key built into the app. One quiet check runs two minutes after launch, never at launch; lite has no updater (#38).
 
 - **A *Linked from* section in the Links panel** lists the notes pointing at the open one, so `backlinks_for` has a caller again and the docs match the app (#39).
@@ -227,6 +229,8 @@ Test release for the updater: the first published build that carries one. Full i
   beside it, which is not what the activity bar is for.
 
 ### Fixed
+
+- **Task-list items render at the same indentation.** Only the first item of a list was pulled left, so items written at the same level looked nested.
 - **Explorer's *Open folder as Vault* works while Marklet is already open.**
   It worked only with Marklet closed. A second launch is forwarded to the
   running window rather than starting another process, and every forwarded
