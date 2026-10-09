@@ -11,6 +11,8 @@ lightweight care about that number, and publishing it keeps us honest.
 ## [Unreleased]
 
 ### Added
+
+- **A Copy button beside Edit and Split** puts the open document's whole markdown source on the clipboard, ready to paste into another app (#62).
 - **Marklet's icon beside its entries in Explorer's right-click menu.** *Open
   folder as Vault* and *Open with Marklet* were the only lines in the menu with
   a blank where every neighbour — Git, VS Code, VLC — had a picture, which read
@@ -109,6 +111,8 @@ lightweight care about that number, and publishing it keeps us honest.
   around for whatever renders next.
 
 ### Changed
+
+- **Edit, Split and Copy are stacked in a column** in the document's corner instead of a row (#61). **Tabs are labelled with the file name**, not the document's title (#63).
 
 - **Opening a folder walks nothing.** It listed the top level lazily and then
   did two things that were not lazy at all: it built the wiki-link index, and

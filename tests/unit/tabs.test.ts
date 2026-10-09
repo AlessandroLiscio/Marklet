@@ -117,8 +117,8 @@ describe('cycle', () => {
 });
 
 describe('tabLabel', () => {
-  it('uses the title when there is one', () => {
-    expect(tabLabel({ path: '/a/b.md', title: 'Runbook', line: 0 })).toBe('Runbook');
+  it('uses the file name even when there is a title', () => {
+    expect(tabLabel({ path: '/a/b.md', title: 'Runbook', line: 0 })).toBe('b.md');
   });
 
   it('falls back to the file name, on either separator', () => {

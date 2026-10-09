@@ -608,6 +608,21 @@
     requestAnimationFrame(() => requestAnimationFrame(() => scrollToLine(line)));
   }
 
+  /**
+   * Puts the document's markdown source on the clipboard. Reads the file
+   * through `read_source` — the same validated path the editor uses — rather
+   * than the rendered DOM, so what lands is the markdown, not its HTML.
+   */
+  async function copySource(): Promise<void> {
+    if (!doc) return;
+    try {
+      await navigator.clipboard.writeText(await readSource(doc.path));
+      say('Copied the markdown to the clipboard');
+    } catch (err) {
+      say(`Could not copy: ${isIpcError(err) ? err.message : String(err)}`, true);
+    }
+  }
+
   /** The top-right split toggle. `F3` does the same thing. */
   function toggleSplit(): void {
     void edit?.setMode(mode === 'split' ? 'read' : 'split');
@@ -982,6 +997,23 @@
       </svg>
       <span>Split</span>
     </button>
+
+    <button
+      type="button"
+      class="action"
+      title="Copy the whole markdown source to the clipboard"
+      onclick={copySource}
+    >
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect x="7" y="7" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4" />
+        <path
+          d="M13 7V5.5A1.5 1.5 0 0 0 11.5 4h-6A1.5 1.5 0 0 0 4 5.5v6A1.5 1.5 0 0 0 5.5 13H7"
+          stroke="currentColor"
+          stroke-width="1.4"
+        />
+      </svg>
+      <span>Copy</span>
+    </button>
   </div>
 {/if}
 
@@ -1144,6 +1176,9 @@
     inset-block-start: calc(var(--space-3) + var(--tabbar-height, 0px));
     inset-inline-end: var(--space-3);
     display: flex;
+    /* A column, not a row: the buttons stay narrow over the text instead of
+       claiming a strip across it, and a third one costs height, not width. */
+    flex-direction: column;
     gap: var(--space-2);
     z-index: 30;
   }

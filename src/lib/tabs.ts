@@ -160,9 +160,11 @@ export function cycle(state: TabState, delta: number): TabState {
   return { ...state, active: (((state.active + delta) % n) + n) % n };
 }
 
-/** The label for a tab: its title, falling back to the file name. */
+/**
+ * The label for a tab: the file name, never the document's title. Two notes
+ * can share a heading; two files in one folder cannot share a name.
+ */
 export function tabLabel(tab: Tab): string {
-  if (tab.title !== '') return tab.title;
   const cut = Math.max(tab.path.lastIndexOf('/'), tab.path.lastIndexOf('\\'));
   return cut === -1 ? tab.path : tab.path.slice(cut + 1);
 }
