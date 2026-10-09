@@ -1,6 +1,6 @@
 {
   "name": "marklet",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lightweight, open-source Markdown viewer. Reading first.",
   "license": "MIT",
   "private": true,
