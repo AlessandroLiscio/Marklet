@@ -1635,7 +1635,6 @@ mod external_link_tests {
     }
 }
 
-
 /// What a newer release offers.
 #[derive(Debug, Clone, Serialize)]
 pub struct UpdateInfo {
