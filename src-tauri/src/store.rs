@@ -31,7 +31,8 @@ use serde::{Deserialize, Serialize};
 pub const MAX_POSITIONS: usize = 500;
 
 /// `light` / `dark` win in both directions over the OS; `system` follows
-/// `prefers-color-scheme`. Mirrors tokens.css's three-state theme rule and
+/// `prefers-color-scheme` and is no longer offered — a settings file that still
+/// holds it is read, and the frontend resolves it to what the OS prefers. Mirrors tokens.css's three-state theme rule and
 /// `src/lib/ipc.ts`'s `Theme`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -135,7 +136,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            theme: Theme::System,
+            theme: Theme::Dark,
             // tokens.css's own default. 70 deg is Material Amber 700
             // (#FFA000) converted to oklch — the hue, not the colour: the
             // lightness still comes from the accent generator, so it clears AA

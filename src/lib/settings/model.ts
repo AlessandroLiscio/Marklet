@@ -6,7 +6,7 @@
  * Mirrors `src-tauri/src/store.rs::Settings` field for field; see that
  * file's doc comment before changing either.
  */
-import type { Settings } from '../ipc';
+import type { Palette, Settings } from '../ipc';
 import { scrollToLine, visibleLine } from '../doc';
 
 export const MEASURE_MIN = 48;
@@ -14,7 +14,7 @@ export const MEASURE_MAX = 100;
 
 /** Mirrors `store::Settings::default()`. */
 export const DEFAULT_SETTINGS: Settings = {
-  theme: 'system',
+  theme: 'dark',
   // tokens.css's own default: Material Amber 700 (#FFA000) as an oklch hue.
   // Kept in sync by eye with store.rs's `Settings::default` — no build-time
   // link between the two, and `store::zoom_tests` is the reminder.
@@ -30,6 +30,20 @@ export const DEFAULT_SETTINGS: Settings = {
   // someone has already sized, and leaving half of it empty reads as a bug.
   measure: 100,
   zoom: 100,
+};
+
+/**
+ * The hue each named palette sets, mirroring `styles/full/palettes.css` (and
+ * `default` mirroring `accent_hue` above). The panel needs the numbers to move
+ * the hue slider when a palette is picked; there is no build-time link to the
+ * stylesheet, so a palette whose hue changes there changes here by hand.
+ */
+export const PALETTE_HUES: Record<Palette, number> = {
+  default: 70,
+  teal: 192,
+  amber: 32,
+  forest: 142,
+  violet: 262,
 };
 
 /** The document-zoom range the slider and Ctrl+wheel offer, mirrored by `store.rs`. */

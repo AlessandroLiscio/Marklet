@@ -134,6 +134,8 @@ Test release for the updater: the first published build that carries one. Full i
 
 ### Changed
 
+- **Settings**: Palette and accent hue are one section — picking a palette moves the hue slider to it — the theme is Light or Dark (the default is Dark; a saved "system" is read as whatever the OS prefers), and "Typeface" is called Font.
+
 - **Technical is the default typeface and first in the list** in the full edition. A saved typeface choice is kept.
 
 - **Updates is the last section of Settings**, below the accent hue.
