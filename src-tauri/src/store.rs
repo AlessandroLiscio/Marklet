@@ -51,8 +51,8 @@ pub enum Theme {
 #[serde(rename_all = "kebab-case")]
 pub enum Typeface {
     /// The platform's own UI sans, for reading as well as for chrome. The
-    /// default, and the only one lite can offer: it costs no bytes because
-    /// the fonts are already on the machine.
+    /// only one lite can offer: it costs no bytes because the fonts are
+    /// already on the machine. (The full edition defaults to `Technical`.)
     System,
     Editorial,
     Literary,
@@ -144,7 +144,7 @@ impl Default for Settings {
             // so far to reach AA that it stops reading as amber at all.
             // Keep in sync with tokens.css by eye; there is no build-time link.
             accent_hue: 70,
-            typeface: Typeface::System,
+            typeface: Typeface::Technical,
             palette: Palette::Default,
             density: Density::Normal,
             // 100ch, the widest the slider offers. A narrower measure is the

@@ -42,7 +42,7 @@ its bytes there.
 | **Encoding** | BOM, UTF-8, UTF-16, Windows-1252 | ✅ **plus CJK auto-detection** (`full-encodings`, +500 KB) |
 | **Editing** — F2 live preview, F3 dual column, F4 external editor, paste-image | ✅ CodeMirror 6, loaded on first keypress | ✅ same |
 | **Themes** | 2 modes plus a WCAG-AA accent generator; **system fonts only** | ✅ same generator, plus the two rows below |
-| **Typography** | one system stack per role | **three selectable pairings** — `editorial` (Newsreader + Inter, the default), `literary` (Cormorant Garamond + Libre Baskerville), `technical` (JetBrains Mono + IBM Plex Sans), via `[data-typeface]` |
+| **Typography** | one system stack per role | **three selectable pairings** — `editorial` (Newsreader + Inter), `literary` (Cormorant Garamond + Libre Baskerville), `technical` (JetBrains Mono + IBM Plex Sans, the default and first in the list), via `[data-typeface]` |
 | **Palettes** | the default accent hue | **four extra accent hues** — teal, amber, forest, violet, via `[data-palette]`. They recolour **only the accent**; background, foreground and border are identical across all of them, deliberately — reading comfort over decoration |
 | **Motion** | CSS state changes only | ✅ **considered transitions**, honouring `prefers-reduced-motion` |
 | **Tabs** | ✅ same | ✅ **several documents open at once** — every way of opening a note opens a tab, `Ctrl+W` closes, `Ctrl+Tab` cycles. A tab is a record, not a parsed document: only the active one's markup is in the DOM and switching re-renders, so memory is flat however long the session runs. It was budgeted as full-only, on the reasoning that lite spends nothing on convenience; measured, the strip is under 2 KB of the bundle, which is not a trade lite has to make |

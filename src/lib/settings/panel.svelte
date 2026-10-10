@@ -49,10 +49,10 @@
   ];
 
   const TYPEFACES: { value: Typeface; label: string }[] = [
+    { value: 'technical', label: 'Technical' },
     { value: 'system', label: 'System' },
     { value: 'editorial', label: 'Editorial' },
     { value: 'literary', label: 'Literary' },
-    { value: 'technical', label: 'Technical' },
   ];
 
   const PALETTES: { value: Palette; label: string }[] = [
