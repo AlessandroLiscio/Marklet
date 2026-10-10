@@ -198,10 +198,11 @@ body {
   position: absolute;
   inset-block-start: var(--space-1);
   inset-inline-end: var(--space-1);
-  padding: 2px var(--space-2);
-  font-family: var(--font-ui);
-  font-size: var(--text-small);
-  line-height: 1.4;
+  display: grid;
+  place-items: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  padding: 0;
   color: var(--fg-muted);
   background: var(--bg);
   border: 1px solid var(--border);
@@ -220,6 +221,31 @@ body {
 #doc .copy-code:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+/* One glyph at a time, stacked in the same cell. */
+#doc .copy-code svg {
+  grid-area: 1 / 1;
+}
+
+#doc .copy-code .icon-done,
+#doc .copy-code[data-state] .icon-copy {
+  display: none;
+}
+
+#doc .copy-code[data-state='copied'] .icon-done {
+  display: block;
+  color: var(--accent);
+}
+
+/* A failed copy turns the button red rather than failing silently. */
+#doc .copy-code[data-state='failed'] {
+  border-color: var(--alert-caution);
+  color: var(--alert-caution);
+}
+
+#doc .copy-code[data-state='failed'] .icon-copy {
+  display: block;
 }
 
 #doc pre code {

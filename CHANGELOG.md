@@ -24,7 +24,7 @@ Test release for the updater: the first published build that carries one. Full i
 
 ### Added
 
-- **A Copy button on every code block** puts the block's text on the clipboard. It is left out of PDFs and exported HTML (#78).
+- **A Copy button on every code block**, an icon with no label, puts the block's text on the clipboard and turns into a tick for a moment. It is left out of PDFs and exported HTML (#78).
 
 - **Clicking a task-list checkbox ticks or unticks it** in the file, in reading mode (#74).
 
