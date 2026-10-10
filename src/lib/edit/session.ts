@@ -18,6 +18,7 @@ import { spliceRange, isIpcError } from '../ipc';
 import type { CodeMirror, EditorView, Extension } from './cm';
 import { loadCodeMirror } from './cm';
 import { livePreview } from './livepreview';
+import { applyFormat, FORMATS } from './format';
 import { extensionFor, imageMarkdown, pickImage } from './paste';
 import { expandSnippet } from './snippets';
 import { computeSplice, sameText, utf8Length } from './splice';
@@ -219,6 +220,29 @@ export async function createSession(options: SessionOptions): Promise<Session> {
     return true;
   }
 
+  /**
+   * `Ctrl+B`, `Ctrl+I`… — Word's keys, over every selection. First in the
+   * keymap, so they win over CodeMirror's own `Mod-i` (select parent syntax).
+   */
+  const formatKeys = FORMATS.map((format) => ({
+    key: `Mod-${format.shift ? 'Shift-' : ''}${format.key}`,
+    preventDefault: true,
+    run: (target: EditorView): boolean => {
+      const text = target.state.doc.toString();
+      target.dispatch(
+        target.state.changeByRange((range) => {
+          const done = applyFormat(text, range.from, range.to, format);
+          return {
+            changes: done.changes,
+            range: cm.state.EditorSelection.range(done.anchor, done.head),
+          };
+        }),
+        { scrollIntoView: true, userEvent: 'input.format' },
+      );
+      return true;
+    },
+  }));
+
   const extensions: Extension[] = [
     history(),
     drawSelection(),
@@ -236,7 +260,7 @@ export async function createSession(options: SessionOptions): Promise<Session> {
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     EditorView.lineWrapping,
     EditorState.allowMultipleSelections.of(true),
-    keymap.of([{ key: 'Tab', run: tabExpands }, ...defaultKeymap, ...historyKeymap, indentWithTab]),
+    keymap.of([{ key: 'Tab', run: tabExpands }, ...formatKeys, ...defaultKeymap, ...historyKeymap, indentWithTab]),
     decorations.of(options.decorated ? livePreview(cm) : []),
     EditorView.domEventHandlers({
       paste: onPaste,

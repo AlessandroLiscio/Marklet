@@ -60,6 +60,7 @@ export interface Group {
 
 const APP = 'src/app.svelte';
 const EDIT = 'src/lib/edit/index.ts';
+const FORMAT = 'src/lib/edit/format.ts';
 const SESSION = 'src/lib/edit/session.ts';
 const SETTINGS = 'src/lib/settings/panel.svelte';
 const MERMAID = 'src/lib/rich/mermaid.ts';
@@ -109,6 +110,11 @@ export const GROUPS: Group[] = [
       { keys: 'F2', what: 'live preview — edit with the markdown hidden on every line but the one you are on', where: EDIT },
       { keys: 'F3', what: 'split — source on the left, preview on the right, scrolling together', where: EDIT },
       { keys: 'Ctrl+S', what: 'save your changes to the file', where: EDIT },
+      { keys: 'Ctrl+B', what: 'bold the selection — again to take it off', where: FORMAT },
+      { keys: 'Ctrl+I', what: 'italic the selection', where: FORMAT },
+      { keys: 'Ctrl+Shift+X', what: 'strike the selection through', where: FORMAT },
+      { keys: 'Ctrl+`', what: 'make the selection inline code', where: FORMAT },
+      { keys: 'Ctrl+K', what: 'turn the selection into a link and select the address to type over', where: FORMAT },
       { keys: 'Esc', what: 'back to reading — asks first if there are unsaved changes', where: EDIT },
       { keys: 'F4', what: 'open this file in your own editor, at the cursor', where: EDIT },
       { keys: 'Ctrl+E', what: 'the same, but only while reading — the editor keeps this key for itself', where: EDIT },
