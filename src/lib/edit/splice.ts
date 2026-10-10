@@ -111,3 +111,17 @@ export function computeSplice(before: string, after: string): Splice | null {
     replacement: after.slice(prefix, after.length - suffix),
   };
 }
+
+/**
+ * Whether the editor's text is the text the file holds.
+ *
+ * CodeMirror joins lines with `\n` whatever the file used, so a CRLF baseline
+ * is compared in its `\n` form. The length check comes first and is what keeps
+ * this cheap: typing almost always changes the length, and only an edit that
+ * lands on the same length — overwriting a selection, or undoing back to the
+ * start — pays for building the string.
+ */
+export function sameText(doc: { length: number; toString(): string }, baseline: string): boolean {
+  const flat = baseline.includes('\r') ? baseline.replace(/\r\n?/g, '\n') : baseline;
+  return doc.length === flat.length && doc.toString() === flat;
+}

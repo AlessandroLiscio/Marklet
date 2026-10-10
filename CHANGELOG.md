@@ -24,6 +24,8 @@ Test release for the updater: the first published build that carries one. Full i
 
 ### Added
 
+- **A Copy button on every code block** puts the block's text on the clipboard. It is left out of PDFs and exported HTML (#78).
+
 - **Clicking a task-list checkbox ticks or unticks it** in the file, in reading mode (#74).
 
 - **Updates, in the full edition**: Settings → Updates checks the release manifest and installs a newer version, verifying its signature against a key built into the app. One quiet check runs two minutes after launch, never at launch; lite has no updater (#38).
@@ -233,6 +235,8 @@ Test release for the updater: the first published build that carries one. Full i
   beside it, which is not what the activity bar is for.
 
 ### Fixed
+
+- **The Save button goes dark again** when you undo back to exactly the saved text (#79).
 
 - **Task-list boxes are readable in dark mode.** They were the browser's greyed-out disabled checkbox; they are now drawn with a clear border and an accent fill with a tick when checked.
 

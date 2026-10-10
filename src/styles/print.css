@@ -74,6 +74,7 @@
   .settings,
   .welcome,
   .notice,
+  .copy-code,
   #editor {
     display: none !important;
   }

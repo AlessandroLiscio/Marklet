@@ -52,6 +52,7 @@
     spliceRange,
     type OpenedDocument,
   } from './lib/ipc';
+  import { addCopyButtons, onCopyClick } from './lib/copy-code';
   import { toggleTask } from './lib/tasks';
   import { utf8Length } from './lib/edit/splice';
 
@@ -277,6 +278,7 @@
 
     const { enrich } = await import('./lib/rich');
     await enrich(root);
+    addCopyButtons(root);
 
     if (resume) await edit?.setMode(resume);
 
@@ -335,6 +337,7 @@
   }
 
   async function onDocClick(event: MouseEvent) {
+    if (await onCopyClick(event)) return;
     if (await toggleTaskAt(event)) return;
     const anchor = (event.target as HTMLElement | null)?.closest<HTMLAnchorElement>('a[href]');
 
@@ -917,7 +920,7 @@
       // Enrich whatever the boot script already put on screen. The first paint
       // happened before this component existed — that is the point of the boot
       // injection — so this pass decorates it rather than producing it.
-      void import('./lib/rich').then(({ enrich }) => enrich(root));
+      void import('./lib/rich').then(({ enrich }) => enrich(root)).then(() => addCopyButtons(root));
       root.addEventListener('click', onDocClick);
     }
 
