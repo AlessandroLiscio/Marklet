@@ -14,25 +14,45 @@ lightweight care about that number, and publishing it keeps us honest.
 
 Everything merged since 0.1.3, including the first build where the keyboard sheet opens: Word-style formatting keys in the editor, a Copy button on code blocks, the Save button clearing after an undo, a single Palette section, Light and Dark themes only, Technical as the default font, and Updates as the last section of Settings. Full installer about 3.8 MB; lite unchanged.
 
-## [0.1.3] — 2026-10-10
-
-Second updater test release: installing 0.1.2 and updating to this one is the end-to-end test. New since 0.1.2: clickable task-list boxes, readable task boxes in dark mode, and the task-list indentation fix.
-
-## [0.1.2] — 2026-10-09
-
-Test release for the updater, signed with the project's update key. Full installer about 3.8 MB; lite unchanged. (0.1.1 was tagged but its build never completed: the signing secret was wrong, so it was never published.)
-
-## [0.1.1] — 2026-10-09
-
-Test release for the updater: the first published build that carries one. Full installer 3,827,125 B (12 MiB ceiling); lite unchanged.
-
 ### Added
 
 - **Word-style formatting keys in the editor**: `Ctrl+B` bold, `Ctrl+I` italic, `Ctrl+Shift+X` strikethrough, `Ctrl+`` inline code and `Ctrl+K` link, applied to the selection and toggling off when pressed again. There is no underline: Markdown has none.
 
 - **A Copy button on every code block**, an icon with no label, puts the block's text on the clipboard and turns into a tick for a moment. It is left out of PDFs and exported HTML (#78).
 
+### Changed
+
+- **Settings**: Palette and accent hue are one section — picking a palette moves the hue slider to it — the theme is Light or Dark (the default is Dark; a saved "system" is read as whatever the OS prefers), and "Typeface" is called Font.
+
+- **Technical is the default typeface and first in the list** in the full edition. A saved typeface choice is kept.
+
+- **Updates is the last section of Settings**, below the accent hue.
+
+### Fixed
+
+- **The keyboard sheet opens again** (F1 and its button). Two rows shared a key, which the list's keyed loop rejects, so the sheet failed to render. Rows are now keyed by position.
+
+- **The Save button goes dark again** when you undo back to exactly the saved text (#79).
+
+## [0.1.3] — 2026-10-10
+
+Second updater test release: installing 0.1.2 and updating to this one is the end-to-end test. New since 0.1.2: clickable task-list boxes, readable task boxes in dark mode, and the task-list indentation fix.
+
+### Added
+
 - **Clicking a task-list checkbox ticks or unticks it** in the file, in reading mode (#74).
+
+### Fixed
+
+- **Task-list boxes are readable in dark mode.** They were the browser's greyed-out disabled checkbox; they are now drawn with a clear border and an accent fill with a tick when checked.
+
+- **Task-list items render at the same indentation.** Only the first item of a list was pulled left, so items written at the same level looked nested.
+
+## [0.1.2] — 2026-10-09
+
+Test release for the updater, signed with the project's update key, and the first release since 0.1.0. It carries everything merged after 0.1.0, including the work first tagged as 0.1.1 (below). Full installer about 3.8 MB; lite unchanged.
+
+### Added
 
 - **Updates, in the full edition**: Settings → Updates checks the release manifest and installs a newer version, verifying its signature against a key built into the app. One quiet check runs two minutes after launch, never at launch; lite has no updater (#38).
 
@@ -41,6 +61,7 @@ Test release for the updater: the first published build that carries one. Full i
 - **A richer print theme in the full edition** (`src/styles/full/print-theme.css`, loaded only at export): the document always prints light whatever the reading theme, the frontmatter becomes a title block, margins widen, pages are numbered and long code lines wrap instead of being cut (#37). Lite is unchanged.
 
 - **A Copy button beside Edit and Split** puts the open document's whole markdown source on the clipboard, ready to paste into another app (#62).
+
 - **Marklet's icon beside its entries in Explorer's right-click menu.** *Open
   folder as Vault* and *Open with Marklet* were the only lines in the menu with
   a blank where every neighbour — Git, VS Code, VLC — had a picture, which read
@@ -48,16 +69,17 @@ Test release for the updater: the first published build that carries one. Full i
   It is a value on the existing key rather than a new key, so uninstalling
   removes it with everything else, and the Windows CI round-trip now fails if
   any of the three goes missing.
+
 - **The keyboard sheet covers the rest of the audit.** The explorer tree's own
   keys (`Enter` opens, `Space` selects), the editing keys that were left off
   (`Shift+Tab`, `Ctrl+[` / `Ctrl+]`, `Alt+L`, `Ctrl+Enter`), clicking outside a
   diagram to close it, and that `F2` and `F3` swap straight to each other
   keeping the cursor and the undo history.
-
   A closing group covers what Marklet does without being asked — the document
   reloading when the file changes, each tab holding the line you left it on,
   a note opened from Explorer joining this window as a tab. None of those is a
   shortcut, and nothing else on screen says they happen.
+
 - **An Edit button, and a sheet with every key on it.** Live-preview editing
   had existed for months and nobody had found it, because Split had a button
   in the document's corner and its sibling had nothing. An audit of the whole
@@ -65,7 +87,6 @@ Test release for the updater: the first published build that carries one. Full i
   no on-screen control of any kind — image paste, the snippets, most of the tab
   commands, opening a file in your own editor. The application showed about a
   third of itself.
-
   Two answers, because 34 buttons would be a worse window than 34 secrets.
   **Edit** joins Split in the document's top-right corner, filled when on,
   because that is the one control with an obvious home already built. Everything
@@ -73,7 +94,6 @@ Test release for the updater: the first published build that carries one. Full i
   `F1`, grouped by what you are doing rather than by which file binds it. The
   snippet group is rendered from the snippet table itself, so the list of
   trigger words cannot be wrong.
-
   The sheet loads only when it is opened — 2.4 KiB of its own chunk, nothing on
   the boot path. `npm run check:shortcuts` fails the build when the sheet and
   the keymap disagree in either direction: a key listed but no longer bound, or
@@ -86,7 +106,6 @@ Test release for the updater: the first published build that carries one. Full i
   application. `Ctrl+P` and `Ctrl+Shift+S` had the opposite problem: they
   worked, and nothing on screen said so, which for a feature nobody can guess
   is the same as not having it.
-
   Both now live at the **bottom of the activity bar**, below the panel
   toggles — an **Open** button and an **Export** button, each opening a
   two-row menu. Two rows rather than one action, because each is genuinely two
@@ -95,6 +114,7 @@ Test release for the updater: the first published build that carries one. Full i
   format. `Ctrl+O` and `Ctrl+Shift+O` do the same from anywhere. They were
   briefly in the explorer's header and in the document's top-right corner,
   where neither could be found before you already had something open.
+
 - **The exports ask where to save.** They used to write `<document>.pdf` and
   `<document>.html` into the document's own folder with no say in it, on the
   argument that a native dialog costs 300 KB of plugin — an argument that
@@ -140,12 +160,6 @@ Test release for the updater: the first published build that carries one. Full i
 
 ### Changed
 
-- **Settings**: Palette and accent hue are one section — picking a palette moves the hue slider to it — the theme is Light or Dark (the default is Dark; a saved "system" is read as whatever the OS prefers), and "Typeface" is called Font.
-
-- **Technical is the default typeface and first in the list** in the full edition. A saved typeface choice is kept.
-
-- **Updates is the last section of Settings**, below the accent hue.
-
 - **Saving is explicit.** Edits stay in the editor until `Ctrl+S` or the new Save button; the button lights up while there are unsaved changes, and every save shows a "Saved" notice. Leaving the editor (or closing the window) with unsaved changes asks first instead of writing silently. In split view the preview now catches up on each save, not on each keystroke (#71).
 
 - **The explorer tree takes the arrow keys** — `↑ ↓ → ← Home End` — and is one tab stop instead of one per row. Moving only selects; Enter opens (#56). **The regex toggle in search reads "Regex"**, not a bare `.*` (#55).
@@ -166,6 +180,7 @@ Test release for the updater: the first published build that carries one. Full i
   the row is the easier of the two to hit by accident — a panel listing a
   document's links is a way of navigating that document, and a stray click
   should not replace it.
+
 - **The sidebar's bottom panel is "Links" and points outward.** It listed
   *backlinks* — the notes pointing at the one being read — and now lists what
   the open note points at: wiki-links and `https://` links together, in the
@@ -190,6 +205,7 @@ Test release for the updater: the first published build that carries one. Full i
   answered with an instant scroll, which cancelled the animation. A jump is
   announced on `document` now (`JUMP_EVENT` in `doc.ts`), so the link mutes
   itself for the animation and moves the editor to the target line directly.
+
 - **The settings gear no longer touches the status line** in the bottom-right
   corner.
 
@@ -203,6 +219,7 @@ Test release for the updater: the first published build that carries one. Full i
   `npm run check:ipc` cross-checks every `invoke()` against the commands so this
   class of bug cannot ship again: it type-checks on one side, compiles on the
   other, and appears only at runtime.
+
 - **Settings is a floating card in the bottom-right corner again**, not a panel
   docked into the activity bar. The explorer and the outline change what you are
   looking at and want the document to move aside; settings is opened, changed and
@@ -216,45 +233,46 @@ Test release for the updater: the first published build that carries one. Full i
   back to the browser's blue whatever palette was chosen, and the settings panel
   showed "Accent hue — °" with no number. A settings file written by 0.1.0 is
   still read.
+
 - **The settings panel no longer scrolls sideways.** Five palette names do not
   fit across a 260px column; they are a wrapping grid now, and every segmented
   control truncates rather than widening the panel.
+
 - **The Contents panel stays open** when you click a heading, so skimming three
   sections is three clicks instead of three round trips through the activity
   bar. Its rows also span the panel's full width — the hit area used to stop
   short of both edges.
+
 - **Search no longer wipes the file tree.** Opening the Search tab ran the full
   walk *into* the tree's own array, which replaced the lazily-listed tree;
   coming back to Files showed the walk's output instead of the folders you had
   open. The walk now builds only the index it exists for.
+
 - **The split editor starts at the activity bar**, not at the window edge
   underneath it. With a panel open it starts after the panel.
+
 - **The preview updates as you type in split view.** Only the file Marklet was
   *launched* with was watched, so a document opened from the explorer or the
   picker had a preview that never changed. It now re-renders when the save
   returns, about a tenth of a second after you stop typing.
+
 - **Opening a different file while editing** rebuilds the editor for it.
   Previously the session kept the old file's text and spliced its edits into the
   old file's path.
 
 - **Double-click to open** in the explorer, and one click to select — the
   gesture every file explorer uses. `Enter` opens from the keyboard.
+
 - **Non-Markdown files are listed**, dimmed and not openable. A folder shown
   with its other files stripped out looks empty or wrong to whoever put them
   there. Dotfiles stay hidden, as ignored directories already were.
+
 - **The split-view toggle moved to the document's top-right corner** and is
   filled when it is on. It changes how the document is shown rather than what is
   beside it, which is not what the activity bar is for.
 
 ### Fixed
 
-- **The keyboard sheet opens again** (F1 and its button). Two rows shared a key, which the list's keyed loop rejects, so the sheet failed to render. Rows are now keyed by position.
-
-- **The Save button goes dark again** when you undo back to exactly the saved text (#79).
-
-- **Task-list boxes are readable in dark mode.** They were the browser's greyed-out disabled checkbox; they are now drawn with a clear border and an accent fill with a tick when checked.
-
-- **Task-list items render at the same indentation.** Only the first item of a list was pulled left, so items written at the same level looked nested.
 - **Explorer's *Open folder as Vault* works while Marklet is already open.**
   It worked only with Marklet closed. A second launch is forwarded to the
   running window rather than starting another process, and every forwarded
@@ -263,6 +281,7 @@ Test release for the updater: the first published build that carries one. Full i
   the window adopts exactly as the picker does. A relative path is also
   resolved against the directory the second launch was started in: `marklet .`
   in a terminal used to mean wherever the first instance had happened to start.
+
 - **Launching on a folder no longer shows an empty window.** `marklet .`, and
   Explorer's *Open folder as Vault*, set the vault and open no document. The
   welcome panel is guarded on there being no vault either, so with a vault and
@@ -270,6 +289,7 @@ Test release for the updater: the first published build that carries one. Full i
   tree was one click away, and the window was blank. It now opens on the
   explorer, which is what launching on a folder was asking for.
   ([#57](https://github.com/AlessandroLiscio/Marklet/issues/57))
+
 - **Opening a diagram fullscreen now makes it bigger.** It made it smaller. A
   Mermaid `<svg>` carries `width="100%"` and a `max-width` of its own natural
   size; in the document that resolves against the reading column and the
@@ -278,7 +298,6 @@ Test release for the updater: the first published build that carries one. Full i
   intrinsic size — the layout engine's own units, usually much smaller than the
   column it had just been filling. The viewer then opened at 1× of that and
   called it 100%.
-
   It now measures the diagram and the window once, before anything is
   transformed, and opens at the scale that fills one against the other. That
   scale is what **Reset**, `0` and a double-click return to, and what the
@@ -286,6 +305,7 @@ Test release for the updater: the first published build that carries one. Full i
   it is not a useful baseline. The zoom limits moved with it: eight times in
   and four times out from what you are looking at, rather than from a number
   that happens to be 1.
+
 - **An overlay that covers the page now takes the keyboard with it.** Three
   reports, one cause: the diagram viewer and the keyboard sheet both drew a
   backdrop over the document and then let every keystroke through to it. One
@@ -298,13 +318,13 @@ Test release for the updater: the first published build that carries one. Full i
   `Ctrl+W`, `Ctrl+Tab`, `Ctrl+O` and `Ctrl+P` all still acted on the
   application while a diagram was open fullscreen over it
   ([#50](https://github.com/AlessandroLiscio/Marklet/issues/50)).
-
   Both overlays now claim the keyboard on the way *down* from the window,
   before the page's own handlers — which all listen on the way back up — can
   see anything. `Tab` still moves focus and `Enter` still presses a button,
   because the browser performs those itself rather than through a listener.
   `F1` closes the sheet from inside the sheet, since the application can no
   longer hear it.
+
 - **The floating controls no longer jump when you start editing.** Entering
   live preview hides the reading column, so the page stops being scrollable,
   its scrollbar goes away, and the viewport gets that much wider — which moved
@@ -315,11 +335,13 @@ Test release for the updater: the first published build that carries one. Full i
   no bar of its own in live preview either, which is the rule split view has
   followed since it was written: one strip at the right of the window, never
   two beside each other.
+
 - **The snippet list says what each snippet writes.** Eighteen bare words
   answered "what can I type" and not "why would I" — `fn` and `hr` say nothing
   on their own. Each now shows the first line of what it inserts, taken from
   the template itself rather than written out again, so the sheet cannot
   describe something the snippet does not do.
+
 - **Nine documentation claims that were not true.** The README promised reading
   position remembered per file: the IPC for it exists and has no callers, and
   what ships is a per-tab line that lasts the session. It promised a backlinks
@@ -331,10 +353,10 @@ Test release for the updater: the first published build that carries one. Full i
   claimed the explorer tree survives a switch to Search, which unmounts it, and
   offered arrow keys the tree has never had. `--help` said `--settings` opens a
   settings window; it opens a panel.
-
   Every one of them was found by checking the docs against the source rather
   than the other way round. Two were written this morning and left stale by the
   change that moved the exports.
+
 - **The installer says `Marklet` where it used to say `{product_name}`.**
   Reinstalling with the application open raises a dialog asking you to close
   it; in Italian that dialog read *"Chiudi {product_name} e riprova."* The
@@ -346,12 +368,12 @@ Test release for the updater: the first published build that carries one. Full i
   Italian system. Marklet now ships its own corrected copy of the file; when
   upstream fixes it, ours goes away rather than becoming a permanent fork of a
   translation we do not own.
+
 - **A PDF export is the document, not a photograph of the application.** The
   first PDF anyone opened had the activity bar printed down the left edge of
   the page, a column of empty panel background beside it, the tab strip, the
   export buttons, the status bar, and — from split view — the markdown source
   in one half and the rendered document squeezed into the other.
-
   `print.css` hid `.sidebar` and `.outline` but not `.chrome-layer`, the fixed
   shell that *holds* them, so hiding the panels only emptied the shell instead
   of removing it. `.tabbar`, `.doc-actions`, `.divider`, `.welcome`, `.notice`
@@ -360,7 +382,6 @@ Test release for the updater: the first published build that carries one. Full i
   it. Nothing failed and nothing could: a CSS selector that matches nothing is
   silent by design, and PDF export needs a live webview, so no machine that
   runs the tests ever renders one.
-
   The chrome is now hidden by its container, which also covers whatever panel
   is added next; the insets the reading column carries are zeroed, so the
   document has the whole page instead of a margin the width of a rail that is
@@ -388,6 +409,7 @@ Test release for the updater: the first published build that carries one. Full i
   resolved link was reported as unresolved. Nothing is matched against a prefix
   now: the renderer's own `unresolved` class says whether a link resolved, and
   the path is everything after the authority.
+
 - **Clicking a wiki-link in the document** passed `data-target` — the name as
   written, `[[demo]]` — to `open_note`, which canonicalizes what it is given
   against the vault root. A name with no extension resolves to nothing, so
@@ -400,9 +422,11 @@ Test release for the updater: the first published build that carries one. Full i
   1 976 notes that is 1 358 ms of walking plus 865 ms of parsing with the
   application unresponsive, and several times that on NTFS with a scanner in
   the path. Both now run off the main thread.
+
 - **The index cache is actually used.** `index_vault` computed the cache
   directory and then passed `None`, so every open re-read and re-parsed every
   note: 865 ms where a warm cache costs 126 ms.
+
 - **The sidebar says when it is busy**, and which of the two things it is
   doing — an application that looks idle while it is working is one you assume
   is broken.
@@ -414,6 +438,7 @@ Test release for the updater: the first published build that carries one. Full i
   document was fixed and the panel still listed every wiki-link struck through,
   pointing at notes visible in the tree beside it. `setDocument` announces the
   replacement now, and the panel listens for that instead.
+
 - **Wiki-links resolve after the vault opens.** Resolution happens in Rust when
   the HTML is built, not when a link is clicked, so a document rendered before
   there was an index had every `[[link]]` struck through for good — and *every*
@@ -422,6 +447,7 @@ Test release for the updater: the first published build that carries one. Full i
   panel of dead links pointing at notes sitting right beside it. The document
   is rendered again once the index is built, keeping the reading position, and
   only when it actually holds an unresolved link.
+
 - **The welcome screen goes when a folder is chosen**, rather than staying
   behind the explorer until a note is opened.
 
@@ -431,6 +457,7 @@ Test release for the updater: the first published build that carries one. Full i
   excerpt read as one uniform block with no sign of what had matched. The match
   now takes the accent colour and a heavier weight, with the wash only giving
   the run an edge.
+
 - **Scrolling the preview in split view now moves the editor with it**, and
   stops undoing itself. `visibleLine()` — the one number scroll sync, scroll
   restore and the outline's scroll-spy all read — measured each block against
@@ -440,6 +467,7 @@ Test release for the updater: the first published build that carries one. Full i
   to go to line 0 on every preview scroll and then pulled the preview to the top
   to match. Scroll restore across a reflow restored to the top for the same
   reason, and the outline highlighted the first heading forever.
+
 - **Search results appear again.** Rust emitted each hit as a `(id, hit)`
   *tuple*, which is a JSON array, while the webview destructured `{ id, hit }`
   from it — so every hit arrived as `undefined`. A second fault sat behind it:
@@ -447,6 +475,7 @@ Test release for the updater: the first published build that carries one. Full i
   own response (which clears it) arrives before the hit events do, so even a
   correct payload would have been dropped. Hits are now matched on the search id
   Rust already tags them with.
+
 - **Backlinks and wiki-links work at all.** Two independent reasons they could
   not: nothing in the application ever called `index_vault`, so the wiki-link
   index was never built; and `OpenedDocument` had no vault-relative path, so the
@@ -454,6 +483,10 @@ Test release for the updater: the first published build that carries one. Full i
   index is now built in the background when a folder is opened, and the document
   carries its `rel`. The open note is also highlighted in the tree now, which
   failed on the same mismatch.
+
+## [0.1.1] — 2026-10-09
+
+Tagged but never published: its build failed because the update-signing secret was wrong, so no installer or release was produced. Everything it contained shipped in 0.1.2.
 
 ## [0.1.0] — 2026-09-25
 
