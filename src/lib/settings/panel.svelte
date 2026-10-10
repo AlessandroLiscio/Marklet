@@ -330,6 +330,20 @@
         </fieldset>
       {/if}
 
+      <fieldset>
+        <legend>
+          <label for="hue-range">Accent hue — {settings.accent_hue}&deg;</label>
+        </legend>
+        <input
+          id="hue-range"
+          type="range"
+          min="0"
+          max="360"
+          value={settings.accent_hue}
+          oninput={(e) => setAccentHue(Number(e.currentTarget.value))}
+        />
+      </fieldset>
+
       {#if EDITION === 'full'}
         <fieldset>
           <legend>Updates</legend>
@@ -351,20 +365,6 @@
           {#if updateStatus}<p class="update-note" role="status">{updateStatus}</p>{/if}
         </fieldset>
       {/if}
-
-      <fieldset>
-        <legend>
-          <label for="hue-range">Accent hue — {settings.accent_hue}&deg;</label>
-        </legend>
-        <input
-          id="hue-range"
-          type="range"
-          min="0"
-          max="360"
-          value={settings.accent_hue}
-          oninput={(e) => setAccentHue(Number(e.currentTarget.value))}
-        />
-      </fieldset>
     </div>
   {/if}
 </div>
