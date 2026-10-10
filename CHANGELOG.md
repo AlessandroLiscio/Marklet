@@ -236,6 +236,8 @@ Test release for the updater: the first published build that carries one. Full i
 
 ### Fixed
 
+- **The keyboard sheet opens again** (F1 and its button). Two rows shared a key, which the list's keyed loop rejects, so the sheet failed to render. Rows are now keyed by position.
+
 - **The Save button goes dark again** when you undo back to exactly the saved text (#79).
 
 - **Task-list boxes are readable in dark mode.** They were the browser's greyed-out disabled checkbox; they are now drawn with a clear border and an accent fill with a tick when checked.
