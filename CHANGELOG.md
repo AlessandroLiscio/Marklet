@@ -10,6 +10,10 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+### Changed
+
+- **Svelte components are tested by mounting them** (`npm run test:components`, part of `npm test`), so a component that cannot render fails CI. The first two: the keyboard sheet and the settings panel.
+
 ## [0.1.4] — 2026-10-10
 
 Everything merged since 0.1.3, including the first build where the keyboard sheet opens: Word-style formatting keys in the editor, a Copy button on code blocks, the Save button clearing after an undo, a single Palette section, Light and Dark themes only, Technical as the default font, and Updates as the last section of Settings. Full installer about 3.8 MB; lite unchanged.
