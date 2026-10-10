@@ -19,10 +19,10 @@ export const DEFAULT_SETTINGS: Settings = {
   // Kept in sync by eye with store.rs's `Settings::default` — no build-time
   // link between the two, and `store::zoom_tests` is the reminder.
   accent_hue: 70,
-  // The platform's own UI sans. A serif reading face is a strong opinion to
-  // hold on somebody else's behalf, and three of them are available one click
-  // away in the full edition for anyone who wants one.
-  typeface: 'system',
+  // `technical`, the full edition's mono-and-sans pairing, is what a reader of
+  // markdown notes and code asked for. Lite has no typeface control and never
+  // applies this: it keeps the system stacks whatever the value says.
+  typeface: 'technical',
   palette: 'default',
   density: 'normal',
   // 100ch, the widest the slider offers. A narrower measure is the classic
