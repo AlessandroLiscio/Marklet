@@ -134,6 +134,8 @@ Test release for the updater: the first published build that carries one. Full i
 
 ### Changed
 
+- **Updates is the last section of Settings**, below the accent hue.
+
 - **Saving is explicit.** Edits stay in the editor until `Ctrl+S` or the new Save button; the button lights up while there are unsaved changes, and every save shows a "Saved" notice. Leaving the editor (or closing the window) with unsaved changes asks first instead of writing silently. In split view the preview now catches up on each save, not on each keystroke (#71).
 
 - **The explorer tree takes the arrow keys** — `↑ ↓ → ← Home End` — and is one tab stop instead of one per row. Moving only selects; Enter opens (#56). **The regex toggle in search reads "Regex"**, not a bare `.*` (#55).
