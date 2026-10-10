@@ -10,6 +10,10 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-10-10
+
+Second updater test release: installing 0.1.2 and updating to this one is the end-to-end test. New since 0.1.2: clickable task-list boxes, readable task boxes in dark mode, and the task-list indentation fix.
+
 ## [0.1.2] — 2026-10-09
 
 Test release for the updater, signed with the project's update key. Full installer about 3.8 MB; lite unchanged. (0.1.1 was tagged but its build never completed: the signing secret was wrong, so it was never published.)
