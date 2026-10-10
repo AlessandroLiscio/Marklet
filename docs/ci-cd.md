@@ -59,7 +59,7 @@ risk anywhere, and particularly so inside the workflow whose job is to catch one
 rejected alternative cannot quietly return through a transitive dependency.
 
 **`code-test`** — `cargo test` and `cargo test --no-default-features` on both Ubuntu and
-Windows, `vitest` on Ubuntu.
+Windows, `vitest` on Ubuntu: the pure-logic suite, then the Svelte components mounted under happy-dom (`vitest.components.config.ts`).
 
 The `--no-default-features` leg is not redundant. The render core runs headless for
 `MD_HTML=1` and must not acquire a dependency on a default feature; that regression compiles
