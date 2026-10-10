@@ -10,6 +10,10 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-10-10
+
+Everything merged since 0.1.3, including the first build where the keyboard sheet opens: Word-style formatting keys in the editor, a Copy button on code blocks, the Save button clearing after an undo, a single Palette section, Light and Dark themes only, Technical as the default font, and Updates as the last section of Settings. Full installer about 3.8 MB; lite unchanged.
+
 ## [0.1.3] — 2026-10-10
 
 Second updater test release: installing 0.1.2 and updating to this one is the end-to-end test. New since 0.1.2: clickable task-list boxes, readable task boxes in dark mode, and the task-list indentation fix.
