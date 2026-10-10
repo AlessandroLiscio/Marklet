@@ -132,7 +132,7 @@
           </dl>
         {:else}
           <dl>
-            {#each group.items as item (item.keys)}
+            {#each group.items as item, n (n)}
               <dt>
                 {#each item.keys.split(', ') as chord, i (chord)}
                   {#if i > 0}<span class="or">or</span>{/if}
