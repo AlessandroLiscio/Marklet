@@ -20,7 +20,7 @@ import { loadCodeMirror } from './cm';
 import { livePreview } from './livepreview';
 import { extensionFor, imageMarkdown, pickImage } from './paste';
 import { expandSnippet } from './snippets';
-import { computeSplice, utf8Length } from './splice';
+import { computeSplice, sameText, utf8Length } from './splice';
 import './editor.css';
 
 /**
@@ -247,9 +247,12 @@ export async function createSession(options: SessionOptions): Promise<Session> {
     }),
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
-        const wasClean = rev === savedRev;
+        const wasDirty = rev !== savedRev;
         rev += 1;
-        if (wasClean) options.onDirty?.(true);
+        // Undo back to what was last saved is clean, not "changed twice".
+        if (sameText(update.state.doc, baseline)) savedRev = rev;
+        const isDirty = rev !== savedRev;
+        if (isDirty !== wasDirty) options.onDirty?.(isDirty);
       }
     }),
   ];

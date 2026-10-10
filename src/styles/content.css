@@ -187,6 +187,41 @@ body {
   overflow-x: auto;
 }
 
+#doc pre {
+  position: relative;
+}
+
+/* The Copy button (`lib/copy-code.ts`). Faint until the block is hovered or
+   focused, but always there: a control that only exists on hover cannot be
+   discovered by someone who has not hovered yet. */
+#doc .copy-code {
+  position: absolute;
+  inset-block-start: var(--space-1);
+  inset-inline-end: var(--space-1);
+  padding: 2px var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-small);
+  line-height: 1.4;
+  color: var(--fg-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity var(--duration-fast) ease;
+}
+
+#doc pre:hover .copy-code,
+#doc .copy-code:focus-visible {
+  opacity: 1;
+  color: var(--fg);
+}
+
+#doc .copy-code:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 #doc pre code {
   background: none;
   padding: 0;

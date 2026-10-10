@@ -12,7 +12,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { computeSplice, utf8Length } from '../../src/lib/edit/splice';
+import { computeSplice, sameText, utf8Length } from '../../src/lib/edit/splice';
 
 /** Applies a splice the way Rust does, over bytes, so the test proves offsets. */
 function applySplice(before: string, splice: { start: number; end: number; replacement: string }) {
@@ -136,5 +136,20 @@ describe('computeSplice', () => {
   it('handles growing from empty and shrinking to empty', () => {
     expect(computeSplice('', 'hello')).toEqual({ start: 0, end: 0, replacement: 'hello' });
     expect(computeSplice('hello', '')).toEqual({ start: 0, end: 5, replacement: '' });
+  });
+});
+
+describe('sameText', () => {
+  const doc = (s: string) => ({ length: s.length, toString: () => s });
+
+  it('is true only when the text is identical', () => {
+    expect(sameText(doc('abc'), 'abc')).toBe(true);
+    expect(sameText(doc('abd'), 'abc')).toBe(false);
+    expect(sameText(doc('ab'), 'abc')).toBe(false);
+  });
+
+  it('compares a CRLF baseline in the form CodeMirror holds it', () => {
+    expect(sameText(doc('a\nb\n'), 'a\r\nb\r\n')).toBe(true);
+    expect(sameText(doc('a\nc\n'), 'a\r\nb\r\n')).toBe(false);
   });
 });
