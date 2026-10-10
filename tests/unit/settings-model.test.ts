@@ -53,10 +53,10 @@ describe('clampMeasure', () => {
 });
 
 describe('applySettingsToRoot', () => {
-  it('sets no theme or density attribute for the defaults ("system"/"normal")', () => {
+  it('defaults to the dark theme and sets no density attribute for "normal"', () => {
     const root = fakeRoot();
     applySettingsToRoot(root, DEFAULT_SETTINGS, 'lite');
-    expect(root.attributes.has('data-theme')).toBe(false);
+    expect(root.attributes.get('data-theme')).toBe('dark');
     expect(root.attributes.has('data-density')).toBe(false);
     // `data-motion` is gone entirely: the toggle that set it gated four
     // transitions under 200ms and could not be told apart from nothing. The

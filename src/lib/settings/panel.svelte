@@ -23,7 +23,7 @@
   import { checkUpdate, installUpdate, readSettings, writeSettings } from '../ipc';
   import type { UpdateInfo } from '../ipc';
   import type { Density, Palette, Settings, Theme, Typeface } from '../ipc';
-  import { applySettingsToRoot, clampZoom, DEFAULT_SETTINGS, MEASURE_MAX, MEASURE_MIN, preserveScrollAcrossReflow, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './model';
+  import { applySettingsToRoot, clampZoom, DEFAULT_SETTINGS, PALETTE_HUES, MEASURE_MAX, MEASURE_MIN, preserveScrollAcrossReflow, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from './model';
 
   const EDITION: 'lite' | 'full' = __MARKLET_EDITION__;
 
@@ -39,7 +39,6 @@
   const THEMES: { value: Theme; label: string }[] = [
     { value: 'light', label: 'Light' },
     { value: 'dark', label: 'Dark' },
-    { value: 'system', label: 'System' },
   ];
 
   const DENSITIES: { value: Density; label: string }[] = [
@@ -139,8 +138,22 @@
     commit({ ...settings, typeface }, true);
   }
 
+  /**
+   * A palette is a hue. Picking one sets the slider to it, so the two controls
+   * can never disagree about what the accent is.
+   */
   function setPalette(palette: Palette): void {
-    commit({ ...settings, palette }, false);
+    commit({ ...settings, palette, accent_hue: PALETTE_HUES[palette] }, false);
+  }
+
+  /** The hue actually in use: a named palette's own, else the slider's. */
+  const hue = $derived(
+    settings.palette !== 'default' ? PALETTE_HUES[settings.palette] : settings.accent_hue
+  );
+
+  /** The chip to light: the chosen palette, or none for a hue between them. */
+  function chipOn(p: Palette): boolean {
+    return settings.palette !== 'default' ? settings.palette === p : hue === PALETTE_HUES[p];
   }
 
   // Updates — full edition only; the branches are dead code in lite and the
@@ -186,7 +199,17 @@
     window.addEventListener('keydown', onZoomKey);
 
     readSettings()
-      .then((s) => {
+      .then((read) => {
+        // `system` is gone from the panel. A settings file that still says it
+        // is read as whatever the OS prefers right now, and stays that until
+        // the reader picks one.
+        const s: Settings =
+          read.theme === 'system'
+            ? {
+                ...read,
+                theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+              }
+            : read;
         settings = s;
         applySettingsToRoot(document.documentElement, s, EDITION);
       })
@@ -297,7 +320,7 @@
       {#if EDITION === 'full'}
         <fieldset>
           <legend>
-            <label for="typeface-select">Typeface</label>
+            <label for="typeface-select">Font</label>
           </legend>
           <select
             id="typeface-select"
@@ -309,9 +332,11 @@
             {/each}
           </select>
         </fieldset>
+      {/if}
 
-        <fieldset>
-          <legend>Palette</legend>
+      <fieldset>
+        <legend>Palette</legend>
+        {#if EDITION === 'full'}
           <!-- A grid, not the segmented strip the other two use: five labels
                do not fit across a 260px panel, and forcing them to produced a
                horizontal scrollbar across the whole settings column. -->
@@ -319,27 +344,26 @@
             {#each PALETTES as p (p.value)}
               <button
                 type="button"
-                class:active={settings.palette === p.value}
-                aria-pressed={settings.palette === p.value}
+                class:active={chipOn(p.value)}
+                aria-pressed={chipOn(p.value)}
                 onclick={() => setPalette(p.value)}
               >
                 {p.label}
               </button>
             {/each}
           </div>
-        </fieldset>
-      {/if}
-
-      <fieldset>
-        <legend>
-          <label for="hue-range">Accent hue — {settings.accent_hue}&deg;</label>
-        </legend>
+        {/if}
+        <!-- The fine adjustment under the presets, not a section of its own.
+             Dragging it leaves every chip dark: a hue between two palettes is
+             nobody's preset. -->
         <input
           id="hue-range"
+          class="hue"
           type="range"
           min="0"
           max="360"
-          value={settings.accent_hue}
+          aria-label="Accent hue"
+          value={hue}
           oninput={(e) => setAccentHue(Number(e.currentTarget.value))}
         />
       </fieldset>
@@ -533,6 +557,10 @@
   .segmented button.active {
     color: var(--on-accent);
     background: var(--accent);
+  }
+
+  .hue {
+    margin-block-start: var(--space-3);
   }
 
   .chips {
