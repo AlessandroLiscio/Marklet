@@ -63,8 +63,7 @@ in either edition.
 
 ## Working agreements
 
-See *Engagement rules — always on* in `~/.claude/CLAUDE.md`, loaded automatically alongside this
-file. They apply here unchanged and are **not restated** — one source of truth.
+The Engagement rules in `~/.claude/CLAUDE.md` and the repository rules in `~/GitHub/CLAUDE.md` (commits and approvals, AI attribution, merged branches, labels, scripts, to-do lists, lessons) are both loaded automatically alongside this file. They apply here unchanged and are **not restated** — one source of truth.
 
 ## Branch workflow
 
@@ -82,7 +81,7 @@ So: branch, push, open a PR, let CI run, squash-merge. Branch names are
 `<job id in main.yml> / <name: of the job inside the reusable workflow>`. Renaming either
 side blocks every merge until the ruleset is updated and re-applied.
 
-Never add an AI attribution trailer to a tag message.
+Exception to §AI attribution in ~/GitHub/CLAUDE.md: never add an AI attribution trailer to a tag message (commits and PRs keep the Personal-repo rule).
 
 ## Development
 
