@@ -140,7 +140,7 @@ jobs:
       - name: TruffleHog
         id: trufflehog
         continue-on-error: true
-        uses: trufflesecurity/trufflehog@v3.97.4
+        uses: trufflesecurity/trufflehog@v3.99.2
         with:
           base: ''
           extra_args: --results=verified
