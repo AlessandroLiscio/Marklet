@@ -17,27 +17,26 @@ name = "marklet"
 path = "src/main.rs"
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
 # No `protocol-asset`: local images are served by our own `marklet://` scheme,
 # which is smaller and lets us reject path traversal in one place. Enabling the
 # feature here while `assetProtocol.enable` is false in tauri.conf.json is a
 # hard build error, and rightly so.
-tauri = { version = "2.11", default-features = false, features = ["wry", "common-controls-v6"] }
-tauri-plugin-single-instance = "2.4"
+tauri = { version = "2.12", default-features = false, features = ["wry", "common-controls-v6"] }
+tauri-plugin-single-instance = "2.5"
 
 # Native open dialogs, for "Marklet was launched with no file" and for choosing
 # a folder to browse. Measured at +38.9 KiB xz on the Linux binary — 3% of
 # lite's headroom, for the one thing a file viewer cannot reasonably do itself.
 #
-# PINNED LOW ON PURPOSE. Written as "2.4" it resolves to 2.7.3 and holds tauri
-# at 2.11; asked for unpinned, cargo takes the newest, which drags tauri to
-# 2.12 and wry to 0.57 — and those bring a SECOND webview2-com into the tree
-# alongside the 0.38 pinned below. Two of those means two distinct COM
+# Keep this on the same tauri minor as `tauri` above. A newer dialog plugin
+# that asks for a newer wry brings a SECOND webview2-com into the tree
+# alongside the one pinned below. Two of those means two distinct COM
 # interface types and `PrintToPdf` stops compiling. Check after any bump:
 #   grep -c 'name = "webview2-com"' Cargo.lock   must print 1
-tauri-plugin-dialog = "2.4"
+tauri-plugin-dialog = "2.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
@@ -57,25 +56,21 @@ windows-registry = "0.100"
 # These two versions are ONE decision, not two.
 #
 # `PrintToPdf` (src-tauri/src/export/pdf.rs) is called on the ICoreWebView2 that
-# Tauri hands us, so our webview2-com must be the exact one wry 0.55.1 resolves
-# to — 0.38.2 — or the pointer is a different Rust type and will not cast.
-# webview2-com 0.38.2 in turn pins `windows` 0.61 and `windows-core` 0.61, which
-# is why `windows` below is 0.61 and not the newer 0.62: `.cast()` comes from
-# `windows_core::Interface`, and with two windows-core crates in the tree the
-# trait we import is not the trait the interface implements. That failure reads
-# as "no method named `cast` found for reference `&ICoreWebView2_2`", which
-# names neither version and sends you looking in the wrong place.
-#
-# Nothing else in the tree asks for 0.62; the only thing that did was this
-# declaration. Unifying downward therefore also removes a duplicate `windows`
-# facade from the binary.
+# Tauri hands us, so our webview2-com must be the exact one wry 0.57 resolves
+# to - 0.39.x - or the pointer is a different Rust type and will not cast.
+# webview2-com 0.39 in turn pins `windows` 0.62 and `windows-core` 0.62, which
+# is why `windows` below is 0.62: `.cast()` comes from `windows_core::Interface`,
+# and with two windows-core crates in the tree the trait we import is not the
+# trait the interface implements. That failure reads as "no method named `cast`
+# found for reference `&ICoreWebView2_2`", which names neither version and sends
+# you looking in the wrong place.
 #
 # Bump either line only together with a Tauri bump, and only if afterwards
 #   grep -c 'name = "webview2-com"' Cargo.lock   still prints 1
 #   grep -c 'name = "windows-core"' Cargo.lock   still prints 1
 # `scripts/check-windows.sh` catches the mismatch from Linux in ~15 s.
-webview2-com = "0.38"
-windows = { version = "0.61", features = [
+webview2-com = "0.39"
+windows = { version = "0.62", features = [
   "Win32_Foundation",
   "Win32_System_Console",
   "Win32_UI_Shell",
