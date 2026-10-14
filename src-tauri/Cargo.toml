@@ -74,7 +74,7 @@ windows-registry = "0.5"
 #   grep -c 'name = "webview2-com"' Cargo.lock   still prints 1
 #   grep -c 'name = "windows-core"' Cargo.lock   still prints 1
 # `scripts/check-windows.sh` catches the mismatch from Linux in ~15 s.
-webview2-com = "0.38"
+webview2-com = "0.39"
 windows = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_System_Console",
