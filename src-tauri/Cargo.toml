@@ -6,7 +6,7 @@ authors = ["Alessandro Liscio"]
 license = "MIT"
 repository = "https://github.com/AlessandroLiscio/Marklet"
 edition = "2021"
-rust-version = "1.79"
+rust-version = "1.95"
 
 [lib]
 name = "marklet"
