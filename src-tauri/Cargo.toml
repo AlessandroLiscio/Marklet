@@ -53,7 +53,7 @@ aho-corasick = "1.1"
 notify = "8"
 
 [target.'cfg(windows)'.dependencies]
-windows-registry = "0.5"
+windows-registry = "0.100"
 # These two versions are ONE decision, not two.
 #
 # `PrintToPdf` (src-tauri/src/export/pdf.rs) is called on the ICoreWebView2 that
