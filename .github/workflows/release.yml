@@ -149,7 +149,7 @@ jobs:
             ceiling: 1800
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           name: ${{ matrix.artifact }}
           path: out
@@ -298,7 +298,7 @@ jobs:
     needs: [build, cold-start-gate]
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           pattern: release-*
           merge-multiple: true
