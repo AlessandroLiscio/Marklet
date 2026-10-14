@@ -1,4 +1,10 @@
 version: 2
+# Weekly dependency updates, minor and patch grouped per ecosystem.
+# Coupled dependencies are held back from minor and major updates, because a single-ecosystem PR cannot move them together and fails CI:
+# - Tauri: the npm packages (@tauri-apps/*) and the Rust crates (tauri, tauri-build, tauri-plugin-*) must share the same major.minor, or `tauri build` stops with "version mismatched Tauri packages" (Dependabot PR #93, 2026-10-14).
+# - windows and webview2-com: their versions must match the ones wry (Tauri's webview) uses, or the Windows build fails in windows_core (PRs #97, #101, #102).
+# - typescript 7: its peer range breaks npm install for the Svelte toolchain (PR #96).
+# Upgrade these by hand in one PR (tauri crates + @tauri-apps packages + windows + webview2-com), then let Dependabot keep the patches flowing.
 updates:
   - package-ecosystem: npm
     directory: /
@@ -9,6 +15,11 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    ignore:
+      - dependency-name: "@tauri-apps/*"
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
@@ -21,6 +32,15 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    ignore:
+      - dependency-name: "tauri"
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: "tauri-*"
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: "windows"
+        update-types: [version-update:semver-minor, version-update:semver-major]
+      - dependency-name: "webview2-com*"
+        update-types: [version-update:semver-minor, version-update:semver-major]
     groups:
       cargo-minor-patch:
         update-types: [minor, patch]
