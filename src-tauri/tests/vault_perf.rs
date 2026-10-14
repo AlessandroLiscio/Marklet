@@ -249,9 +249,9 @@ const VERSION: &str = "1";
 fn note_body(i: usize) -> String {
     let a = (i * 7 + 3) % NOTES;
     let b = (i * 13 + 11) % NOTES;
-    let planted = if i % 50 == 0 {
+    let planted = if i.is_multiple_of(50) {
         "This paragraph has a haystack and a quicksilver in it.\n\n"
-    } else if i % 7 == 0 {
+    } else if i.is_multiple_of(7) {
         "This paragraph has a haystack but not the other one.\n\n"
     } else {
         ""

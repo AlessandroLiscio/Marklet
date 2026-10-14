@@ -88,10 +88,10 @@ pub fn decode_lossy(bytes: &[u8]) -> String {
 }
 
 fn utf16(rest: &[u8], to_u16: fn([u8; 2]) -> u16) -> Result<String, DecodeError> {
-    if rest.len() % 2 != 0 {
+    if !rest.len().is_multiple_of(2) {
         return Err(DecodeError::TruncatedUtf16);
     }
-    let units: Vec<u16> = rest.chunks_exact(2).map(|c| to_u16([c[0], c[1]])).collect();
+    let units: Vec<u16> = rest.as_chunks::<2>().0.iter().map(|&c| to_u16(c)).collect();
     String::from_utf16(&units).map_err(|_| DecodeError::InvalidUtf16)
 }
 
