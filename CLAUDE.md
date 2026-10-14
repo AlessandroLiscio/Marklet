@@ -3,10 +3,9 @@
 Lightweight, open-source Markdown viewer. Tauri 2 (Rust core) + Svelte 5 (chrome only).
 Targets Windows 11 (primary) and Linux/WSL2 (development).
 
-This repository is **Claude Code only**. Agent configuration lives in `.claude/`.
-Do not create `.github/skills/`, `.github/agents/`, `.github/instructions/`, or any
-`*.agent.md` / `*.prompt.md` / `*.instructions.md` file. `.github/` holds workflows and
-nothing else.
+@AGENTS.md
+
+Claude Code writes the code here; Codex only reviews pull requests on GitHub, with the "Code Review Rules" in `AGENTS.md`. Claude's configuration lives in `.claude/` (plus `.mcp.json` for the Playwright MCP server). Do not create `.github/skills/`, `.github/agents/`, `.github/instructions/`, or any `*.agent.md` / `*.prompt.md` / `*.instructions.md` file: `.github/` holds workflows, rulesets and the Dependabot config, nothing else.
 
 ## Two editions — read this before deciding anything
 
@@ -126,5 +125,4 @@ first. Every CLI path must also exit before `tauri::Builder::build()`.
 | `release` | cutting a version or changing the CI matrix |
 | `version-sync-check` | auditing release bookkeeping — read-only, safe any time |
 
-Design work additionally uses the `ui-ux-pro-max` plugin, enabled for this project in
-`.claude/settings.json`.
+Design work additionally uses the `ui-ux-pro-max` plugin, and code intelligence the `typescript-lsp` plugin (needs `typescript-language-server` on the PATH), both enabled for this project in `.claude/settings.json`. Test-first work follows the `tdd` skill; browser checks of the dev server can use the Playwright MCP server in `.mcp.json` or the `/qa` skill.
