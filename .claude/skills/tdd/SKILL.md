@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Test-driven development in red-green-refactor cycles. Use when building a feature or fixing a bug test-first, when the user says TDD or red-green-refactor, or when new behaviour needs tests before code. Marklet: TypeScript, Tauri, Rust.
+description: "Use when building a feature or fixing a bug test-first, when the user says TDD or red-green-refactor, or when new behaviour needs tests before code. Red-green-refactor cycles: one failing test, the smallest change, refactor with tests green."
 ---
 
 # Test-driven development
