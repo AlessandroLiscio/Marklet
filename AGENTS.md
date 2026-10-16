@@ -13,7 +13,8 @@ Priorities:
 - Size budget: lite installer ceiling 2.8 MiB, full 12 MiB. A new crate or npm package needs its edition and measured xz size. Heavy libraries (mermaid, katex, highlight.js) stay behind `import()` and never on the boot path (`npm run check:imports`).
 - Windows and Linux parity: file association, registry and installer changes must not break the other platform. CI runs both.
 - Version sync: `package.json`, `Cargo.toml` and `tauri.conf.json` versions must agree on any release change.
-- Tests: a behaviour change or bug fix comes with a vitest or `cargo test` case that fails without the change.
+- Tests: a behaviour change or bug fix comes with a vitest or `cargo test` case that fails without the change. A diff that deletes or skips a test (`.skip`, `.only`, `#[ignore]`) or loosens an assertion needs a reason in the PR body.
+- Docs drift: a diff that changes an architecture invariant, a command, a path or an edition that `CLAUDE.md` or `docs/editions.md` names, without updating that file in the same PR.
 - Secrets: no tokens, keys or `.env` files in the diff.
 
 Ignore: formatting that rustfmt, clippy or svelte-check already enforce, generated files, and lockfile churn (`package-lock.json`, `Cargo.lock`) unless a dependency change is suspicious.
