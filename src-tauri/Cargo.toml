@@ -123,6 +123,12 @@ updater = ["dep:tauri-plugin-updater"]
 [dependencies.tauri-plugin-updater]
 version = "2"
 optional = true
+# The default "zip" feature only extracts the v1 updater archives (.zip, .tar.gz). Marklet
+# ships v2 artifacts (createUpdaterArtifacts: true, the installer and AppImage themselves),
+# and zip 4.x carries RUSTSEC-2026-0367/0368/0369, so the other two defaults are kept alone.
+# Switching to "v1Compatible" artifacts would need the feature back.
+default-features = false
+features = ["rustls-tls", "system-proxy"]
 
 [dependencies.encoding_rs]
 version = "0.8"
