@@ -39,3 +39,6 @@ SHA256SUMS
 # Generated exports of demo/demo.md
 demo/*.html
 demo/*.pdf
+
+# Quiet-script run logs
+/tmp/
