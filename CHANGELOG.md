@@ -10,6 +10,10 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Files inside WSL open again from the Windows app, including symlinks.** Opening `\\wsl.localhost\Ubuntu\home\you\CLAUDE.md` failed with "path not found" when that file is a symlink with an absolute Linux target, which Windows cannot follow. Such a path is now resolved by the distro itself (`wsl.exe realpath`), and the real file opens. A symlinked folder passed on the command line opens as a folder.
+
 ### Changed
 
 - **Svelte components are tested by mounting them** (`npm run test:components`, part of `npm test`), so a component that cannot render fails CI. The first two: the keyboard sheet and the settings panel.

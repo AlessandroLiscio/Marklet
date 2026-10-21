@@ -39,7 +39,7 @@ impl AssetRoot {
     /// Points the scheme at a directory. The path is canonicalized here so
     /// every later comparison is between two resolved paths.
     pub fn set(&self, dir: &Path) {
-        let resolved = dir.canonicalize().ok();
+        let resolved = crate::webpath::canonicalize(dir).ok();
         if let Ok(mut guard) = self.0.write() {
             *guard = resolved;
         }
@@ -98,7 +98,7 @@ pub fn resolve(root: &Path, request_path: &str) -> Result<PathBuf, StatusCode> {
     // The canonicalization that makes the check meaningful. It fails for a path
     // that does not exist, which is a 404 rather than a 403: a missing image is
     // an ordinary state of a document being edited.
-    let resolved = joined.canonicalize().map_err(|_| StatusCode::NOT_FOUND)?;
+    let resolved = crate::webpath::canonicalize(&joined).map_err(|_| StatusCode::NOT_FOUND)?;
 
     if !resolved.starts_with(root) {
         return Err(StatusCode::FORBIDDEN);

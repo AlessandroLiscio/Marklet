@@ -90,7 +90,7 @@ pub fn open_path(
     vault: Option<&VaultState>,
     path: &Path,
 ) -> Result<OpenedDocument, IpcError> {
-    let resolved = path.canonicalize().map_err(|e| {
+    let resolved = crate::webpath::canonicalize(path).map_err(|e| {
         IpcError::new(
             IpcErrorKind::NotFound,
             format!("could not open the file: {e}"),
@@ -560,7 +560,7 @@ pub fn splice_range(
 /// open — so nothing here can reach a file the webview could not already read
 /// through `marklet://`.
 fn resolve_inside(root: &AssetRoot, path: &Path) -> Result<PathBuf, IpcError> {
-    let resolved = path.canonicalize().map_err(|e| {
+    let resolved = crate::webpath::canonicalize(path).map_err(|e| {
         IpcError::new(
             IpcErrorKind::NotFound,
             format!("could not open the file: {e}"),
