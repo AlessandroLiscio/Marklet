@@ -227,6 +227,10 @@
     }
     typed = '';
     problem = '';
+    // Kept inside the window: the name field is about 90px tall and the menu
+    // sits at the pointer, which may be on the last visible row.
+    x = Math.max(4, Math.min(x, window.innerWidth - 290));
+    y = Math.max(4, Math.min(y, window.innerHeight - 120));
     popup = { step: 'menu', x, y, where: row ? (row.dir ? row.path : parentOf(row.path)) : '' };
   }
 
@@ -247,6 +251,10 @@
       problem = e instanceof Object && 'message' in e ? String(e.message) : 'Could not create the note';
     } finally {
       busy = false;
+      // The input was disabled while the call ran, which dropped its focus;
+      // without this Escape stops working and the name cannot be corrected.
+      await tick();
+      document.querySelector<HTMLInputElement>('.popup input')?.focus();
     }
   }
 

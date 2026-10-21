@@ -15,8 +15,7 @@ use super::scan::{is_note, resolve_in, Entry};
 /// Turns what the user typed into a file name, or says why it is not one.
 ///
 /// A name without a Markdown extension gets `.md`, so `ideas` and `v1.2` both
-/// become notes. A name with some other extension is refused rather than
-/// created: the tree would list it dimmed and nothing could open it.
+/// become notes. Titles with a dot in them are kept whole.
 pub fn note_file_name(typed: &str) -> Result<String, IpcError> {
     let name = typed.trim();
     let bad = |why: &str| Err(err(IpcErrorKind::Invalid, why, None));
@@ -39,15 +38,28 @@ pub fn note_file_name(typed: &str) -> Result<String, IpcError> {
         return bad("a name cannot end with a dot");
     }
 
+    // Windows treats `CON.md` as the console device, whatever the extension.
+    let stem = name
+        .split('.')
+        .next()
+        .unwrap_or(name)
+        .trim_end()
+        .to_ascii_uppercase();
+    let reserved = matches!(
+        stem.as_str(),
+        "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
+    ) || (stem.len() == 4
+        && (stem.starts_with("COM") || stem.starts_with("LPT"))
+        && stem.ends_with(|c: char| c.is_ascii_digit() && c != '0'));
+    if reserved {
+        return bad("Windows reserves that name");
+    }
+
+    // Only a name that already ends in a note extension is left alone. Anything
+    // else gets `.md`, so `Mr.Smith` and `v1.2` stay titles rather than being
+    // mistaken for a file type.
     let named = if is_note(Path::new(name)) {
         name.to_string()
-    } else if Path::new(name).extension().is_some_and(|e| {
-        // `v1.2` has an "extension" that is really part of the name; anything
-        // alphabetic is a type the user chose on purpose.
-        e.to_str()
-            .is_some_and(|e| e.chars().all(|c| c.is_ascii_alphabetic()))
-    }) {
-        return bad("a note ends in .md, .markdown, .mdown or .mkd");
     } else {
         format!("{name}.md")
     };
@@ -127,12 +139,15 @@ mod tests {
         assert_eq!(note_file_name("v1.2 plan").unwrap(), "v1.2 plan.md");
         assert_eq!(note_file_name("Todo.MD").unwrap(), "Todo.MD");
         assert_eq!(note_file_name("a.markdown").unwrap(), "a.markdown");
+        assert_eq!(note_file_name("Mr.Smith").unwrap(), "Mr.Smith.md");
+        assert_eq!(note_file_name("pic.png").unwrap(), "pic.png.md");
+        assert_eq!(note_file_name("console").unwrap(), "console.md");
     }
 
     #[test]
     fn names_that_are_not_one_component_are_refused() {
         for bad in [
-            "", "  ", "a/b", "..\\x", "../x", "a:b", "x?", ".hidden", "dot.", "pic.png", "a\nb",
+            "", "  ", "a/b", "..\\x", "../x", "a:b", "x?", ".hidden", "dot.", "a\nb",
         ] {
             let e = note_file_name(bad).unwrap_err();
             assert_eq!(e.kind, IpcErrorKind::Invalid, "{bad:?}");
