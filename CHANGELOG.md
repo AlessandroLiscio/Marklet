@@ -12,6 +12,8 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Added
 
+- **A formatting toolbar while you edit.** In live edit and split view a row of icon buttons floats at the bottom of the window: bold, italic, strikethrough, inline code, link, three heading levels, bulleted, numbered and task lists, quote, code block, table, horizontal rule and image. Each acts on the selection (or on every selected line) and toggles off where that makes sense, and the inline ones are the same edits as the Word-style keys (#124).
+
 - **New files, from the start screen and from the explorer.** The start screen has a *New file…* button next to *Open file…* and *Open folder…*: it asks where to save, creates the empty note and opens it in the split editor. In the explorer, right-click a folder (or a file, or empty space for the root) and choose *New file…*, type a name, and the note is created there and opened in the split editor. `.md` is added when the name has no Markdown extension, and an existing file is never overwritten (#119).
 
 ### Fixed
