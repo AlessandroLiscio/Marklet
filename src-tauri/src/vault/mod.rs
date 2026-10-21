@@ -287,7 +287,7 @@ impl VaultState {
     /// and the backlinks panel needs the vault-relative one to look it up.
     pub fn relative_of(&self, path: &Path) -> Option<String> {
         let root = self.root()?;
-        let resolved = path.canonicalize().ok()?;
+        let resolved = crate::webpath::canonicalize(path).ok()?;
         let rel = resolved.strip_prefix(&root).ok()?.to_str()?;
         Some(if std::path::MAIN_SEPARATOR == '/' {
             rel.to_string()
