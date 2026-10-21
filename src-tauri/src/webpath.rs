@@ -49,20 +49,30 @@ pub fn guess_mime(path: &Path) -> &'static str {
 /// reach is accepted in its absolute form instead. Every other path keeps the
 /// strict behaviour the security checks are built on.
 ///
-/// The limit: the fallback cannot resolve symlinks, so a link inside a WSL
-/// share that points outside the opened folder is not caught by the
-/// starts-with check. Upgrade when `canonicalize` works on those shares.
+/// The fallback cannot resolve symlinks, and the callers' starts-with checks
+/// would trust the unresolved path, so a path with a symlink anywhere in it is
+/// refused instead. Upgrade when `canonicalize` works on those shares.
 pub fn canonicalize(path: &Path) -> std::io::Result<PathBuf> {
     match path.canonicalize() {
         Ok(p) => Ok(p),
         Err(e) => {
-            if cfg!(windows) && is_wsl_share(path) && path.metadata().is_ok() {
+            if cfg!(windows)
+                && is_wsl_share(path)
+                && path.metadata().is_ok()
+                && !has_symlink_component(path)
+            {
                 std::path::absolute(path).or(Err(e))
             } else {
                 Err(e)
             }
         }
     }
+}
+
+/// True when the path or any of its ancestors is a symlink.
+fn has_symlink_component(path: &Path) -> bool {
+    path.ancestors()
+        .any(|a| std::fs::symlink_metadata(a).is_ok_and(|m| m.file_type().is_symlink()))
 }
 
 /// True for a UNC path into WSL: `\\wsl.localhost\...` or `\\wsl$\...`.
@@ -173,5 +183,18 @@ mod tests {
     #[test]
     fn a_missing_path_still_fails() {
         assert!(canonicalize(Path::new("/definitely/not/here.md")).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlink_anywhere_in_the_path_is_detected() {
+        let dir = std::env::temp_dir().join(format!("marklet-symlink-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("real")).unwrap();
+        std::fs::write(dir.join("real/n.md"), b"x").unwrap();
+        std::os::unix::fs::symlink(dir.join("real"), dir.join("link")).unwrap();
+        assert!(!has_symlink_component(&dir.join("real/n.md")));
+        assert!(has_symlink_component(&dir.join("link/n.md")));
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

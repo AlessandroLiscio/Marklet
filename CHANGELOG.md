@@ -12,7 +12,7 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ### Fixed
 
-- **Files and folders inside WSL open again from the Windows app.** A path such as `\\wsl.localhost\Ubuntu\home\you\notes.md` failed with "path not found" because the path could not be resolved over the WSL share; it is now accepted in absolute form when the file is reachable. Symlinks inside a WSL share are not resolved.
+- **Files and folders inside WSL open again from the Windows app.** A path such as `\\wsl.localhost\Ubuntu\home\you\notes.md` failed with "path not found" because the path could not be resolved over the WSL share; it is now accepted in absolute form when the file is reachable. A path with a symlink in it is not accepted this way.
 
 ### Changed
 
