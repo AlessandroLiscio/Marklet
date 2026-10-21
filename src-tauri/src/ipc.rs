@@ -1183,8 +1183,9 @@ pub fn create_note(
 /// answers with its absolute path. `None` when the user cancels.
 ///
 /// For the start screen, where no folder is open yet. Unlike [`pick_save`] the
-/// write happens here, in Rust, with `create_new`: the webview never supplies
-/// content or a path to write, so there is nothing for [`PickedSave`] to guard.
+/// write happens here, in Rust: the webview never supplies content or a path
+/// to write, so there is nothing for [`PickedSave`] to guard. A name the user
+/// confirmed replacing in the dialog is emptied.
 #[tauri::command]
 pub async fn new_note_dialog(app: tauri::AppHandle) -> Result<Option<String>, IpcError> {
     use tauri_plugin_dialog::DialogExt;
@@ -1200,24 +1201,32 @@ pub async fn new_note_dialog(app: tauri::AppHandle) -> Result<Option<String>, Ip
     let Some(mut path) = chosen.and_then(|p| p.into_path().ok()) else {
         return Ok(None);
     };
-    if !vault::scan::is_note(&path) {
+    let appended = !vault::scan::is_note(&path);
+    if appended {
         let mut name = path.as_os_str().to_owned();
         name.push(".md");
         path = PathBuf::from(name);
     }
 
-    std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&path)
-        .map_err(|e| {
-            let kind = if e.kind() == std::io::ErrorKind::AlreadyExists {
-                IpcErrorKind::Invalid
-            } else {
-                IpcErrorKind::Io
-            };
-            IpcError::new(kind, format!("could not create the file: {e}"), Some(&path))
-        })?;
+    // The OS dialog has already asked "replace it?" when the name was taken,
+    // and the answer it returns is yes; refusing here turned that confirmed
+    // answer into an error. Only for the name the user saw: one we extended
+    // with `.md` was never confirmed, so it must not exist. The explorer's name
+    // field has no dialog, so `vault::create::create_note` always refuses.
+    let mut open = std::fs::OpenOptions::new();
+    open.write(true);
+    if appended {
+        open.create_new(true);
+    } else {
+        open.create(true).truncate(true);
+    }
+    open.open(&path).map_err(|e| {
+        IpcError::new(
+            IpcErrorKind::Io,
+            format!("could not create the file: {e}"),
+            Some(&path),
+        )
+    })?;
     Ok(Some(path_string(path)))
 }
 
