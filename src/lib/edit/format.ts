@@ -154,6 +154,7 @@ const PREFIX: Partial<Record<FormatKind, string>> = {
 };
 
 const NUMBERED = /^\d+\. /;
+const TASK = /^- \[[ xX]\] /;
 const ANY_HEADING = /^#{1,6} /;
 const ANY_LIST = /^(- \[[ xX]\] |[-*+] |\d+\. )/;
 
@@ -216,8 +217,11 @@ export function applyBlock(text: string, from: number, to: number, kind: FormatK
   const lines = text.slice(start, end).split('\n');
   const prefix = PREFIX[kind];
 
+  // A task counts as one whether it is checked or not: toggling the format off
+  // must not turn a finished task back into an open one, or the reverse.
+  const pattern = kind === 'numbered' ? NUMBERED : kind === 'task' ? TASK : null;
   const has = (line: string): boolean =>
-    kind === 'numbered' ? NUMBERED.test(line) : line.startsWith(prefix as string);
+    pattern ? pattern.test(line) : line.startsWith(prefix as string);
   const strip = (line: string): string =>
     line.replace(kind === 'h1' || kind === 'h2' || kind === 'h3' ? ANY_HEADING : ANY_LIST, '');
   const off = lines.filter((l) => l.trim() !== '').every(has);
@@ -225,7 +229,7 @@ export function applyBlock(text: string, from: number, to: number, kind: FormatK
   let n = 0;
   const next = lines.map((line) => {
     if (line.trim() === '') return line;
-    if (off) return kind === 'numbered' ? line.replace(NUMBERED, '') : line.slice((prefix as string).length);
+    if (off) return pattern ? line.replace(pattern, '') : line.slice((prefix as string).length);
     const base = kind === 'quote' ? line : strip(line);
     n += 1;
     return `${kind === 'numbered' ? `${n}. ` : prefix}${base}`;

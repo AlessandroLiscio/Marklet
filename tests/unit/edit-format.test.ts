@@ -78,6 +78,11 @@ describe('block formats', () => {
     expect(block('- a', 0, 0, 'task')).toBe('- [ ] a');
   });
 
+  it('treats a checked task as a task when toggling the format off', () => {
+    expect(block('- [x] done\n- [ ] open', 0, 21, 'task')).toBe('done\nopen');
+    expect(block('- [X] done', 0, 0, 'task')).toBe('done');
+  });
+
   it('quotes and unquotes', () => {
     expect(block('a\nb', 0, 3, 'quote')).toBe('> a\n> b');
     expect(block('> a\n> b', 0, 7, 'quote')).toBe('a\nb');
