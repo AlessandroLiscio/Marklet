@@ -50,3 +50,63 @@ describe('applyFormat', () => {
     expect(run('', 0, 0, 'k').text).toBe('[link](url)');
   });
 });
+
+import { applyBlock, inlineFormat, type FormatKind } from '../../src/lib/edit/format';
+
+/** Applies a block edit to `text` and returns the new text. */
+function block(text: string, from: number, to: number, kind: FormatKind): string {
+  const done = applyBlock(text, from, to, kind);
+  let out = text;
+  for (const c of [...done.changes].sort((a, b) => b.from - a.from)) {
+    out = out.slice(0, c.from) + c.insert + out.slice(c.to);
+  }
+  return out;
+}
+
+describe('block formats', () => {
+  it('toggles a heading and replaces another level', () => {
+    expect(block('title', 0, 0, 'h1')).toBe('# title');
+    expect(block('# title', 0, 0, 'h1')).toBe('title');
+    expect(block('# title', 0, 0, 'h2')).toBe('## title');
+  });
+
+  it('applies a list kind to every touched line, skipping blank ones', () => {
+    expect(block('a\n\nb', 0, 4, 'bullet')).toBe('- a\n\n- b');
+    expect(block('- a\n- b', 0, 7, 'bullet')).toBe('a\nb');
+    expect(block('a\nb', 0, 3, 'numbered')).toBe('1. a\n2. b');
+    expect(block('1. a\n2. b', 0, 9, 'numbered')).toBe('a\nb');
+    expect(block('- a', 0, 0, 'task')).toBe('- [ ] a');
+  });
+
+  it('treats a checked task as a task when toggling the format off', () => {
+    expect(block('- [x] done\n- [ ] open', 0, 21, 'task')).toBe('done\nopen');
+    expect(block('- [X] done', 0, 0, 'task')).toBe('done');
+  });
+
+  it('quotes and unquotes', () => {
+    expect(block('a\nb', 0, 3, 'quote')).toBe('> a\n> b');
+    expect(block('> a\n> b', 0, 7, 'quote')).toBe('a\nb');
+  });
+
+  it('wraps lines in a fence and unwraps them', () => {
+    expect(block('x = 1', 0, 5, 'codeblock')).toBe('```\nx = 1\n```');
+    expect(block('```\nx = 1\n```', 0, 13, 'codeblock')).toBe('x = 1');
+  });
+
+  it('inserts a table and a rule after the current line', () => {
+    expect(block('intro', 0, 0, 'table')).toContain('intro\n\n| Column | Column | Column |\n| --- |');
+    expect(block('intro', 5, 5, 'rule')).toBe('intro\n\n---\n');
+  });
+
+  it('inserts an image around the selection with the address selected', () => {
+    const done = applyBlock('cat', 0, 3, 'image');
+    expect(done.changes[0]!.insert).toBe('![cat](url)');
+    expect('![cat](url)'.slice(done.anchor, done.head)).toBe('url');
+  });
+
+  it('maps the inline buttons to the keyboard formats', () => {
+    expect(inlineFormat('bold')?.open).toBe('**');
+    expect(inlineFormat('link')?.link).toBe(true);
+    expect(inlineFormat('table')).toBeUndefined();
+  });
+});

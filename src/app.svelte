@@ -11,6 +11,7 @@
   import { onDestroy, onMount } from 'svelte';
 
   import ActivityBar, { type PanelId } from './lib/chrome/activity-bar.svelte';
+  import FormatBar from './lib/chrome/format-bar.svelte';
   import TabBar from './lib/chrome/tabbar.svelte';
   import {
     currentDocument,
@@ -1145,6 +1146,10 @@
       </button>
     {/if}
   </div>
+{/if}
+
+{#if mode !== 'read'}
+  <FormatBar onrun={(kind) => edit?.format(kind)} />
 {/if}
 
 {#if mode === 'split'}

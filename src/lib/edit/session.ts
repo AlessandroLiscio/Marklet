@@ -18,7 +18,7 @@ import { spliceRange, isIpcError } from '../ipc';
 import type { CodeMirror, EditorView, Extension } from './cm';
 import { loadCodeMirror } from './cm';
 import { livePreview } from './livepreview';
-import { applyFormat, FORMATS } from './format';
+import { applyBlock, applyFormat, FORMATS, inlineFormat, type FormatKind } from './format';
 import { extensionFor, imageMarkdown, pickImage } from './paste';
 import { expandSnippet } from './snippets';
 import { computeSplice, sameText, utf8Length } from './splice';
@@ -82,6 +82,8 @@ export interface Session {
   cursor(): { line: number; column: number };
   /** Turns live-preview decorations on or off without rebuilding the editor. */
   setDecorated(on: boolean): void;
+  /** Applies a toolbar button to the selection and puts the focus back in the editor. */
+  format(kind: FormatKind): void;
   /** Writes the buffer to the file now. Resolves once the write has finished. */
   flush(): Promise<void>;
   /** Whether the buffer holds changes the file does not. */
@@ -314,6 +316,23 @@ export async function createSession(options: SessionOptions): Promise<Session> {
       view.dispatch({
         effects: decorations.reconfigure(on ? livePreview(cm) : []),
       });
+    },
+    format(kind) {
+      const inline = inlineFormat(kind);
+      const text = view.state.doc.toString();
+      view.dispatch(
+        view.state.changeByRange((range) => {
+          const done = inline
+            ? applyFormat(text, range.from, range.to, inline)
+            : applyBlock(text, range.from, range.to, kind);
+          return {
+            changes: done.changes,
+            range: cm.state.EditorSelection.range(done.anchor, done.head),
+          };
+        }),
+        { scrollIntoView: true, userEvent: 'input.format' },
+      );
+      view.focus();
     },
     async flush() {
       saving = saving.then(() => save());

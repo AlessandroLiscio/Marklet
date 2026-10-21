@@ -19,6 +19,7 @@
  * | `Escape`   | read     | back to reading                                    |
  */
 import { scrollToLine, visibleLine } from '../doc';
+import type { FormatKind } from './format';
 import type { Session } from './session';
 import type { ScrollLink } from './split';
 
@@ -112,6 +113,8 @@ export interface EditController {
   /** Handle a `keydown`. Returns `true` when it consumed the event. */
   handleKey(event: KeyboardEvent): boolean;
   setMode(mode: EditMode): Promise<void>;
+  /** Applies a toolbar button to the editor's selection. A no-op outside an editing mode. */
+  format(kind: FormatKind): void;
   /** Re-aligns the split columns after the preview was re-rendered. */
   resync(): void;
   destroy(): Promise<void>;
@@ -256,6 +259,7 @@ export function createEditController(wiring: EditWiring): EditController {
     mode: () => mode,
     dirty: () => session?.isDirty() ?? false,
     save: () => run(async () => void (await session?.flush())),
+    format: (kind) => session?.format(kind),
 
     handleKey(event) {
       const intent = editShortcut(event);
