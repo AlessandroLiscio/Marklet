@@ -78,12 +78,16 @@ def new_file_in_explorer(page, vault):
     if not created.is_file() or created.stat().st_size != 0:
         raise RuntimeError("selftest.md was not created empty")
 
+    # The toolbar is there in an editing mode, and a button edits the buffer.
+    page.locator('[role="toolbar"] [data-kind="table"]').click()
+    page.locator(".cm-content", has_text="| Column | Column | Column |").wait_for(timeout=WAIT_MS)
+
     ask("selftest")
     problem = page.locator(".popup .problem")
     problem.wait_for(timeout=WAIT_MS)
     if "already exists" not in problem.inner_text():
         raise RuntimeError(f"unexpected refusal: {problem.inner_text()!r}")
-    return "explorer creates a note in split view and refuses a taken name"
+    return "explorer creates a note in split view, the toolbar edits it, and a taken name is refused"
 
 
 def wsl_symlink(page, marker):
