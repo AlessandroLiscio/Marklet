@@ -11,7 +11,7 @@
 //! and a security-relevant decoder with two implementations is a decoder with
 //! two behaviours. One of them will be the one nobody updated.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Content type from the file extension, for the handful of types Marklet
 /// actually serves.
@@ -37,6 +37,43 @@ pub fn guess_mime(path: &Path) -> &'static str {
         Some("ico") => "image/x-icon",
         _ => "application/octet-stream",
     }
+}
+
+/// `Path::canonicalize`, with one concession for Windows reaching into WSL.
+///
+/// A file that lives inside a WSL distro is seen from Windows as
+/// `\\wsl.localhost\<distro>\...` (older builds: `\\wsl$\...`), served over
+/// 9P. `canonicalize` asks the filesystem for the final path of an open handle,
+/// which that share does not always answer, so a file that plainly exists fails
+/// with "path not found". For such a path only, a path that `metadata` can
+/// reach is accepted in its absolute form instead. Every other path keeps the
+/// strict behaviour the security checks are built on.
+///
+/// The limit: the fallback cannot resolve symlinks, so a link inside a WSL
+/// share that points outside the opened folder is not caught by the
+/// starts-with check. Upgrade when `canonicalize` works on those shares.
+pub fn canonicalize(path: &Path) -> std::io::Result<PathBuf> {
+    match path.canonicalize() {
+        Ok(p) => Ok(p),
+        Err(e) => {
+            if cfg!(windows) && is_wsl_share(path) && path.metadata().is_ok() {
+                std::path::absolute(path).or(Err(e))
+            } else {
+                Err(e)
+            }
+        }
+    }
+}
+
+/// True for a UNC path into WSL: `\\wsl.localhost\...` or `\\wsl$\...`.
+fn is_wsl_share(path: &Path) -> bool {
+    let s = path.to_string_lossy().to_ascii_lowercase();
+    ["wsl.localhost", "wsl$"].iter().any(|host| {
+        s.strip_prefix("\\\\")
+            .or_else(|| s.strip_prefix("//"))
+            .and_then(|rest| rest.strip_prefix(host))
+            .is_some_and(|rest| rest.starts_with(['\\', '/']) || rest.is_empty())
+    })
 }
 
 /// Just enough percent-decoding for the `%20`-style escapes markdown image
@@ -114,5 +151,27 @@ mod tests {
         // protocol.rs's job, and it can only do that job on decoded bytes —
         // which is exactly why checking a raw string for ".." is a bypass.
         assert_eq!(percent_decode("%2e%2e%2fetc%2fpasswd"), "../etc/passwd");
+    }
+
+    #[test]
+    fn recognises_wsl_shares_in_both_spellings() {
+        assert!(is_wsl_share(Path::new(
+            r"\\wsl.localhost\Ubuntu\home\a\n.md"
+        )));
+        assert!(is_wsl_share(Path::new(r"\\WSL$\Ubuntu\home")));
+        assert!(is_wsl_share(Path::new("//wsl.localhost/Ubuntu/home")));
+    }
+
+    #[test]
+    fn other_paths_are_not_wsl_shares() {
+        assert!(!is_wsl_share(Path::new(r"C:\Users\a\n.md")));
+        assert!(!is_wsl_share(Path::new(r"\\server\share\wsl.localhost")));
+        assert!(!is_wsl_share(Path::new(r"\\wsl.localhostile\x")));
+        assert!(!is_wsl_share(Path::new("/home/a/n.md")));
+    }
+
+    #[test]
+    fn a_missing_path_still_fails() {
+        assert!(canonicalize(Path::new("/definitely/not/here.md")).is_err());
     }
 }
