@@ -43,6 +43,7 @@
     openDocument,
     openExternal,
     openNote,
+    newNoteDialog,
     pickFile,
     pickFolder,
     pickSave,
@@ -173,6 +174,11 @@
   interface OpenOptions {
     /** A source line to reveal once it is on screen. */
     line?: number;
+    /**
+     * Open straight into the split editor. For a note that was just created:
+     * it is empty, and the reader came to write, not to read.
+     */
+    split?: boolean;
   }
 
   /**
@@ -199,6 +205,7 @@
 
     await show(opened);
     revealAfterPaint(line);
+    if (options.split) await edit?.setMode('split');
   }
 
   /** Shows the tab at `index`, remembering where the reader was in this one. */
@@ -587,6 +594,7 @@
 
     await show(opened);
     revealAfterPaint(line);
+    if (options.split) await edit?.setMode('split');
   }
 
   /**
@@ -809,6 +817,17 @@
     }
   }
 
+  /** Nothing was opened: ask the OS where a new note goes, create it, open it. */
+  async function newFromDialog(): Promise<void> {
+    try {
+      const made = await newNoteDialog();
+      if (made === null) return; // cancelled
+      await openInTab(made, { split: true });
+    } catch (error) {
+      say(reason(error), true);
+    }
+  }
+
   /**
    * The tab shortcuts, checked before the editor sees the keystroke.
    *
@@ -1009,6 +1028,9 @@
             <button type="button" class="secondary" onclick={() => void openFromDialog('file')}>
               Open a file…
             </button>
+            <button type="button" class="secondary" onclick={() => void newFromDialog()}>
+              New file…
+            </button>
           </div>
         {/if}
       {:else}
@@ -1168,6 +1190,9 @@
       <button type="button" onclick={() => void openFromDialog('file')}>Open file…</button>
       <button type="button" class="secondary" onclick={() => void openFromDialog('folder')}>
         Open folder…
+      </button>
+      <button type="button" class="secondary" onclick={() => void newFromDialog()}>
+        New file…
       </button>
     </div>
   </div>

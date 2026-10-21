@@ -373,6 +373,24 @@ export function pickSave(name: string, extension: string): Promise<string | null
   return invoke<string | null>('pick_save', { name, extension });
 }
 
+/**
+ * Asks the OS where a new note should live and creates it, empty. `null` when
+ * the user cancels. The path that comes back is absolute and ready for
+ * `openNote`; it is for the start screen, where no folder is open yet.
+ */
+export function newNoteDialog(): Promise<string | null> {
+  return invoke<string | null>('new_note_dialog');
+}
+
+/**
+ * Creates an empty note named `name` in `parent` (vault-relative, `''` for the
+ * root) and answers with the explorer row for it. Rejects with an `IpcError`
+ * when the name is unusable or already taken; nothing is overwritten.
+ */
+export function createNote(parent: string, name: string): Promise<Entry> {
+  return invoke<Entry>('create_note', { parent, name });
+}
+
 /** Mirrors `vault::VaultInfo`. */
 export interface VaultInfo {
   /** Absolute and canonical. Shown; never sent back. */

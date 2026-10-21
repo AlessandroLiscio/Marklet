@@ -15,8 +15,8 @@
   import Links from './links.svelte';
   import SearchPanel from './search.svelte';
   import Tree from './tree.svelte';
-  import { listDir, openVault, type Entry, type VaultInfo } from '../ipc';
-  import { spliceChildren } from './tree';
+  import { createNote, listDir, openVault, type Entry, type VaultInfo } from '../ipc';
+  import { insertEntry, spliceChildren } from './tree';
 
   interface Props {
     /** The folder to open. Changing it opens a different vault. */
@@ -24,7 +24,7 @@
     /** The open note, vault-relative — highlighted, and its backlinks shown. */
     active?: string | null;
     /** Opens a note in its own tab. `line` scrolls to it and highlights it. */
-    onopen?: (path: string, options?: { line?: number }) => void;
+    onopen?: (path: string, options?: { line?: number; split?: boolean }) => void;
     /**
      * The wiki-link index is being built, by the app shell.
      *
@@ -120,6 +120,24 @@
     }
   }
 
+  /**
+   * Creates a note in `parent` and opens it. Throws the backend's refusal so
+   * the tree's name field can show it where the user is looking.
+   *
+   * A folder that was never expanded is listed instead of patched: its listing
+   * already contains the new file, and inserting into it would add a row to a
+   * folder the tree believes is unopened.
+   */
+  async function create(parent: string, name: string): Promise<void> {
+    const made = await createNote(parent, name);
+    if (parent === '' || listed.has(parent)) {
+      entries = insertEntry(entries, made);
+    } else {
+      await expand(parent, parent.split('/').length - 1);
+    }
+    onopen?.(made.path, { split: true });
+  }
+
 </script>
 
 <aside class="sidebar" aria-label="Vault">
@@ -157,6 +175,7 @@
       {listed}
       onexpand={(path, depth) => void expand(path, depth)}
       onopen={(path) => onopen?.(path)}
+      oncreate={create}
     />
   {:else}
     <SearchPanel
