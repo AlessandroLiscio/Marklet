@@ -10,6 +10,10 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Files and folders inside WSL open again from the Windows app.** A path such as `\\\\wsl.localhost\\Ubuntu\\home\\you\\notes.md` failed with "path not found" because the path could not be resolved over the WSL share; it is now accepted in absolute form when the file is reachable. Symlinks inside a WSL share are not resolved.
+
 ### Changed
 
 - **Svelte components are tested by mounting them** (`npm run test:components`, part of `npm test`), so a component that cannot render fails CI. The first two: the keyboard sheet and the settings panel.
