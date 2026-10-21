@@ -24,7 +24,7 @@
     /** The open note, vault-relative — highlighted, and its backlinks shown. */
     active?: string | null;
     /** Opens a note in its own tab. `line` scrolls to it and highlights it. */
-    onopen?: (path: string, options?: { line?: number }) => void;
+    onopen?: (path: string, options?: { line?: number; split?: boolean }) => void;
     /**
      * The wiki-link index is being built, by the app shell.
      *
@@ -135,7 +135,7 @@
     } else {
       await expand(parent, parent.split('/').length - 1);
     }
-    onopen?.(made.path);
+    onopen?.(made.path, { split: true });
   }
 
 </script>

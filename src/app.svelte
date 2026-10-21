@@ -174,6 +174,11 @@
   interface OpenOptions {
     /** A source line to reveal once it is on screen. */
     line?: number;
+    /**
+     * Open straight into the split editor. For a note that was just created:
+     * it is empty, and the reader came to write, not to read.
+     */
+    split?: boolean;
   }
 
   /**
@@ -200,6 +205,7 @@
 
     await show(opened);
     revealAfterPaint(line);
+    if (options.split) await edit?.setMode('split');
   }
 
   /** Shows the tab at `index`, remembering where the reader was in this one. */
@@ -588,6 +594,7 @@
 
     await show(opened);
     revealAfterPaint(line);
+    if (options.split) await edit?.setMode('split');
   }
 
   /**
@@ -815,7 +822,7 @@
     try {
       const made = await newNoteDialog();
       if (made === null) return; // cancelled
-      await openInTab(made);
+      await openInTab(made, { split: true });
     } catch (error) {
       say(reason(error), true);
     }
