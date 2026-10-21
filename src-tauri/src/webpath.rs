@@ -39,51 +39,80 @@ pub fn guess_mime(path: &Path) -> &'static str {
     }
 }
 
-/// `Path::canonicalize`, with one concession for Windows reaching into WSL.
+/// `Path::canonicalize`, taught to follow symlinks that live inside WSL.
 ///
-/// A file that lives inside a WSL distro is seen from Windows as
-/// `\\wsl.localhost\<distro>\...` (older builds: `\\wsl$\...`), served over
-/// 9P. `canonicalize` asks the filesystem for the final path of an open handle,
-/// which that share does not always answer, so a file that plainly exists fails
-/// with "path not found". For such a path only, a path that `metadata` can
-/// reach is accepted in its absolute form instead. Every other path keeps the
-/// strict behaviour the security checks are built on.
+/// A file in a WSL distro is seen from Windows as `\\wsl.localhost\<distro>\...`
+/// (older builds: `\\wsl$\...`). A symlink there usually has an absolute Linux
+/// target such as `/home/me/repo/CLAUDE.md`, which Windows reads as
+/// `C:\home\me\...` and cannot find: `canonicalize` fails with "path not
+/// found" (os error 3) for a file that opens fine in Explorer, and the 9P share
+/// does not let `read_link` see the target either.
 ///
-/// The fallback cannot resolve symlinks, and the callers' starts-with checks
-/// would trust the unresolved path, so a path with a symlink anywhere in it is
-/// refused instead. Upgrade when `canonicalize` works on those shares.
+/// For such a path only, and only on Windows, the distro is asked to resolve it
+/// (`wsl.exe -d <distro> realpath`) and the answer is mapped back onto the
+/// share. The result is the real file, so the callers' starts-with checks
+/// compare resolved paths exactly as they do everywhere else.
 pub fn canonicalize(path: &Path) -> std::io::Result<PathBuf> {
     match path.canonicalize() {
         Ok(p) => Ok(p),
-        Err(e) => {
-            if cfg!(windows)
-                && is_wsl_share(path)
-                && path.metadata().is_ok()
-                && !has_symlink_component(path)
-            {
-                std::path::absolute(path).or(Err(e))
-            } else {
-                Err(e)
-            }
-        }
+        Err(e) => match wsl_realpath(path) {
+            Some(real) => real.canonicalize().or(Err(e)),
+            None => Err(e),
+        },
     }
 }
 
-/// True when the path or any of its ancestors is a symlink.
-fn has_symlink_component(path: &Path) -> bool {
-    path.ancestors()
-        .any(|a| std::fs::symlink_metadata(a).is_ok_and(|m| m.file_type().is_symlink()))
+/// Splits `\\wsl.localhost\Ubuntu\home\me` (or `\\wsl$\...`, or the `//`
+/// spelling) into the distro and its Linux path: `("Ubuntu", "/home/me")`.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn split_wsl_share(path: &Path) -> Option<(String, String)> {
+    let s = path.to_str()?;
+    let rest = s.strip_prefix("\\\\").or_else(|| s.strip_prefix("//"))?;
+    let rest = ["wsl.localhost", "wsl$"].iter().find_map(|host| {
+        let head = rest.get(..host.len())?;
+        head.eq_ignore_ascii_case(host)
+            .then(|| rest[host.len()..].strip_prefix(['\\', '/']))
+            .flatten()
+    })?;
+    let (distro, tail) = rest.split_once(['\\', '/']).unwrap_or((rest, ""));
+    if distro.is_empty() {
+        return None;
+    }
+    Some((distro.to_string(), format!("/{}", tail.replace('\\', "/"))))
 }
 
-/// True for a UNC path into WSL: `\\wsl.localhost\...` or `\\wsl$\...`.
-fn is_wsl_share(path: &Path) -> bool {
-    let s = path.to_string_lossy().to_ascii_lowercase();
-    ["wsl.localhost", "wsl$"].iter().any(|host| {
-        s.strip_prefix("\\\\")
-            .or_else(|| s.strip_prefix("//"))
-            .and_then(|rest| rest.strip_prefix(host))
-            .is_some_and(|rest| rest.starts_with(['\\', '/']) || rest.is_empty())
-    })
+/// The share path for a Linux path inside `distro`.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn wsl_share_path(distro: &str, linux: &str) -> PathBuf {
+    PathBuf::from(format!(
+        "\\\\wsl.localhost\\{distro}{}",
+        linux.replace('/', "\\")
+    ))
+}
+
+#[cfg(windows)]
+fn wsl_realpath(path: &Path) -> Option<PathBuf> {
+    use std::os::windows::process::CommandExt;
+
+    let (distro, linux) = split_wsl_share(path)?;
+    // Separate arguments after `--`, never a shell string: the path comes from
+    // the command line and may hold anything a file name can.
+    let out = std::process::Command::new("wsl.exe")
+        .args(["-d", &distro, "--exec", "realpath", "-e", "--", &linux])
+        .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let real = String::from_utf8(out.stdout).ok()?;
+    let real = real.trim_end_matches(['\n', '\r']);
+    real.starts_with('/').then(|| wsl_share_path(&distro, real))
+}
+
+#[cfg(not(windows))]
+fn wsl_realpath(_: &Path) -> Option<PathBuf> {
+    None
 }
 
 /// Just enough percent-decoding for the `%20`-style escapes markdown image
@@ -164,37 +193,38 @@ mod tests {
     }
 
     #[test]
-    fn recognises_wsl_shares_in_both_spellings() {
-        assert!(is_wsl_share(Path::new(
-            r"\\wsl.localhost\Ubuntu\home\a\n.md"
-        )));
-        assert!(is_wsl_share(Path::new(r"\\WSL$\Ubuntu\home")));
-        assert!(is_wsl_share(Path::new("//wsl.localhost/Ubuntu/home")));
+    fn splits_a_wsl_share_into_distro_and_linux_path() {
+        let split = |p: &str| split_wsl_share(Path::new(p));
+        let want = Some(("Ubuntu".to_string(), "/home/a/n.md".to_string()));
+        assert_eq!(split(r"\\wsl.localhost\Ubuntu\home\a\n.md"), want);
+        assert_eq!(split(r"\\WSL$\Ubuntu\home\a\n.md"), want);
+        assert_eq!(split("//wsl.localhost/Ubuntu/home/a/n.md"), want);
+        assert_eq!(
+            split(r"\\wsl.localhost\Ubuntu"),
+            Some(("Ubuntu".to_string(), "/".to_string()))
+        );
     }
 
     #[test]
     fn other_paths_are_not_wsl_shares() {
-        assert!(!is_wsl_share(Path::new(r"C:\Users\a\n.md")));
-        assert!(!is_wsl_share(Path::new(r"\\server\share\wsl.localhost")));
-        assert!(!is_wsl_share(Path::new(r"\\wsl.localhostile\x")));
-        assert!(!is_wsl_share(Path::new("/home/a/n.md")));
+        let split = |p: &str| split_wsl_share(Path::new(p));
+        assert_eq!(split(r"C:\Users\a\n.md"), None);
+        assert_eq!(split(r"\\server\share\wsl.localhost"), None);
+        assert_eq!(split(r"\\wsl.localhostile\x\y"), None);
+        assert_eq!(split(r"\\wsl.localhost"), None);
+        assert_eq!(split("/home/a/n.md"), None);
+    }
+
+    #[test]
+    fn maps_a_linux_path_back_onto_the_share() {
+        assert_eq!(
+            wsl_share_path("Ubuntu", "/home/a/n.md"),
+            PathBuf::from(r"\\wsl.localhost\Ubuntu\home\a\n.md")
+        );
     }
 
     #[test]
     fn a_missing_path_still_fails() {
         assert!(canonicalize(Path::new("/definitely/not/here.md")).is_err());
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn a_symlink_anywhere_in_the_path_is_detected() {
-        let dir = std::env::temp_dir().join(format!("marklet-symlink-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(dir.join("real")).unwrap();
-        std::fs::write(dir.join("real/n.md"), b"x").unwrap();
-        std::os::unix::fs::symlink(dir.join("real"), dir.join("link")).unwrap();
-        assert!(!has_symlink_component(&dir.join("real/n.md")));
-        assert!(has_symlink_component(&dir.join("link/n.md")));
-        std::fs::remove_dir_all(&dir).ok();
     }
 }
