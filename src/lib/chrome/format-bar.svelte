@@ -55,7 +55,7 @@
   ];
 </script>
 
-<div class="bar" role="toolbar" aria-label="Formatting">
+<div class="format-bar" role="toolbar" aria-label="Formatting">
   {#each GROUPS as group, g (g)}
     {#if g > 0}<span class="rule" aria-hidden="true"></span>{/if}
     {#each group as item (item.kind)}
@@ -76,7 +76,7 @@
 </div>
 
 <style>
-  .bar {
+  .format-bar {
     position: fixed;
     inset-block-end: var(--space-3);
     inset-inline-start: 50%;
