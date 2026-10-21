@@ -1155,6 +1155,72 @@ pub async fn pick_save(
     Ok(Some(path_string(path)))
 }
 
+/// Creates an empty note in `parent` (vault-relative, empty for the root) and
+/// answers with the row the explorer should show.
+///
+/// The base is the same one [`list_dir`] uses, so the explorer can only create
+/// where it can already see. Everything else is decided in
+/// [`vault::create::create_note`], which has no `tauri` in it.
+#[tauri::command]
+pub fn create_note(
+    parent: String,
+    name: String,
+    root: tauri::State<'_, AssetRoot>,
+    vault: tauri::State<'_, VaultState>,
+) -> Result<Entry, IpcError> {
+    let base = vault.root().or_else(|| root.get()).ok_or_else(|| {
+        IpcError::new(
+            IpcErrorKind::Denied,
+            "nothing is open, so there is no folder to create a note in",
+            None,
+        )
+    })?;
+
+    vault::create::create_note(&base, &parent, &name)
+}
+
+/// Asks the OS where a brand-new note should live, creates it empty, and
+/// answers with its absolute path. `None` when the user cancels.
+///
+/// For the start screen, where no folder is open yet. Unlike [`pick_save`] the
+/// write happens here, in Rust, with `create_new`: the webview never supplies
+/// content or a path to write, so there is nothing for [`PickedSave`] to guard.
+#[tauri::command]
+pub async fn new_note_dialog(app: tauri::AppHandle) -> Result<Option<String>, IpcError> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let chosen = app
+        .dialog()
+        .file()
+        .set_file_name("Untitled.md")
+        .add_filter("Markdown", &["md", "markdown", "mdown", "mkd"])
+        .set_title("New Markdown file")
+        .blocking_save_file();
+
+    let Some(mut path) = chosen.and_then(|p| p.into_path().ok()) else {
+        return Ok(None);
+    };
+    if !vault::scan::is_note(&path) {
+        let mut name = path.as_os_str().to_owned();
+        name.push(".md");
+        path = PathBuf::from(name);
+    }
+
+    std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+        .map_err(|e| {
+            let kind = if e.kind() == std::io::ErrorKind::AlreadyExists {
+                IpcErrorKind::Invalid
+            } else {
+                IpcErrorKind::Io
+            };
+            IpcError::new(kind, format!("could not create the file: {e}"), Some(&path))
+        })?;
+    Ok(Some(path_string(path)))
+}
+
 /// A picked path as the string the rest of the boundary speaks.
 fn path_string(path: PathBuf) -> String {
     path.display().to_string()

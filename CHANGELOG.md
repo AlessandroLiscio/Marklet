@@ -10,6 +10,10 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+### Added
+
+- **New files, from the start screen and from the explorer.** The start screen has a *New file…* button next to *Open file…* and *Open folder…*: it asks where to save, creates the empty note and opens it. In the explorer, right-click a folder (or a file, or empty space for the root) and choose *New file…*, type a name, and the note is created there and opened. `.md` is added when the name has no Markdown extension, and an existing file is never overwritten (#119).
+
 ### Changed
 
 - **Svelte components are tested by mounting them** (`npm run test:components`, part of `npm test`), so a component that cannot render fails CI. The first two: the keyboard sheet and the settings panel.

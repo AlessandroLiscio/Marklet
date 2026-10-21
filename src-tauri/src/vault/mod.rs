@@ -39,6 +39,7 @@
 //! tool lets it. That is the *only* widening; the canonicalize-then-check in
 //! `protocol.rs` is unchanged and still the thing that refuses everything else.
 
+pub mod create;
 pub mod index;
 pub mod scan;
 pub mod search;

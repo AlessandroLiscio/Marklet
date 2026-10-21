@@ -185,6 +185,8 @@ pub fn run(job: cli::WindowJob, started: Instant) {
             ipc::pick_file,
             ipc::pick_folder,
             ipc::pick_save,
+            ipc::create_note,
+            ipc::new_note_dialog,
             ipc::check_update,
             ipc::install_update,
         ])

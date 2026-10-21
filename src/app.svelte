@@ -43,6 +43,7 @@
     openDocument,
     openExternal,
     openNote,
+    newNoteDialog,
     pickFile,
     pickFolder,
     pickSave,
@@ -809,6 +810,17 @@
     }
   }
 
+  /** Nothing was opened: ask the OS where a new note goes, create it, open it. */
+  async function newFromDialog(): Promise<void> {
+    try {
+      const made = await newNoteDialog();
+      if (made === null) return; // cancelled
+      await openInTab(made);
+    } catch (error) {
+      say(reason(error), true);
+    }
+  }
+
   /**
    * The tab shortcuts, checked before the editor sees the keystroke.
    *
@@ -1009,6 +1021,9 @@
             <button type="button" class="secondary" onclick={() => void openFromDialog('file')}>
               Open a file…
             </button>
+            <button type="button" class="secondary" onclick={() => void newFromDialog()}>
+              New file…
+            </button>
           </div>
         {/if}
       {:else}
@@ -1168,6 +1183,9 @@
       <button type="button" onclick={() => void openFromDialog('file')}>Open file…</button>
       <button type="button" class="secondary" onclick={() => void openFromDialog('folder')}>
         Open folder…
+      </button>
+      <button type="button" class="secondary" onclick={() => void newFromDialog()}>
+        New file…
       </button>
     </div>
   </div>

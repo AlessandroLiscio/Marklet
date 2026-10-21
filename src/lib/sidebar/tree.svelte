@@ -37,9 +37,15 @@
     onexpand?: (path: string, depth: number) => void;
     /** Opens a note in its own tab. */
     onopen?: (path: string) => void;
+    /**
+     * Creates a note named `name` in `parent` (`''` is the root). Rejects with
+     * an error whose `message` is shown beside the name field; resolves once
+     * the note exists and has been opened.
+     */
+    oncreate?: (parent: string, name: string) => Promise<void>;
   }
 
-  let { entries, active = null, listed = null, onexpand, onopen }: Props = $props();
+  let { entries, active = null, listed = null, onexpand, onopen, oncreate }: Props = $props();
 
   let expanded = $state(new Set<string>());
   /** The row a single click highlighted. Not the open document — that is `active`. */
@@ -181,6 +187,80 @@
     }
   }
 
+  /**
+   * The right-click menu and the name field that follows it.
+   *
+   * Both live outside the scroller: it is `contain: strict`, which would clip
+   * a `position: fixed` child to its own box. `where` is the folder a new note
+   * lands in — the row itself for a folder, its parent for a file.
+   */
+  interface Popup {
+    step: 'menu' | 'name';
+    x: number;
+    y: number;
+    where: string;
+  }
+  let popup = $state<Popup | null>(null);
+  let typed = $state('');
+  let problem = $state('');
+  let busy = $state(false);
+
+  function parentOf(path: string): string {
+    const slash = path.lastIndexOf('/');
+    return slash === -1 ? '' : path.slice(0, slash);
+  }
+
+  function onContext(event: MouseEvent, row: Row | null): void {
+    if (!oncreate) return;
+    event.preventDefault();
+    event.stopPropagation();
+    let { clientX: x, clientY: y } = event;
+    // The context-menu key and Shift+F10 report no pointer position.
+    if (x === 0 && y === 0 && event.currentTarget instanceof HTMLElement) {
+      const box = event.currentTarget.getBoundingClientRect();
+      x = box.left + 24;
+      y = box.bottom;
+    }
+    if (row) {
+      selected = row.path;
+      cursor = row.path;
+    }
+    typed = '';
+    problem = '';
+    popup = { step: 'menu', x, y, where: row ? (row.dir ? row.path : parentOf(row.path)) : '' };
+  }
+
+  function closePopup(): void {
+    if (!busy) popup = null;
+  }
+
+  async function submitName(): Promise<void> {
+    if (!popup || !oncreate || busy) return;
+    const where = popup.where;
+    busy = true;
+    problem = '';
+    try {
+      await oncreate(where, typed);
+      if (where !== '' && !expanded.has(where)) expanded = new Set(expanded).add(where);
+      popup = null;
+    } catch (e) {
+      problem = e instanceof Object && 'message' in e ? String(e.message) : 'Could not create the note';
+    } finally {
+      busy = false;
+    }
+  }
+
+  function focusOnMount(el: HTMLElement): void {
+    el.focus();
+  }
+
+  function onPopupKey(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closePopup();
+    }
+  }
+
   function onKey(event: KeyboardEvent, row: Row): void {
     if (!event.ctrlKey && !event.altKey && !event.metaKey && navigate(event, row)) {
       // Without this the arrow keys also scroll the panel under the focus.
@@ -202,8 +282,16 @@
   }
 </script>
 
+<svelte:window
+  onpointerdown={(e) => {
+    if (popup && !(e.target instanceof Element && e.target.closest('.popup'))) closePopup();
+  }}
+  onblur={closePopup}
+/>
+
 <div
   class="scroller"
+  oncontextmenu={(e) => onContext(e, null)}
   onscroll={onScroll}
   {@attach measure}
   role="tree"
@@ -232,6 +320,7 @@
         onfocus={() => (cursor = row.path)}
         onclick={() => select(row)}
         ondblclick={() => open(row)}
+        oncontextmenu={(e) => onContext(e, row)}
         onkeydown={(e) => onKey(e, row)}
       >
         <span class="twist" aria-hidden="true">
@@ -250,7 +339,117 @@
   {/if}
 </div>
 
+{#if popup}
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <div
+    class="popup"
+    role="presentation"
+    style:left="{popup.x}px"
+    style:top="{popup.y}px"
+    onkeydown={onPopupKey}
+  >
+    {#if popup.step === 'menu'}
+      <div role="menu" aria-label="Explorer">
+        <button
+          type="button"
+          role="menuitem"
+          {@attach focusOnMount}
+          onclick={() => (popup = popup && { ...popup, step: 'name' })}
+        >
+          New file…
+        </button>
+      </div>
+    {:else}
+      <form
+        onsubmit={(e) => {
+          e.preventDefault();
+          void submitName();
+        }}
+      >
+        <label>
+          New file in {popup.where === '' ? 'the root folder' : popup.where}
+          <input
+            type="text"
+            bind:value={typed}
+            placeholder="name.md"
+            spellcheck="false"
+            autocomplete="off"
+            disabled={busy}
+            {@attach focusOnMount}
+          />
+        </label>
+        {#if problem}
+          <p class="problem" role="alert">{problem}</p>
+        {/if}
+      </form>
+    {/if}
+  </div>
+{/if}
+
 <style>
+  .popup {
+    position: fixed;
+    z-index: 40;
+    min-inline-size: 180px;
+    max-inline-size: 280px;
+    padding: var(--space-1);
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
+    font-family: var(--font-ui);
+    font-size: var(--text-small);
+  }
+
+  .popup button {
+    display: block;
+    inline-size: 100%;
+    padding: var(--space-1) var(--space-2);
+    border: 0;
+    border-radius: var(--radius-sm, 4px);
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: default;
+  }
+
+  .popup button:hover,
+  .popup button:focus-visible {
+    background: var(--accent-muted);
+    outline: none;
+  }
+
+  .popup label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    color: var(--fg-muted);
+    overflow-wrap: anywhere;
+  }
+
+  .popup input {
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm, 4px);
+    background: var(--bg-subtle);
+    color: var(--fg);
+    font: inherit;
+  }
+
+  .popup input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+  }
+
+  .problem {
+    margin: 0;
+    padding: var(--space-1);
+    color: var(--alert-warning);
+  }
+
   .scroller {
     flex: 1;
     overflow-y: auto;
