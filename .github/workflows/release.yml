@@ -17,7 +17,7 @@ jobs:
     name: Verify version agreement
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - run: |
           set -euo pipefail
           tag="${GITHUB_REF_NAME#v}"
@@ -75,7 +75,7 @@ jobs:
             tauri-args: "--config src-tauri/tauri.updater.conf.json"
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Linux system dependencies
         if: startsWith(matrix.os, 'ubuntu')
@@ -148,7 +148,7 @@ jobs:
             artifact: release-windows-full
             ceiling: 1800
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           name: ${{ matrix.artifact }}
@@ -307,7 +307,7 @@ jobs:
       # The manifest the full edition's updater reads. Built from the .sig files
       # the signed legs produced, so a manifest can only exist for artifacts
       # that were actually signed.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           path: repo
       - name: Update manifest
