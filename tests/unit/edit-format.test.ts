@@ -51,7 +51,14 @@ describe('applyFormat', () => {
   });
 });
 
-import { applyBlock, inlineFormat, type FormatKind } from '../../src/lib/edit/format';
+import {
+  applyBlock,
+  applyImage,
+  applyTable,
+  inlineFormat,
+  tableMarkdown,
+  type FormatKind,
+} from '../../src/lib/edit/format';
 
 /** Applies a block edit to `text` and returns the new text. */
 function block(text: string, from: number, to: number, kind: FormatKind): string {
@@ -108,5 +115,94 @@ describe('block formats', () => {
     expect(inlineFormat('bold')?.open).toBe('**');
     expect(inlineFormat('link')?.link).toBe(true);
     expect(inlineFormat('table')).toBeUndefined();
+  });
+});
+
+describe('block formats on an empty row', () => {
+  /** Applies the edit and returns the text with `|` where the caret ends up. */
+  function caret(text: string, at: number, kind: FormatKind): string {
+    const done = applyBlock(text, at, at, kind);
+    expect(done.anchor).toBe(done.head);
+    let out = text;
+    for (const c of [...done.changes].sort((a, b) => b.from - a.from)) {
+      out = out.slice(0, c.from) + c.insert + out.slice(c.to);
+    }
+    return `${out.slice(0, done.head)}|${out.slice(done.head)}`;
+  }
+
+  it('writes the marker and leaves the caret after it', () => {
+    expect(caret('', 0, 'h1')).toBe('# |');
+    expect(caret('', 0, 'h3')).toBe('### |');
+    expect(caret('', 0, 'bullet')).toBe('- |');
+    expect(caret('', 0, 'numbered')).toBe('1. |');
+    expect(caret('', 0, 'task')).toBe('- [ ] |');
+    expect(caret('', 0, 'quote')).toBe('> |');
+  });
+
+  it('works on an empty line between paragraphs, and leaves the others alone', () => {
+    expect(caret('a\n\nb', 2, 'h2')).toBe('a\n## |\nb');
+  });
+
+  it('toggles off again, and swaps one heading level for another', () => {
+    expect(block('# ', 2, 2, 'h1')).toBe('');
+    expect(block('# ', 2, 2, 'h2')).toBe('## ');
+    expect(block('- ', 2, 2, 'bullet')).toBe('');
+  });
+});
+
+describe('table insertion', () => {
+  it('builds the size asked for, header row included', () => {
+    expect(tableMarkdown(2, 3)).toBe('| Column | Column |\n| --- | --- |\n|  |  |\n|  |  |\n');
+    expect(tableMarkdown(1, 1)).toBe('| Column |\n| --- |\n');
+  });
+
+  it('keeps the old three-column table as the default of the bare button', () => {
+    expect(block('intro', 0, 0, 'table')).toBe(`intro\n\n${tableMarkdown(3, 2)}`);
+  });
+
+  it('holds the size inside the limits', () => {
+    expect(tableMarkdown(0, 0)).toBe(tableMarkdown(1, 1));
+    expect(tableMarkdown(99, 2).split('\n')[0]!.split('|').length).toBe(20 + 2);
+    expect(tableMarkdown(2, 999).split('\n').length).toBe(50 + 2); // plus the rule line and the trailing break
+  });
+
+  it('goes after the current line with the first header cell selected', () => {
+    const text = 'one\ntwo';
+    const done = applyTable(text, 1, 2, 2);
+    const change = done.changes[0]!;
+    const out = text.slice(0, change.from) + change.insert + text.slice(change.to);
+    expect(out.startsWith('one\n\n| Column')).toBe(true);
+    expect(out.slice(done.anchor, done.head)).toBe('Column');
+    expect(out.endsWith('\ntwo')).toBe(true);
+  });
+});
+
+describe('image insertion', () => {
+  it('uses the file name as the description and leaves the caret after it', () => {
+    const done = applyImage('', 0, 0, 'assets/trip-photo.png');
+    expect(done.changes[0]!.insert).toBe('![trip-photo](assets/trip-photo.png)');
+    expect(done.anchor).toBe(done.head);
+    expect(done.head).toBe('![trip-photo](assets/trip-photo.png)'.length);
+  });
+
+  it('prefers the selected text as the description', () => {
+    expect(applyImage('my cat', 3, 6, 'cat.jpg').changes[0]).toEqual({
+      from: 3,
+      to: 6,
+      insert: '![cat](cat.jpg)',
+    });
+  });
+
+  it('wraps an address with a space in angle brackets', () => {
+    expect(applyImage('', 0, 0, '../my pics/a b.png').changes[0]!.insert).toBe(
+      '![a b](<../my pics/a b.png>)',
+    );
+  });
+});
+
+describe('numbering on an empty row', () => {
+  it('carries on the count of the item above, and starts at 1 otherwise', () => {
+    expect(block('1. a\n2. b\n', 10, 10, 'numbered')).toBe('1. a\n2. b\n3. ');
+    expect(block('text\n', 5, 5, 'numbered')).toBe('text\n1. ');
   });
 });

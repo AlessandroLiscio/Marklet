@@ -18,7 +18,16 @@ import { spliceRange, isIpcError } from '../ipc';
 import type { CodeMirror, EditorView, Extension } from './cm';
 import { loadCodeMirror } from './cm';
 import { livePreview } from './livepreview';
-import { applyBlock, applyFormat, FORMATS, inlineFormat, type FormatKind } from './format';
+import {
+  applyBlock,
+  applyFormat,
+  applyImage,
+  applyTable,
+  FORMATS,
+  inlineFormat,
+  type Formatted,
+  type FormatKind,
+} from './format';
 import { extensionFor, imageMarkdown, pickImage } from './paste';
 import { expandSnippet } from './snippets';
 import { computeSplice, sameText, utf8Length } from './splice';
@@ -59,6 +68,12 @@ export interface SessionOptions {
    * command is `save_pasted_image`, and it is reported, not written, here.
    */
   savePastedImage?: (bytes: Uint8Array, ext: string) => Promise<string>;
+  /**
+   * Asks the user for an image file and returns the path to reference, relative
+   * to the document, or `null` when they cancel. The command is `pick_image`.
+   * Without it the Image button writes a placeholder address instead.
+   */
+  pickImage?: () => Promise<string | null>;
   /** Called after every successful save, with the file's new byte length. */
   onSaved?: (length: number) => void;
   /** Called whenever the buffer gains or loses unsaved changes. */
@@ -84,6 +99,8 @@ export interface Session {
   setDecorated(on: boolean): void;
   /** Applies a toolbar button to the selection and puts the focus back in the editor. */
   format(kind: FormatKind): void;
+  /** Inserts a table of `cols` columns and `rows` rows, the header among them. */
+  insertTable(cols: number, rows: number): void;
   /** Writes the buffer to the file now. Resolves once the write has finished. */
   flush(): Promise<void>;
   /** Whether the buffer holds changes the file does not. */
@@ -296,6 +313,21 @@ export async function createSession(options: SessionOptions): Promise<Session> {
     parent: options.host,
   });
 
+  /** Runs `edit` over every selection range, then hands the focus back to the editor. */
+  function applyEach(edit: (range: { from: number; to: number }) => Formatted): void {
+    view.dispatch(
+      view.state.changeByRange((range) => {
+        const done = edit(range);
+        return {
+          changes: done.changes,
+          range: cm.state.EditorSelection.range(done.anchor, done.head),
+        };
+      }),
+      { scrollIntoView: true, userEvent: 'input.format' },
+    );
+    view.focus();
+  }
+
   const session: Session = {
     view,
     cm,
@@ -318,21 +350,33 @@ export async function createSession(options: SessionOptions): Promise<Session> {
       });
     },
     format(kind) {
+      if (kind === 'image' && options.pickImage) {
+        // The dialog is modal and the view keeps its selection while it is
+        // open, so the image lands where the caret was.
+        void options
+          .pickImage()
+          .then((path) => {
+            if (path !== null && !destroyed) {
+              const text = view.state.doc.toString();
+              applyEach((range) => applyImage(text, range.from, range.to, path));
+            }
+          })
+          .catch((error: unknown) =>
+            options.onError?.(isIpcError(error) ? error.message : 'could not add the image'),
+          );
+        return;
+      }
       const inline = inlineFormat(kind);
       const text = view.state.doc.toString();
-      view.dispatch(
-        view.state.changeByRange((range) => {
-          const done = inline
-            ? applyFormat(text, range.from, range.to, inline)
-            : applyBlock(text, range.from, range.to, kind);
-          return {
-            changes: done.changes,
-            range: cm.state.EditorSelection.range(done.anchor, done.head),
-          };
-        }),
-        { scrollIntoView: true, userEvent: 'input.format' },
+      applyEach((range) =>
+        inline
+          ? applyFormat(text, range.from, range.to, inline)
+          : applyBlock(text, range.from, range.to, kind),
       );
-      view.focus();
+    },
+    insertTable(cols, rows) {
+      const text = view.state.doc.toString();
+      applyEach((range) => applyTable(text, range.to, cols, rows));
     },
     async flush() {
       saving = saving.then(() => save());
