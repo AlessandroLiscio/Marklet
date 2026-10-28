@@ -16,7 +16,15 @@ lightweight care about that number, and publishing it keeps us honest.
 
 - **New files, from the start screen and from the explorer.** The start screen has a *New file…* button next to *Open file…* and *Open folder…*: it asks where to save, creates the empty note and opens it in the split editor. In the explorer, right-click a folder (or a file, or empty space for the root) and choose *New file…*, type a name, and the note is created there and opened in the split editor. `.md` is added when the name has no Markdown extension, and an existing file is never overwritten (#119).
 
+- **Pick the size of a table, like in Word.** The Table button in the toolbar opens a small grid: point at the size you want, click, and a table with that many columns and rows (the header counts as a row) is inserted. Two number fields below the grid take a size it is too small for, up to 20 columns and 50 rows. (#129)
+
+- **Choose an image from a file.** The Image button in the toolbar opens the file dialog; the picked image is inserted as `![name](path)`. The path is always relative to the document, because the viewer cannot show an absolute one: an image inside the open folder is referenced where it is (with `../` where needed), and one from anywhere else is copied into the document's `assets/` folder first, as a pasted image is. (#129)
+
 ### Fixed
+
+- **Heading, list, task and quote buttons work on an empty line.** With the cursor on a line with no text, the toolbar buttons did nothing; they now write the marker (`# `, `- `, `1. `, `- [ ] `, `> `) and leave the cursor after it, the way bold and italic already wrote their pair. Pressing the same button again takes the marker off. (#129)
+
+- **Images in a note inside a vault folder resolve from that note's folder.** A relative image path such as `pic.png` in `notes/doc.md` was looked up from the vault root instead of next to the note, so it showed a different image or none. Pasted and picked images (which are written beside the note) now show in notes inside folders too (#129).
 
 - **Files inside WSL open again from the Windows app, including symlinks.** Opening `\\wsl.localhost\Ubuntu\home\you\CLAUDE.md` failed with "path not found" when that file is a symlink with an absolute Linux target, which Windows cannot follow. Such a path is now resolved by the distro itself (`wsl.exe realpath`), and the real file opens. A symlinked folder passed on the command line opens as a folder.
 

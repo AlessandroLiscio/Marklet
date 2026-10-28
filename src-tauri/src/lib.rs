@@ -179,6 +179,7 @@ pub fn run(job: cli::WindowJob, started: Instant) {
             ipc::splice_range,
             ipc::read_source,
             ipc::save_pasted_image,
+            ipc::pick_image,
             ipc::reveal_in_editor,
             ipc::export_pdf,
             ipc::export_html,

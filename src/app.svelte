@@ -51,6 +51,7 @@
     readSource,
     revealInEditor,
     savePastedImage,
+    pickImage,
     spliceRange,
     type OpenedDocument,
   } from './lib/ipc';
@@ -895,6 +896,7 @@
           say(`Opened in ${await revealInEditor(doc?.path ?? '', line, column)}`);
         },
         savePastedImage: (bytes, ext) => savePastedImage(doc?.path ?? '', bytes, ext),
+        pickImage: () => pickImage(doc?.path ?? ''),
         // The preview is re-rendered from the file the splice just wrote.
         //
         // Split mode is two views of one document, and the right-hand one was
@@ -1149,7 +1151,7 @@
 {/if}
 
 {#if mode !== 'read'}
-  <FormatBar onrun={(kind) => edit?.format(kind)} />
+  <FormatBar onrun={(kind) => edit?.format(kind)} ontable={(cols, rows) => edit?.insertTable(cols, rows)} />
 {/if}
 
 {#if mode === 'split'}

@@ -131,7 +131,7 @@ pub fn open_path(
     let doc = render::render(
         &bytes,
         RenderOpts {
-            asset_base: Some(AssetRoot::url_prefix().into()),
+            asset_base: Some(asset_base(root, &resolved).into()),
             wiki_resolver: resolver
                 .as_ref()
                 .map(|r| r as &dyn Fn(&str) -> Option<String>),
@@ -144,6 +144,29 @@ pub fn open_path(
         path: resolved.display().to_string(),
         doc,
     })
+}
+
+/// What the renderer puts in front of a relative image path: the asset scheme
+/// and the document's own directory under the served root.
+///
+/// Markdown paths are relative to the document, but the scheme serves the root,
+/// which is the vault's when one is open. Without the directory, `pic.png` in
+/// `notes/doc.md` would ask for `<vault>/pic.png`, a different file or none.
+/// Beside the document (no vault) the directory is empty and the base is the
+/// bare scheme.
+fn asset_base(root: &AssetRoot, doc: &Path) -> String {
+    let mut base = AssetRoot::url_prefix().to_string();
+    let under_root = doc
+        .parent()
+        .zip(root.get())
+        .and_then(|(dir, root)| dir.strip_prefix(root).ok().map(Path::to_path_buf));
+    for part in under_root.iter().flat_map(|dir| dir.components()) {
+        if let Some(name) = part.as_os_str().to_str() {
+            base.push_str(&crate::webpath::percent_encode(name));
+            base.push('/');
+        }
+    }
+    base
 }
 
 /// The window title: the document's own H1 when it has one, else the filename.
@@ -705,11 +728,30 @@ pub fn save_pasted_image(
     }
 
     let resolved = resolve_inside(&root, &PathBuf::from(doc_path))?;
-    let parent = resolved.parent().ok_or_else(|| {
+    let (target, relative) = asset_target(&resolved, &ext)?;
+
+    std::fs::write(&target, &bytes).map_err(|e| {
+        IpcError::new(
+            IpcErrorKind::Io,
+            format!("could not save the image: {e}"),
+            Some(&target),
+        )
+    })?;
+
+    Ok(relative)
+}
+
+/// Where the next image of `doc` goes: the file to write, and the path to put
+/// in the markdown. Creates the assets folder.
+///
+/// The path uses forward slashes on every platform: it goes into markdown,
+/// where a backslash is an escape character, not a separator.
+fn asset_target(doc: &Path, ext: &str) -> Result<(PathBuf, String), IpcError> {
+    let parent = doc.parent().ok_or_else(|| {
         IpcError::new(
             IpcErrorKind::Invalid,
             "that document has no folder to save an image into",
-            Some(&resolved),
+            Some(doc),
         )
     })?;
 
@@ -722,26 +764,119 @@ pub fn save_pasted_image(
         )
     })?;
 
-    let slug = document_slug(
-        resolved
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("image"),
-    );
+    let slug = document_slug(doc.file_stem().and_then(|s| s.to_str()).unwrap_or("image"));
     let name = format!("{slug}-{}.{ext}", next_asset_index(&dir, &slug));
-    let target = dir.join(&name);
+    Ok((dir.join(&name), format!("{ASSET_DIR}/{name}")))
+}
 
-    std::fs::write(&target, &bytes).map_err(|e| {
+/// What the image picker offers and `place_image` accepts. Wider than
+/// [`PASTE_EXTENSIONS`] by `jpeg`: a file keeps the name its owner gave it.
+const PICK_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp", "svg", "avif"];
+
+/// `to` as a path relative to the directory `from`, with forward slashes, or
+/// `None` when there is none (another drive) or a part is not valid UTF-8.
+///
+/// Both arguments must already be canonical: this compares components and
+/// looks at nothing on disk.
+fn relative_path(from: &Path, to: &Path) -> Option<String> {
+    let a: Vec<_> = from.components().collect();
+    let b: Vec<_> = to.components().collect();
+    let common = a.iter().zip(&b).take_while(|(x, y)| x == y).count();
+    if common == 0 {
+        return None;
+    }
+
+    let mut parts: Vec<&str> = vec![".."; a.len() - common];
+    for part in &b[common..] {
+        parts.push(part.as_os_str().to_str()?);
+    }
+    Some(parts.join("/"))
+}
+
+/// The markdown path for an image the user picked.
+///
+/// **Always relative to the document, never absolute.** The asset scheme in
+/// [`crate::protocol`] refuses an absolute path and anything outside the
+/// open folder (the document's own, or the vault's), so an absolute address
+/// would be written into the file and never render. An image already inside
+/// that folder is referenced where it is, with `../` where it sits above the
+/// document. One from anywhere else is copied into the document's assets
+/// folder first, exactly as a pasted image is, and referenced there.
+fn place_image(root: &Path, doc: &Path, picked: &Path) -> Result<String, IpcError> {
+    let picked = crate::webpath::canonicalize(picked).map_err(|e| {
         IpcError::new(
-            IpcErrorKind::Io,
-            format!("could not save the image: {e}"),
-            Some(&target),
+            IpcErrorKind::NotFound,
+            format!("could not open the image: {e}"),
+            Some(picked),
         )
     })?;
 
-    // Forward slashes on every platform: the result goes into markdown, where a
-    // backslash is an escape character, not a separator.
-    Ok(format!("{ASSET_DIR}/{name}"))
+    let ext = picked
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_ascii_lowercase)
+        .filter(|e| PICK_EXTENSIONS.contains(&e.as_str()))
+        .ok_or_else(|| {
+            IpcError::new(
+                IpcErrorKind::Invalid,
+                "that file is not an image Marklet can show",
+                Some(&picked),
+            )
+        })?;
+
+    if picked.is_file() && picked.starts_with(root) {
+        if let Some(relative) = doc.parent().and_then(|dir| relative_path(dir, &picked)) {
+            return Ok(relative);
+        }
+    }
+
+    let (target, relative) = asset_target(doc, &ext)?;
+    std::fs::copy(&picked, &target).map_err(|e| {
+        IpcError::new(
+            IpcErrorKind::Io,
+            format!("could not copy the image beside the document: {e}"),
+            Some(&target),
+        )
+    })?;
+    Ok(relative)
+}
+
+/// Asks the OS for an image and answers with the path to put in the markdown,
+/// relative to the document; `None` when the user cancels.
+///
+/// The webview names the document and nothing else. Which file is chosen is the
+/// user's answer in the OS dialog, and what is written and returned is decided
+/// in [`place_image`] — see there for absolute versus relative.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn pick_image(
+    app: tauri::AppHandle,
+    doc_path: String,
+    root: tauri::State<'_, AssetRoot>,
+) -> Result<Option<String>, IpcError> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let doc = resolve_inside(&root, &PathBuf::from(doc_path))?;
+    let base = root.get().ok_or_else(|| {
+        IpcError::new(
+            IpcErrorKind::Denied,
+            "no document is open, so there is nothing to add an image to",
+            Some(&doc),
+        )
+    })?;
+
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("Images", PICK_EXTENSIONS)
+        .set_title("Insert an image")
+        .blocking_pick_file();
+    let Some(picked) = picked.and_then(|p| p.into_path().ok()) else {
+        return Ok(None);
+    };
+
+    blocking(move || place_image(&base, &doc, &picked))
+        .await
+        .map(Some)
 }
 
 /// `MD_EDITOR` as `cli::parse` read it, held so [`reveal_in_editor`] can decide
@@ -1287,6 +1422,34 @@ mod tests {
         );
     }
 
+    /// Markdown image paths are relative to the document, and the scheme serves
+    /// the vault root: the base has to carry the folder in between.
+    #[test]
+    fn a_note_in_a_vault_folder_resolves_its_images_from_that_folder() {
+        let dir = std::env::temp_dir().join(format!("marklet-base-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("my notes")).unwrap();
+        fs::write(dir.join("top.md"), "![](pic.png)\n").unwrap();
+        fs::write(dir.join("my notes/deep.md"), "![](pic.png)\n").unwrap();
+
+        let root = AssetRoot::new();
+        let vault = VaultState::default();
+        vault.open(&root, &dir).unwrap();
+        let prefix = AssetRoot::url_prefix();
+
+        let top = open_path(&root, Some(&vault), &dir.join("top.md")).unwrap();
+        assert!(top.doc.html.contains(&format!("src=\"{prefix}pic.png\"")));
+
+        let deep = open_path(&root, Some(&vault), &dir.join("my notes/deep.md")).unwrap();
+        assert!(
+            deep.doc
+                .html
+                .contains(&format!("src=\"{prefix}my%20notes/pic.png\"")),
+            "{}",
+            deep.doc.html
+        );
+    }
+
     #[test]
     fn falls_back_to_the_filename_without_an_h1() {
         let path = sandbox("plain.md", "Just a paragraph.\n");
@@ -1790,4 +1953,81 @@ fn not_in_this_edition() -> IpcError {
         "updates are part of the full edition",
         None,
     )
+}
+
+#[cfg(test)]
+mod pick_image_tests {
+    use super::*;
+    use std::fs;
+
+    /// A fresh vault-shaped folder: `notes/doc.md`, `notes/pic.png`, `shared/logo.svg`.
+    fn vault(name: &str) -> (PathBuf, PathBuf) {
+        let root = std::env::temp_dir().join(format!("marklet-pick-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(root.join("notes")).unwrap();
+        fs::create_dir_all(root.join("shared")).unwrap();
+        fs::write(root.join("notes/doc.md"), "# Doc\n").unwrap();
+        fs::write(root.join("notes/pic.png"), b"png").unwrap();
+        fs::write(root.join("shared/logo.svg"), b"<svg/>").unwrap();
+        let root = root.canonicalize().unwrap();
+        (root.clone(), root.join("notes/doc.md"))
+    }
+
+    #[test]
+    fn relative_path_walks_up_and_down_with_forward_slashes() {
+        let r = Path::new("/v/notes");
+        assert_eq!(
+            relative_path(r, Path::new("/v/notes/a.png")).as_deref(),
+            Some("a.png")
+        );
+        assert_eq!(
+            relative_path(r, Path::new("/v/notes/img/a.png")).as_deref(),
+            Some("img/a.png")
+        );
+        assert_eq!(
+            relative_path(r, Path::new("/v/shared/a.png")).as_deref(),
+            Some("../shared/a.png")
+        );
+        assert_eq!(
+            relative_path(Path::new("/v/a/b/c"), Path::new("/v/x.png")).as_deref(),
+            Some("../../../x.png")
+        );
+    }
+
+    #[test]
+    fn an_image_inside_the_open_folder_is_referenced_in_place() {
+        let (root, doc) = vault("inside");
+        let beside = place_image(&root, &doc, &root.join("notes/pic.png")).unwrap();
+        assert_eq!(beside, "pic.png");
+        let above = place_image(&root, &doc, &root.join("shared/logo.svg")).unwrap();
+        assert_eq!(above, "../shared/logo.svg");
+        assert!(!root.join("notes/assets").exists(), "nothing was copied");
+    }
+
+    #[test]
+    fn an_image_outside_the_open_folder_is_copied_beside_the_document() {
+        let (root, doc) = vault("outside");
+        let elsewhere =
+            std::env::temp_dir().join(format!("marklet-pick-elsewhere-{}", std::process::id()));
+        fs::create_dir_all(&elsewhere).unwrap();
+        let file = elsewhere.join("Holiday Photo.JPG");
+        fs::write(&file, b"jpg").unwrap();
+
+        // The root here is the document's own folder, as for a file opened alone.
+        let narrow = root.join("notes");
+        let relative = place_image(&narrow, &doc, &file).unwrap();
+        assert_eq!(relative, "assets/doc-1.jpg");
+        assert_eq!(fs::read(narrow.join(&relative)).unwrap(), b"jpg");
+        assert_eq!(
+            place_image(&narrow, &doc, &file).unwrap(),
+            "assets/doc-2.jpg"
+        );
+    }
+
+    #[test]
+    fn a_file_that_is_not_an_image_is_refused() {
+        let (root, doc) = vault("refused");
+        let err = place_image(&root, &doc, &doc).unwrap_err();
+        assert_eq!(err.kind, IpcErrorKind::Invalid);
+    }
 }

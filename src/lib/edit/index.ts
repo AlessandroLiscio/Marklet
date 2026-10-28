@@ -89,6 +89,8 @@ export interface EditWiring {
   revealInEditor?: (line: number, column: number) => Promise<void>;
   /** Writes clipboard bytes beside the document. Needs `save_pasted_image`. */
   savePastedImage?: (bytes: Uint8Array, ext: string) => Promise<string>;
+  /** Asks for an image file; resolves to its path relative to the document, `null` on cancel. Needs `pick_image`. */
+  pickImage?: () => Promise<string | null>;
   /** Called after each save, so the preview can be re-rendered. */
   onSaved?: (length: number) => void;
   /** Called when the buffer gains or loses unsaved changes. */
@@ -115,6 +117,8 @@ export interface EditController {
   setMode(mode: EditMode): Promise<void>;
   /** Applies a toolbar button to the editor's selection. A no-op outside an editing mode. */
   format(kind: FormatKind): void;
+  /** Inserts a table of `cols` columns and `rows` rows (header included). A no-op outside an editing mode. */
+  insertTable(cols: number, rows: number): void;
   /** Re-aligns the split columns after the preview was re-rendered. */
   resync(): void;
   destroy(): Promise<void>;
@@ -193,6 +197,7 @@ export function createEditController(wiring: EditWiring): EditController {
       line,
       readSource: wiring.readSource,
       ...(wiring.savePastedImage ? { savePastedImage: wiring.savePastedImage } : {}),
+      ...(wiring.pickImage ? { pickImage: wiring.pickImage } : {}),
       ...(wiring.onSaved ? { onSaved: wiring.onSaved } : {}),
       ...(wiring.onDirty ? { onDirty: wiring.onDirty } : {}),
       ...(wiring.onError ? { onError: wiring.onError } : {}),
@@ -260,6 +265,7 @@ export function createEditController(wiring: EditWiring): EditController {
     dirty: () => session?.isDirty() ?? false,
     save: () => run(async () => void (await session?.flush())),
     format: (kind) => session?.format(kind),
+    insertTable: (cols, rows) => session?.insertTable(cols, rows),
 
     handleKey(event) {
       const intent = editShortcut(event);

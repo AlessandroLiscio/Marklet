@@ -10,14 +10,54 @@
    * The buttons take no focus on press (`mousedown` is cancelled): the selection
    * the button acts on is in the editor, and a button that stole focus first
    * would make the editor forget it.
+   *
+   * The Table button does not insert anything itself: it opens a small picker,
+   * Word's grid, where the size is chosen by pointing at it. The same picker has
+   * two number fields for a size the grid is too small for, and for the keyboard.
    */
-  import type { FormatKind } from '../edit/format';
+  import { TABLE_MAX, type FormatKind } from '../edit/format';
 
   interface Props {
     onrun: (kind: FormatKind) => void;
+    /** Asked for when a table size was chosen; rows count the header. Any number: the editor holds it to the limits. */
+    ontable: (cols: number, rows: number) => void;
   }
 
-  let { onrun }: Props = $props();
+  let { onrun, ontable }: Props = $props();
+
+  /** The grid's size: the largest table a pointer can pick. */
+  const GRID = { cols: 10, rows: 8 };
+
+  let picking = $state(false);
+  /** The cell under the pointer, as a size; 0 × 0 when none. */
+  let hover = $state({ cols: 0, rows: 0 });
+  let cols = $state(3);
+  let rows = $state(3);
+  let picker: HTMLElement | undefined = $state();
+
+  function choose(c: number, r: number): void {
+    picking = false;
+    hover = { cols: 0, rows: 0 };
+    ontable(c, r);
+  }
+
+  function press(item: Item): void {
+    if (item.kind === 'table') picking = !picking;
+    else onrun(item.kind);
+  }
+
+  /** Escape closes the picker first, instead of leaving the editor. */
+  function onkey(event: KeyboardEvent): void {
+    if (picking && event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      picking = false;
+    }
+  }
+
+  function onoutside(event: MouseEvent): void {
+    if (picking && !picker?.contains(event.target as Node)) picking = false;
+  }
 
   interface Item {
     kind: FormatKind;
@@ -55,22 +95,81 @@
   ];
 </script>
 
+<svelte:window onkeydowncapture={onkey} onmousedowncapture={onoutside} />
+
 <div class="format-bar" role="toolbar" aria-label="Formatting">
   {#each GROUPS as group, g (g)}
     {#if g > 0}<span class="rule" aria-hidden="true"></span>{/if}
     {#each group as item (item.kind)}
-      <button
-        type="button"
-        title={item.label}
-        aria-label={item.label}
-        data-kind={item.kind}
-        onmousedown={(e) => e.preventDefault()}
-        onclick={() => onrun(item.kind)}
-      >
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <path d={item.d} stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-      </button>
+      {#snippet button()}
+        <button
+          type="button"
+          title={item.label}
+          aria-label={item.label}
+          aria-haspopup={item.kind === 'table' ? 'dialog' : undefined}
+          aria-expanded={item.kind === 'table' ? picking : undefined}
+          data-kind={item.kind}
+          onmousedown={(e) => e.preventDefault()}
+          onclick={() => press(item)}
+        >
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d={item.d} stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+      {/snippet}
+
+      {#if item.kind === 'table'}
+        <span class="anchor" bind:this={picker}>
+          {@render button()}
+          {#if picking}
+            <div class="picker" role="dialog" aria-label="Insert table">
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div
+                class="grid"
+                style:--cols={GRID.cols}
+                onmouseleave={() => (hover = { cols: 0, rows: 0 })}
+              >
+                {#each { length: GRID.rows } as _, r (r)}
+                  {#each { length: GRID.cols } as __, c (c)}
+                    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+                    <span
+                      class="cell"
+                      class:on={c < hover.cols && r < hover.rows}
+                      data-cols={c + 1}
+                      data-rows={r + 1}
+                      onmousedown={(e) => e.preventDefault()}
+                      onmouseenter={() => (hover = { cols: c + 1, rows: r + 1 })}
+                      onclick={() => choose(c + 1, r + 1)}
+                    ></span>
+                  {/each}
+                {/each}
+              </div>
+              <p class="size" aria-live="polite">
+                {hover.cols > 0 ? `${hover.cols} × ${hover.rows}` : 'Columns × rows'}
+              </p>
+              <form
+                novalidate
+                onsubmit={(e) => {
+                  e.preventDefault();
+                  choose(cols, rows);
+                }}
+              >
+                <label>
+                  Columns
+                  <input type="number" min="1" max={TABLE_MAX.cols} bind:value={cols} />
+                </label>
+                <label>
+                  Rows
+                  <input type="number" min="1" max={TABLE_MAX.rows} bind:value={rows} />
+                </label>
+                <button type="submit" class="insert">Insert</button>
+              </form>
+            </div>
+          {/if}
+        </span>
+      {:else}
+        {@render button()}
+      {/if}
     {/each}
   {/each}
 </div>
@@ -117,6 +216,81 @@
   button:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: -2px;
+  }
+
+  .anchor {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .picker {
+    position: absolute;
+    inset-block-end: calc(100% + var(--space-2));
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+    padding: var(--space-2);
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.14);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), 18px);
+    gap: 2px;
+  }
+
+  .cell {
+    inline-size: 18px;
+    block-size: 18px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    cursor: pointer;
+  }
+
+  .cell.on {
+    background: color-mix(in oklab, var(--accent) 35%, transparent);
+    border-color: var(--accent);
+  }
+
+  .size {
+    margin: var(--space-1) 0;
+    font-size: 0.8125rem;
+    text-align: center;
+    color: var(--fg-muted);
+  }
+
+  form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--space-2);
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+  }
+
+  label {
+    display: grid;
+    gap: 2px;
+  }
+
+  input {
+    inline-size: 3.25rem;
+    padding: 2px 4px;
+    color: var(--fg);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm, 4px);
+  }
+
+  .insert {
+    inline-size: auto;
+    padding-inline: var(--space-2);
+    color: var(--fg);
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
   }
 
   .rule {

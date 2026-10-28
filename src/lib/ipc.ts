@@ -247,6 +247,19 @@ export function savePastedImage(
 }
 
 /**
+ * Asks the OS for an image file and returns the path to put in the markdown,
+ * relative to the document, or `null` when the user cancels.
+ *
+ * **Rust makes the path.** The webview sends the document and gets back an
+ * address it can render: a path inside the open folder as it is, a file from
+ * elsewhere copied beside the document first — see `pick_image` in
+ * `src-tauri/src/ipc.rs`.
+ */
+export function pickImage(docPath: string): Promise<string | null> {
+  return invoke<string | null>('pick_image', { doc_path: docPath });
+}
+
+/**
  * Opens the document in the user's editor at a position, and answers with the
  * program that started.
  *
