@@ -139,6 +139,21 @@ pub fn percent_decode(s: &str) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
+/// The inverse of [`percent_decode`] for one path segment: everything but
+/// ASCII letters, digits and `-._~` becomes `%XX`, so a name with a space, `#`,
+/// `?` or `%` in it survives being part of a URL.
+pub fn percent_encode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~') {
+            out.push(char::from(b));
+        } else {
+            out.push_str(&format!("%{b:02X}"));
+        }
+    }
+    out
+}
+
 fn hex_val(b: u8) -> Option<u8> {
     match b {
         b'0'..=b'9' => Some(b - b'0'),
@@ -171,6 +186,15 @@ mod tests {
     #[test]
     fn decodes_escaped_spaces() {
         assert_eq!(percent_decode("my%20file.png"), "my file.png");
+    }
+
+    #[test]
+    fn encodes_what_a_url_reads_specially_and_round_trips() {
+        assert_eq!(percent_encode("my notes"), "my%20notes");
+        assert_eq!(percent_encode("C#?100%.png"), "C%23%3F100%25.png");
+        for name in ["plain-1_a.b~c", "a b#c?d%e", "naïve ☃"] {
+            assert_eq!(percent_decode(&percent_encode(name)), name);
+        }
     }
 
     #[test]

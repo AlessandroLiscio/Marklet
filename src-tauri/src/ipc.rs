@@ -131,7 +131,7 @@ pub fn open_path(
     let doc = render::render(
         &bytes,
         RenderOpts {
-            asset_base: Some(AssetRoot::url_prefix().into()),
+            asset_base: Some(asset_base(root, &resolved).into()),
             wiki_resolver: resolver
                 .as_ref()
                 .map(|r| r as &dyn Fn(&str) -> Option<String>),
@@ -144,6 +144,29 @@ pub fn open_path(
         path: resolved.display().to_string(),
         doc,
     })
+}
+
+/// What the renderer puts in front of a relative image path: the asset scheme
+/// and the document's own directory under the served root.
+///
+/// Markdown paths are relative to the document, but the scheme serves the root,
+/// which is the vault's when one is open. Without the directory, `pic.png` in
+/// `notes/doc.md` would ask for `<vault>/pic.png`, a different file or none.
+/// Beside the document (no vault) the directory is empty and the base is the
+/// bare scheme.
+fn asset_base(root: &AssetRoot, doc: &Path) -> String {
+    let mut base = AssetRoot::url_prefix().to_string();
+    let under_root = doc
+        .parent()
+        .zip(root.get())
+        .and_then(|(dir, root)| dir.strip_prefix(root).ok().map(Path::to_path_buf));
+    for part in under_root.iter().flat_map(|dir| dir.components()) {
+        if let Some(name) = part.as_os_str().to_str() {
+            base.push_str(&crate::webpath::percent_encode(name));
+            base.push('/');
+        }
+    }
+    base
 }
 
 /// The window title: the document's own H1 when it has one, else the filename.
@@ -1396,6 +1419,34 @@ mod tests {
         assert_eq!(
             open_path(&AssetRoot::new(), None, &alone).unwrap().rel,
             None
+        );
+    }
+
+    /// Markdown image paths are relative to the document, and the scheme serves
+    /// the vault root: the base has to carry the folder in between.
+    #[test]
+    fn a_note_in_a_vault_folder_resolves_its_images_from_that_folder() {
+        let dir = std::env::temp_dir().join(format!("marklet-base-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("my notes")).unwrap();
+        fs::write(dir.join("top.md"), "![](pic.png)\n").unwrap();
+        fs::write(dir.join("my notes/deep.md"), "![](pic.png)\n").unwrap();
+
+        let root = AssetRoot::new();
+        let vault = VaultState::default();
+        vault.open(&root, &dir).unwrap();
+        let prefix = AssetRoot::url_prefix();
+
+        let top = open_path(&root, Some(&vault), &dir.join("top.md")).unwrap();
+        assert!(top.doc.html.contains(&format!("src=\"{prefix}pic.png\"")));
+
+        let deep = open_path(&root, Some(&vault), &dir.join("my notes/deep.md")).unwrap();
+        assert!(
+            deep.doc
+                .html
+                .contains(&format!("src=\"{prefix}my%20notes/pic.png\"")),
+            "{}",
+            deep.doc.html
         );
     }
 

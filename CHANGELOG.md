@@ -24,6 +24,8 @@ lightweight care about that number, and publishing it keeps us honest.
 
 - **Heading, list, task and quote buttons work on an empty line.** With the cursor on a line with no text, the toolbar buttons did nothing; they now write the marker (`# `, `- `, `1. `, `- [ ] `, `> `) and leave the cursor after it, the way bold and italic already wrote their pair. Pressing the same button again takes the marker off. (#129)
 
+- **Images in a note inside a vault folder resolve from that note's folder.** A relative image path such as `pic.png` in `notes/doc.md` was looked up from the vault root instead of next to the note, so it showed a different image or none. Pasted and picked images (which are written beside the note) now show in notes inside folders too (#129).
+
 - **Files inside WSL open again from the Windows app, including symlinks.** Opening `\\wsl.localhost\Ubuntu\home\you\CLAUDE.md` failed with "path not found" when that file is a symlink with an absolute Linux target, which Windows cannot follow. Such a path is now resolved by the distro itself (`wsl.exe realpath`), and the real file opens. A symlinked folder passed on the command line opens as a folder.
 
 ### Changed
