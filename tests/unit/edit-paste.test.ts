@@ -35,3 +35,10 @@ describe('pasted image naming', () => {
     expect(pickImage([{ type: 'text/html' }])).toBeNull();
   });
 });
+
+describe('imageMarkdown with characters a URL reads specially', () => {
+  it('escapes #, ? and % so the path survives becoming a URL', () => {
+    expect(imageMarkdown('C# notes?.png')).toBe('![](<C%23 notes%3F.png>)');
+    expect(imageMarkdown('100%.png')).toBe('![](100%25.png)');
+  });
+});

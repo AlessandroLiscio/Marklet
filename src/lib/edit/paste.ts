@@ -38,7 +38,10 @@ export const IMAGE_TYPES: Record<string, string> = {
  * unreadable in the source, which is the file the user is actually editing.
  */
 export function imageMarkdown(relativePath: string, alt = ''): string {
-  const destination = /[\s()]/.test(relativePath) ? `<${relativePath}>` : relativePath;
+  // `#`, `?` and `%` would be read as a fragment, a query and an escape when
+  // the destination becomes a URL; the asset scheme percent-decodes them back.
+  const encoded = relativePath.replace(/[%#?]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  const destination = /[\s()]/.test(encoded) ? `<${encoded}>` : encoded;
   return `![${alt}](${destination})`;
 }
 

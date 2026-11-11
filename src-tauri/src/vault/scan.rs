@@ -90,7 +90,7 @@ pub fn is_note(path: &Path) -> bool {
 
 /// Canonicalizes a vault root, or explains why it is not one.
 pub fn canonical_root(root: &Path) -> Result<PathBuf, IpcError> {
-    let resolved = root.canonicalize().map_err(|e| {
+    let resolved = crate::webpath::canonicalize(root).map_err(|e| {
         err(
             IpcErrorKind::NotFound,
             format!("could not open that folder: {e}"),
@@ -131,7 +131,7 @@ pub fn resolve_in(root: &Path, rel: &str) -> Result<PathBuf, IpcError> {
         ));
     }
 
-    let resolved = root.join(candidate).canonicalize().map_err(|e| {
+    let resolved = crate::webpath::canonicalize(&root.join(candidate)).map_err(|e| {
         err(
             IpcErrorKind::NotFound,
             format!("could not open that note: {e}"),

@@ -75,6 +75,7 @@
   .welcome,
   .notice,
   .copy-code,
+  .format-bar,
   #editor {
     display: none !important;
   }

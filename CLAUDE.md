@@ -90,11 +90,13 @@ Exception to §AI attribution in ~/GitHub/CLAUDE.md: never add an AI attribution
 npm test                   # vitest
 cargo test                 # render fixtures and Rust units
 cargo clippy -- -D warnings
+./scripts/selftest-windows.sh --run <ci-run-id>   # drive the real Windows build from WSL
 ```
 
 Windows binaries come from GitHub Actions `windows-latest`, not from cross-compilation.
 Tauri's own documentation calls Linux to Windows cross-compilation a last resort. Push a
 branch to get an `.exe`.
+`scripts/selftest-windows.sh` checks that `.exe` from WSL before anyone installs it: it unpacks the CI installer with 7-Zip (never installs, so the user's Marklet is untouched), launches it with WebView2's debug port and drives it with Playwright from Windows Python. It needs 7-Zip on Windows, refuses to run while a Marklet is open, and cannot drive native file dialogs.
 
 ## Three traps that cost an afternoon each
 

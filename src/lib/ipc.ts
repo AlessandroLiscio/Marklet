@@ -247,6 +247,19 @@ export function savePastedImage(
 }
 
 /**
+ * Asks the OS for an image file and returns the path to put in the markdown,
+ * relative to the document, or `null` when the user cancels.
+ *
+ * **Rust makes the path.** The webview sends the document and gets back an
+ * address it can render: a path inside the open folder as it is, a file from
+ * elsewhere copied beside the document first — see `pick_image` in
+ * `src-tauri/src/ipc.rs`.
+ */
+export function pickImage(docPath: string): Promise<string | null> {
+  return invoke<string | null>('pick_image', { doc_path: docPath });
+}
+
+/**
  * Opens the document in the user's editor at a position, and answers with the
  * program that started.
  *
@@ -371,6 +384,24 @@ export function pickFolder(): Promise<string | null> {
  */
 export function pickSave(name: string, extension: string): Promise<string | null> {
   return invoke<string | null>('pick_save', { name, extension });
+}
+
+/**
+ * Asks the OS where a new note should live and creates it, empty. `null` when
+ * the user cancels. The path that comes back is absolute and ready for
+ * `openNote`; it is for the start screen, where no folder is open yet.
+ */
+export function newNoteDialog(): Promise<string | null> {
+  return invoke<string | null>('new_note_dialog');
+}
+
+/**
+ * Creates an empty note named `name` in `parent` (vault-relative, `''` for the
+ * root) and answers with the explorer row for it. Rejects with an `IpcError`
+ * when the name is unusable or already taken; nothing is overwritten.
+ */
+export function createNote(parent: string, name: string): Promise<Entry> {
+  return invoke<Entry>('create_note', { parent, name });
 }
 
 /** Mirrors `vault::VaultInfo`. */

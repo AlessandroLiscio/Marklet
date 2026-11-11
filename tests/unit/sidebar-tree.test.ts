@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ancestorsOf,
   displayName,
+  insertEntry,
   isNote,
   OVERSCAN,
   ROW_HEIGHT,
@@ -239,5 +240,43 @@ describe('openable', () => {
       ['img.png', false],
       ['dir', false],
     ]);
+  });
+});
+
+describe('insertEntry', () => {
+  it('puts a new root note among the root files, ignoring case', () => {
+    const next = insertEntry(vault, entry('Zed.md'));
+    expect(paths(next)).toEqual([...paths(vault), 'Zed.md']);
+    const mid = insertEntry(vault, entry('jab.md'));
+    // Folders come first, so a file lands after every folder subtree but
+    // before a later-sorting file; `index.md` < `jab.md`.
+    expect(paths(mid).indexOf('jab.md')).toBeGreaterThan(paths(mid).indexOf('index.md'));
+  });
+
+  it('puts a new note inside its folder after the subfolders', () => {
+    const next = insertEntry(vault, entry('journal/00.md'));
+    expect(paths(next)).toEqual([
+      'index.md',
+      'journal',
+      'journal/2026',
+      'journal/2026/01.md',
+      'journal/2026/02.md',
+      'journal/00.md',
+      'projects',
+      'projects/marklet.md',
+    ]);
+  });
+
+  it('keeps siblings sorted', () => {
+    const next = insertEntry(vault, entry('journal/2026/015.md'));
+    expect(paths(next).filter((p) => p.startsWith('journal/2026/'))).toEqual([
+      'journal/2026/01.md',
+      'journal/2026/015.md',
+      'journal/2026/02.md',
+    ]);
+  });
+
+  it('leaves the list alone when the parent is not in it', () => {
+    expect(paths(insertEntry(vault, entry('missing/x.md')))).toEqual(paths(vault));
   });
 });

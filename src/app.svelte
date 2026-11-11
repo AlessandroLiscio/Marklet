@@ -11,6 +11,7 @@
   import { onDestroy, onMount } from 'svelte';
 
   import ActivityBar, { type PanelId } from './lib/chrome/activity-bar.svelte';
+  import FormatBar from './lib/chrome/format-bar.svelte';
   import TabBar from './lib/chrome/tabbar.svelte';
   import {
     currentDocument,
@@ -43,12 +44,14 @@
     openDocument,
     openExternal,
     openNote,
+    newNoteDialog,
     pickFile,
     pickFolder,
     pickSave,
     readSource,
     revealInEditor,
     savePastedImage,
+    pickImage,
     spliceRange,
     type OpenedDocument,
   } from './lib/ipc';
@@ -173,6 +176,11 @@
   interface OpenOptions {
     /** A source line to reveal once it is on screen. */
     line?: number;
+    /**
+     * Open straight into the split editor. For a note that was just created:
+     * it is empty, and the reader came to write, not to read.
+     */
+    split?: boolean;
   }
 
   /**
@@ -199,6 +207,7 @@
 
     await show(opened);
     revealAfterPaint(line);
+    if (options.split) await edit?.setMode('split');
   }
 
   /** Shows the tab at `index`, remembering where the reader was in this one. */
@@ -587,6 +596,7 @@
 
     await show(opened);
     revealAfterPaint(line);
+    if (options.split) await edit?.setMode('split');
   }
 
   /**
@@ -809,6 +819,17 @@
     }
   }
 
+  /** Nothing was opened: ask the OS where a new note goes, create it, open it. */
+  async function newFromDialog(): Promise<void> {
+    try {
+      const made = await newNoteDialog();
+      if (made === null) return; // cancelled
+      await openInTab(made, { split: true });
+    } catch (error) {
+      say(reason(error), true);
+    }
+  }
+
   /**
    * The tab shortcuts, checked before the editor sees the keystroke.
    *
@@ -875,6 +896,7 @@
           say(`Opened in ${await revealInEditor(doc?.path ?? '', line, column)}`);
         },
         savePastedImage: (bytes, ext) => savePastedImage(doc?.path ?? '', bytes, ext),
+        pickImage: () => pickImage(doc?.path ?? ''),
         // The preview is re-rendered from the file the splice just wrote.
         //
         // Split mode is two views of one document, and the right-hand one was
@@ -1009,6 +1031,9 @@
             <button type="button" class="secondary" onclick={() => void openFromDialog('file')}>
               Open a file…
             </button>
+            <button type="button" class="secondary" onclick={() => void newFromDialog()}>
+              New file…
+            </button>
           </div>
         {/if}
       {:else}
@@ -1125,6 +1150,10 @@
   </div>
 {/if}
 
+{#if mode !== 'read'}
+  <FormatBar onrun={(kind) => edit?.format(kind)} ontable={(cols, rows) => edit?.insertTable(cols, rows)} />
+{/if}
+
 {#if mode === 'split'}
   <!-- Drag to re-balance the two columns; double-click, Home or Enter to put
        it back in the middle. A `separator` that takes focus is the ARIA role
@@ -1168,6 +1197,9 @@
       <button type="button" onclick={() => void openFromDialog('file')}>Open file…</button>
       <button type="button" class="secondary" onclick={() => void openFromDialog('folder')}>
         Open folder…
+      </button>
+      <button type="button" class="secondary" onclick={() => void newFromDialog()}>
+        New file…
       </button>
     </div>
   </div>

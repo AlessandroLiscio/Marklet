@@ -81,7 +81,10 @@ pub fn run(job: cli::WindowJob, started: Instant) {
     // verb that phase P6 registers passes exactly this, so without it the
     // "Open folder as Vault" context-menu entry would launch the app and
     // immediately show an error.
-    let launch_is_vault = job.file.as_deref().is_some_and(|p| p.is_dir());
+    let launch_is_vault = job
+        .file
+        .as_deref()
+        .is_some_and(|p| webpath::canonicalize(p).is_ok_and(|c| c.is_dir()));
     let vault_path = if launch_is_vault {
         job.file
             .as_deref()
@@ -176,6 +179,7 @@ pub fn run(job: cli::WindowJob, started: Instant) {
             ipc::splice_range,
             ipc::read_source,
             ipc::save_pasted_image,
+            ipc::pick_image,
             ipc::reveal_in_editor,
             ipc::export_pdf,
             ipc::export_html,
@@ -185,6 +189,8 @@ pub fn run(job: cli::WindowJob, started: Instant) {
             ipc::pick_file,
             ipc::pick_folder,
             ipc::pick_save,
+            ipc::create_note,
+            ipc::new_note_dialog,
             ipc::check_update,
             ipc::install_update,
         ])
@@ -286,7 +292,9 @@ fn boot_error_script(err: &ipc::IpcError) -> String {
 fn forwarded_open(cwd: &str, argv: &[String]) -> Option<(&'static str, String)> {
     let arg = argv.iter().skip(1).find(|a| !a.starts_with('-'))?;
     let path = std::path::Path::new(cwd).join(arg);
-    let event = if path.is_dir() {
+    // Resolved first: a symlinked folder inside WSL reports `false` to a plain
+    // `is_dir` on Windows, and would open as a file.
+    let event = if webpath::canonicalize(&path).is_ok_and(|c| c.is_dir()) {
         "open-folder"
     } else {
         "open-file"

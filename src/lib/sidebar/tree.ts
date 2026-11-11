@@ -139,6 +139,35 @@ export function spliceChildren(
 }
 
 /**
+ * Inserts one new entry where a fresh listing of its folder would put it:
+ * inside its parent's subtree, folders first and names compared ignoring case,
+ * the order `vault::scan::list_dir` sorts in. Cheaper than re-listing, and it
+ * leaves every other folder's expanded rows alone.
+ */
+export function insertEntry(entries: readonly Entry[], entry: Entry): Entry[] {
+  const slash = entry.path.lastIndexOf('/');
+  const parent = slash === -1 ? '' : entry.path.slice(0, slash);
+  const start = parent === '' ? 0 : entries.findIndex((e) => e.path === parent) + 1;
+  if (parent !== '' && start === 0) return [...entries];
+
+  const prefix = parent === '' ? '' : `${parent}/`;
+  const key = entry.name.toLowerCase();
+  let at = start;
+  for (let i = start; i < entries.length; i++) {
+    const e = entries[i]!;
+    if (!e.path.startsWith(prefix)) break;
+    at = i + 1;
+    if (e.depth !== entry.depth) continue;
+    const before = e.dir !== entry.dir ? e.dir : e.name.toLowerCase() < key;
+    if (!before) {
+      at = i;
+      break;
+    }
+  }
+  return [...entries.slice(0, at), entry, ...entries.slice(at)];
+}
+
+/**
  * Whether the entry at `i` has children.
  *
  * Depth-first order means a folder's children, if any, are the very next
