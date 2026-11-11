@@ -56,7 +56,7 @@
     type OpenedDocument,
   } from './lib/ipc';
   import { addCopyButtons, onCopyClick } from './lib/copy-code';
-  import { toggleTask } from './lib/tasks';
+  import { taskBoxOf, toggleTask } from './lib/tasks';
   import { utf8Length } from './lib/edit/splice';
 
   let doc = $state<OpenedDocument | null>(currentDocument());
@@ -314,7 +314,7 @@
    */
   async function toggleTaskAt(event: MouseEvent): Promise<boolean> {
     const item = (event.target as HTMLElement | null)?.closest<HTMLElement>('li');
-    const box = item?.querySelector<HTMLInputElement>(':scope > input.task');
+    const box = item ? taskBoxOf(item) : null;
     if (!item || !box || !doc || mode !== 'read') return false;
 
     const r = box.getBoundingClientRect();

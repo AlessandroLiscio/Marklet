@@ -14,6 +14,17 @@ export interface TaskToggle {
   replacement: string;
 }
 
+/**
+ * The checkbox that belongs to the `<li>` itself, not to a nested item.
+ *
+ * A tight list puts the `<input>` directly under the `<li>`; a loose one (items
+ * separated by a blank line) wraps the item's first line in a `<p>`, which
+ * carries the input instead.
+ */
+export function taskBoxOf(item: Element): HTMLInputElement | null {
+  return item.querySelector<HTMLInputElement>(':scope > input.task, :scope > p > input.task');
+}
+
 /** A list marker, then the box: `- [ ]`, `* [x]`, `1. [X]`, any indent. */
 const TASK = /^(\s*(?:[-*+]|\d{1,9}[.)])\s+)\[([ xX])\]/;
 

@@ -183,6 +183,31 @@ mod tests {
         render(md.as_bytes(), RenderOpts::default()).html
     }
 
+    /// A loose list (blank line between items) puts each box inside the item's
+    /// `<p>`; `taskBoxOf` in `src/lib/tasks.ts` depends on that shape, and every
+    /// `<li>` must carry its own source line whichever section it sits under.
+    #[test]
+    fn loose_task_items_keep_their_box_in_the_paragraph_and_their_own_line() {
+        let md = "## A
+
+- [ ] one
+
+## B
+
+- [ ] two
+
+- [x] three
+";
+        let html = html_of(md);
+        for line in [7, 9] {
+            let want = format!(
+                "<li data-l=\"{line}\">
+<p data-l=\"{line}\"><input class=\"task\""
+            );
+            assert!(html.contains(&want), "line {line}: {html}");
+        }
+    }
+
     #[test]
     fn renders_a_gfm_table() {
         let doc = render(b"| a | b |\n|---|---|\n| 1 | 2 |\n", RenderOpts::default());
