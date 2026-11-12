@@ -10,6 +10,14 @@ lightweight care about that number, and publishing it keeps us honest.
 
 ## [Unreleased]
 
+## [0.1.6] — 2026-11-12
+
+A fix for task lists whose items are separated by blank lines. The workflow actions behind the release build are updated too.
+
+### Fixed
+
+- **Checking a task box now works in every list.** In a list whose items are separated by blank lines, clicking any task box toggles that box, not only the first one (#80, #137).
+
 ## [0.1.5] — 2026-10-28
 
 The formatting toolbar and its follow-ups: pick a table's size, markers on empty lines, an image chosen from a file, new files from the start screen and the explorer, and images that resolve correctly in vault folders. Full installer 4 196 784 B (+369 054 B against 0.1.4), lite 1 718 319 B (+22 142 B), measured on the CI build of the last change; the cold-start gate runs on the release build.
