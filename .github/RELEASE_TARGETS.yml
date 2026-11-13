@@ -22,7 +22,7 @@ version_files:
 changelog: CHANGELOG.md
 
 changelog_style: >
-  Plain Keep a Changelog: `### Added`, `### Changed`, `### Fixed`, `### Removed`.
+  Plain Keep a Changelog: `### Added`, `### Changed`, `### Fixed`, `### Removed`, plus `### Breaking` in any release that breaks users.
   Entries say what a user can now do, not which files changed. Every released
   section also carries the measured installer size and cold-start delta against
   the previous release — users of a tool that calls itself lightweight care
