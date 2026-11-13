@@ -7,7 +7,7 @@ description: How a Marklet version is cut — semver policy, the tag-to-artifact
 
 ## Versioning
 
-Semver, with a pre-production rule: while Marklet is pre-production, every release bumps the patch, features and breaking changes included. A minor or major bump happens only on Alessandro's word. **The release is the tag, not a version file.** The tag is what a consumer resolves; everything before it is bookkeeping that has to be correct first.
+Semver. Marklet is below 1.0.0 (0.y.z), so a breaking change also bumps the minor and is listed under `### Breaking`, and the major stays 0. Commit type decides the bump: `feat` minor, `fix` patch, a `!` or `BREAKING CHANGE` also minor, internal changes with no user-visible effect patch. 1.0.0 is a deliberate release: the agent proposes it with the reason and Alessandro (owner) confirms; it is the only version decision that waits for his word. **The release is the tag, not a version file.** The tag is what a consumer resolves; everything before it is bookkeeping that has to be correct first.
 
 CURRENT comes from the newest tag, never from a version file:
 
