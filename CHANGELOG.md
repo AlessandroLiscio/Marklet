@@ -2,7 +2,7 @@
 
 All notable changes to Marklet are recorded here, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html), with one pre-production exception: every release bumps the patch, and a release that breaks users says so under `### Breaking`.
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html), with one pre-production exception: every release bumps the patch unless Alessandro says otherwise, and a release that breaks users says so under `### Breaking`.
 
 > Pre-production: every release bumps the patch; breaking changes are listed under Breaking.
 
