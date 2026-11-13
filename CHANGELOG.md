@@ -1,8 +1,8 @@
 # Changelog
 
 All notable changes to Marklet are recorded here, following
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html), Marklet follows Semantic Versioning. Below 1.0.0 a new capability bumps the minor, a fix bumps the patch, and a breaking change also bumps the minor and is listed under `### Breaking`.
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Below 1.0.0 a new capability bumps the minor, a fix bumps the patch, and a breaking change also bumps the minor and is listed under `### Breaking`.
 
 > Pre-1.0: the public surface can still change; every breaking change is listed under Breaking.
 
