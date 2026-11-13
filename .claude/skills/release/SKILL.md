@@ -7,8 +7,7 @@ description: How a Marklet version is cut — semver policy, the tag-to-artifact
 
 ## Versioning
 
-Semver. **The release is the tag, not a version file.** The tag is what a consumer resolves;
-everything before it is bookkeeping that has to be correct first.
+Semver, with a pre-production rule: while Marklet is pre-production, every release bumps the patch, features and breaking changes included. A minor or major bump happens only on Alessandro's word. **The release is the tag, not a version file.** The tag is what a consumer resolves; everything before it is bookkeeping that has to be correct first.
 
 CURRENT comes from the newest tag, never from a version file:
 
@@ -112,7 +111,8 @@ honest.
 1. Run `version-sync-check`. Resolve anything it reports before writing.
 2. `CHANGELOG.md` updated: `## [Unreleased]` becomes `## [X.Y.Z] — YYYY-MM-DD`, em-dash and
    ISO date, with a fresh empty `## [Unreleased]` left above it. Match the existing category
-   style; never impose one.
+   style; never impose one, except that a release that breaks users carries a `### Breaking`
+   section.
 3. Version bumped in every file `.github/RELEASE_TARGETS.yml` declares, and nothing outside
    it. All of them or none — a repository whose version files disagree after a release is
    worse than one that was never released.
