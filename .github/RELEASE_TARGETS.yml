@@ -55,6 +55,6 @@ never_touch:
 # offline installers plus the Linux packages, runs the size and cold-start
 # gates, and opens a DRAFT GitHub release with SHA256SUMS.
 #
-# Draft, not published: step 6 of .claude/skills/release/SKILL.md is a manual
+# Draft, not published: step 8 of .claude/skills/release/SKILL.md is a manual
 # install-and-uninstall on real Windows, which CI cannot do.
 publishes_on_tag_push: true

@@ -1,10 +1,10 @@
 # Changelog
 
 All notable changes to Marklet are recorded here, following
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html), with one pre-production exception: every release bumps the patch unless Alessandro says otherwise, and a release that breaks users says so under `### Breaking`.
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Below 1.0.0 a new capability bumps the minor, a fix bumps the patch, and a breaking change also bumps the minor and is listed under `### Breaking`.
 
-> Pre-production: every release bumps the patch; breaking changes are listed under Breaking.
+> Pre-1.0: the public surface can still change; every breaking change is listed under Breaking.
 
 Every entry says what a user can now do, not which files changed. Size and cold-start deltas
 against the previous release belong in the entry too — users of a tool that calls itself
