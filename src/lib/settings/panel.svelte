@@ -394,13 +394,9 @@
 </div>
 
 <style>
-  /* Clear of the status line in the very corner, which is why this is not the
-     `--space-4` every other floating thing uses. The status line is one
-     `--text-small` line plus `--space-1` top and bottom plus its border, so
-     `--space-8` alone left it touching at normal density. */
   .settings {
     position: fixed;
-    inset-block-end: calc(var(--space-8) + var(--space-3));
+    inset-block-end: var(--space-4);
     inset-inline-end: var(--space-4);
     font-family: var(--font-ui);
     z-index: 30;

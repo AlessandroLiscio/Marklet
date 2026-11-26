@@ -1212,22 +1212,6 @@
   <p class="notice" class:bad={notice.bad} role="status" aria-live="polite">{notice.text}</p>
 {/if}
 
-{#if doc}
-  <footer class="status" aria-label="Document status">
-    {#if mode !== 'read'}
-      <span class="status-item status-mode">{mode === 'live' ? 'live edit' : 'split'}</span>
-    {/if}
-    <span class="status-item">{doc.outline.length} headings</span>
-    <span class="status-item">{doc.line_map.length} blocks</span>
-    {#if doc.encoding !== 'utf8'}
-      <!-- Surfaced rather than silently repaired: a reader seeing mojibake
-           deserves to know the file is not UTF-8, and `unknown` means the file
-           contradicted its own byte-order mark. -->
-      <span class="status-item status-warn">{doc.encoding}</span>
-    {/if}
-  </footer>
-{/if}
-
 <style>
   /* The chrome is a fixed layer on the left edge, and the document is inset
      by exactly its width. Before this the sidebar was a plain flex column in
@@ -1314,7 +1298,8 @@
     position: fixed;
     /* Under the tab strip when there is one, so the two never overlap. */
     inset-block-start: calc(var(--space-3) + var(--tabbar-height, 0px));
-    inset-inline-end: var(--space-3);
+    /* Live edit moves it left, clear of the editor's scrollbar. */
+    inset-inline-end: var(--edit-edge, var(--space-3));
     display: flex;
     /* A column, not a row: the buttons stay narrow over the text instead of
        claiming a strip across it, and a third one costs height, not width. */
@@ -1389,33 +1374,6 @@
   .divider:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: -2px;
-  }
-
-  .status {
-    position: fixed;
-    inset-block-end: 0;
-    inset-inline-end: 0;
-    display: flex;
-    gap: var(--space-3);
-    padding: var(--space-1) var(--space-3);
-    font-family: var(--font-ui);
-    font-size: var(--text-small);
-    color: var(--fg-muted);
-    background: color-mix(in oklab, var(--bg) 88%, transparent);
-    border-start-start-radius: var(--radius-md);
-    border-block-start: 1px solid var(--border);
-    border-inline-start: 1px solid var(--border);
-    backdrop-filter: blur(6px);
-    pointer-events: none;
-  }
-
-  .status-warn {
-    color: var(--alert-warning);
-  }
-
-  .status-mode {
-    color: var(--accent);
-    font-weight: 600;
   }
 
   .notice {

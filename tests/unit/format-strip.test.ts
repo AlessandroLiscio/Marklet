@@ -25,13 +25,21 @@ describe('the formatting toolbar strip', () => {
   const bar = rule(read('lib/chrome/format-bar.svelte').split('<style>')[1]!, '.format-bar');
 
   it('sits on the right edge, not over the bottom of the text', () => {
-    expect(bar).toContain('inset-inline-end: var(--space-2);');
+    expect(bar).toContain('inset-inline-end: var(--edit-edge, var(--space-2));');
     expect(bar).not.toContain('inset-inline-start');
     expect(bar).not.toContain('inset-block-end');
   });
 
   it('is kept free by the live editor', () => {
-    expect(rule(editor, 'body.marklet-mode-live #editor')).toContain('inset-inline-end: var(--format-strip);');
+    expect(rule(editor, 'body.marklet-mode-live .marklet-editor .cm-scroller')).toContain(
+      'padding-inline-end: var(--format-strip);',
+    );
+  });
+
+  it('leaves the live editor its scrollbar, and the floating buttons clear of it', () => {
+    expect(editor).not.toMatch(/marklet-mode-live[^{}]*\.cm-scroller(::-webkit-scrollbar)?\s*[,{][^}]*(scrollbar-width: none|display: none)/);
+    expect(rule(editor, 'body.marklet-mode-live')).toContain('--edit-edge: calc(var(--space-2) + 15px);');
+    expect(read('app.svelte')).toContain('inset-inline-end: var(--edit-edge, var(--space-3));');
   });
 
   it('is kept free by the split preview', () => {
