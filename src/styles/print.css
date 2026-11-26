@@ -110,7 +110,7 @@
      from `--split-ratio`, which the zeroing above does not reach. */
   body,
   body.marklet-mode-split {
-    padding-inline-start: 0 !important;
+    padding-inline: 0 !important;
     padding-block-start: 0 !important;
   }
 
