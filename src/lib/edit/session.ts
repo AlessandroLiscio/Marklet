@@ -115,11 +115,12 @@ export interface Session {
 export async function createSession(options: SessionOptions): Promise<Session> {
   const cm = await loadCodeMirror();
 
-  const { EditorState, Compartment } = cm.state;
+  const { EditorState, Compartment, Prec } = cm.state;
   const { EditorView, keymap, drawSelection, highlightSpecialChars, rectangularSelection } = cm.view;
   const { defaultKeymap, history, historyKeymap, indentWithTab } = cm.commands;
   const { syntaxHighlighting, defaultHighlightStyle, indentOnInput, bracketMatching } = cm.language;
-  const { markdown, markdownLanguage } = cm.markdown;
+  const { markdown, markdownLanguage, insertNewlineContinueMarkupCommand, deleteMarkupBackward } =
+    cm.markdown;
 
   const decorations = new Compartment();
 
@@ -275,7 +276,15 @@ export async function createSession(options: SessionOptions): Promise<Session> {
     // names. No `codeLanguages`, deliberately: nested grammars for fenced code
     // would pull a second set of parsers into the chunk to syntax-highlight
     // text the reader already sees highlighted in the preview.
-    markdown({ base: markdownLanguage }),
+    markdown({ base: markdownLanguage, addKeymap: false }),
+    // The stock Enter turns a two-item list loose when pressed on its empty
+    // second item, and one blank line spaces out the whole rendered list.
+    Prec.high(
+      keymap.of([
+        { key: 'Enter', run: insertNewlineContinueMarkupCommand({ nonTightLists: false }) },
+        { key: 'Backspace', run: deleteMarkupBackward },
+      ]),
+    ),
     syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
     EditorView.lineWrapping,
     EditorState.allowMultipleSelections.of(true),
