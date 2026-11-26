@@ -37,6 +37,35 @@
   z-index: 5;
 }
 
+/* The formatting toolbar (`chrome/format-bar.svelte`) is a strip on the right
+   edge, and neither the editor nor the split preview runs under it. A short
+   window folds the strip into more columns so every button stays on screen.
+   The 30px is a 28px button plus its 2px gap. */
+body.marklet-mode-live,
+body.marklet-mode-split {
+  --format-cols: 1;
+  --format-strip: calc(var(--format-cols) * 30px + 2 * var(--space-1) + var(--space-2));
+}
+
+@media (max-height: 720px) {
+  body.marklet-mode-live,
+  body.marklet-mode-split {
+    --format-cols: 2;
+  }
+}
+
+@media (max-height: 520px) {
+  body.marklet-mode-live,
+  body.marklet-mode-split {
+    --format-cols: 3;
+  }
+}
+
+body.marklet-mode-live #editor {
+  inline-size: auto;
+  inset-inline-end: var(--format-strip);
+}
+
 /* Reading column moves aside rather than being re-parented: `#doc` keeps its
    identity, its anchors and its window scrolling.
 
@@ -51,6 +80,7 @@ body.marklet-mode-split {
   );
 
   padding-inline-start: var(--split-left);
+  padding-inline-end: var(--format-strip);
   /* No easing while dragging: `content.css` transitions this property for the
      panel opening, and a 200ms ease on every pointer move reads as lag. */
   transition: none;
