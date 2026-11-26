@@ -97,7 +97,7 @@
 
 <svelte:window onkeydowncapture={onkey} onmousedowncapture={onoutside} />
 
-<div class="format-bar" role="toolbar" aria-label="Formatting">
+<div class="format-bar" role="toolbar" aria-label="Formatting" aria-orientation="vertical">
   {#each GROUPS as group, g (g)}
     {#if g > 0}<span class="rule" aria-hidden="true"></span>{/if}
     {#each group as item (item.kind)}
@@ -175,18 +175,20 @@
 </div>
 
 <style>
+  /* Centred on the right edge, between the document actions above it and the
+     status line below. `edit/editor.css` keeps the text clear of it and sets
+     `--format-cols`. */
   .format-bar {
     position: fixed;
-    inset-block-end: var(--space-3);
-    inset-inline-start: 50%;
-    transform: translateX(-50%);
+    inset-block: calc(var(--tabbar-height, 0px) + 7.5rem) 2.5rem;
+    inset-inline-end: var(--space-2);
+    block-size: fit-content;
+    margin-block: auto;
     z-index: 30;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
+    display: grid;
+    grid-template-columns: repeat(var(--format-cols, 1), 28px);
+    justify-items: center;
     gap: 2px;
-    max-inline-size: calc(100vw - var(--activity-bar-size) - var(--space-4));
     padding: var(--space-1);
     background: color-mix(in oklab, var(--bg) 92%, transparent);
     border: 1px solid var(--border);
@@ -218,16 +220,18 @@
     outline-offset: -2px;
   }
 
+  /* Not positioned, so the picker hangs off the whole toolbar and covers none
+     of its buttons. */
   .anchor {
-    position: relative;
     display: inline-flex;
   }
 
   .picker {
     position: absolute;
-    inset-block-end: calc(100% + var(--space-2));
-    inset-inline-start: 50%;
-    transform: translateX(-50%);
+    inset-block-end: 0;
+    inset-inline-end: calc(100% + var(--space-2));
+    /* A grid item's popup would otherwise shrink to the button's own width. */
+    inline-size: max-content;
     padding: var(--space-2);
     color: var(--fg);
     background: var(--bg);
@@ -294,9 +298,10 @@
   }
 
   .rule {
-    inline-size: 1px;
-    block-size: 18px;
-    margin-inline: var(--space-1);
+    grid-column: 1 / -1;
+    inline-size: 100%;
+    block-size: 1px;
+    margin-block: var(--space-1);
     background: var(--border);
   }
 </style>

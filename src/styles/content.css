@@ -81,6 +81,13 @@ body {
   margin-block: 0 var(--space-4);
 }
 
+/* A sublist of a tight item adds no gap before the next item. A loose item
+   (`> p`) keeps it, matching the spacing of its siblings. `[data-l]` is there
+   to outrank the rule above, whose `:is()` counts as a class. */
+#doc li:not(:has(> p)) > :is(ul, ol)[data-l] {
+  margin-block-end: 0;
+}
+
 /* ------------------------------- headings -------------------------------- */
 
 #doc :is(h1, h2, h3, h4, h5, h6) {
