@@ -176,12 +176,12 @@
 
 <style>
   /* Centred on the right edge, between the document actions above it and the
-     status line below. `edit/editor.css` keeps the text clear of it and sets
+     settings button below. `edit/editor.css` keeps the text clear of it and sets
      `--format-cols`. */
   .format-bar {
     position: fixed;
-    inset-block: calc(var(--tabbar-height, 0px) + 7.5rem) 2.5rem;
-    inset-inline-end: var(--space-2);
+    inset-block: calc(var(--tabbar-height, 0px) + 7.5rem) 4rem;
+    inset-inline-end: var(--edit-edge, var(--space-2));
     block-size: fit-content;
     margin-block: auto;
     z-index: 30;
