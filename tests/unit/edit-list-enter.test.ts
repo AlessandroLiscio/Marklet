@@ -29,7 +29,8 @@ async function press(source: string, key: string): Promise<string> {
   return text;
 }
 
-describe('Enter in a bullet list', () => {
+// The first case loads CodeMirror, which can pass 5 s when the whole suite runs.
+describe('Enter in a bullet list', { timeout: 20_000 }, () => {
   it('on an empty second item leaves the list instead of adding a blank line', async () => {
     expect(await press('- a\n- ', 'Enter')).toBe('- a\n');
   });
